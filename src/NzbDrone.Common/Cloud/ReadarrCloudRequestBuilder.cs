@@ -12,8 +12,9 @@ namespace NzbDrone.Common.Cloud
     {
         public ReadarrCloudRequestBuilder()
         {
-            //TODO: Create ReadAIrr Update Endpoint - For now pointing to ReadAIrr services
-            Services = new HttpRequestBuilder("https://readairr.com/api/v1/")
+            // Note: Update services now use GitHub API directly, not cloud services
+            // This endpoint is kept for compatibility but should not be used for updates
+            Services = new HttpRequestBuilder("https://api.github.com/repos/ReadAIrr/Readairr/")
                 .CreateFactory();
 
             Metadata = new HttpRequestBuilder("https://api.bookinfo.club/v1/{route}")
