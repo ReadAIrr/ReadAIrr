@@ -62,7 +62,7 @@ namespace NzbDrone.Update.UpdateEngine
 
         private void StartWinform(string installationFolder)
         {
-            Start(installationFolder, "Readarr".ProcessNameToExe());
+            Start(installationFolder, "ReadAIrr".ProcessNameToExe());
         }
 
         private void StartConsole(string installationFolder)
