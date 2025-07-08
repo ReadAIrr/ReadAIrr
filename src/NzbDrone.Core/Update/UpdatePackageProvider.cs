@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using NLog;
 using NzbDrone.Common.Cloud;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http;
@@ -22,14 +23,16 @@ namespace NzbDrone.Core.Update
         private readonly IPlatformInfo _platformInfo;
         private readonly IAnalyticsService _analyticsService;
         private readonly IMainDatabase _mainDatabase;
+        private readonly Logger _logger;
 
-        public UpdatePackageProvider(IHttpClient httpClient, IReadarrCloudRequestBuilder requestBuilder, IAnalyticsService analyticsService, IPlatformInfo platformInfo, IMainDatabase mainDatabase)
+        public UpdatePackageProvider(IHttpClient httpClient, IReadarrCloudRequestBuilder requestBuilder, IAnalyticsService analyticsService, IPlatformInfo platformInfo, IMainDatabase mainDatabase, Logger logger)
         {
             _platformInfo = platformInfo;
             _analyticsService = analyticsService;
             _requestBuilder = requestBuilder.Services;
             _httpClient = httpClient;
             _mainDatabase = mainDatabase;
+            _logger = logger;
         }
 
         public UpdatePackage GetLatestUpdate(string branch, Version currentVersion)
