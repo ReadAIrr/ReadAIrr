@@ -17,32 +17,22 @@ class MoreInfo extends Component {
         <DescriptionList>
           <DescriptionListItemTitle>Home page</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://readarr.com/">readarr.com</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Wiki</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://wiki.servarr.com/readarr">Wiki</Link>
+            <Link to="https://readairr.com/">readairr.com</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Reddit</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://www.reddit.com/r/Readarr/">Readarr</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Discord</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://readarr.com/discord">Readarr on Discord</Link>
+            <Link to="https://www.reddit.com/r/ReadAIrr/">r/ReadAIrr</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Source</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://github.com/readarr/Readarr/">github.com/Readarr/Readarr</Link>
+            <Link to="https://github.com/readairr/readairr">github.com/readairr/readairr</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Feature Requests</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://github.com/readarr/Readarr/issues">github.com/Readarr/Readarr/issues</Link>
+            <Link to="https://github.com/readairr/readairr/issues">github.com/readairr/readairr/issues</Link>
           </DescriptionListItemDescription>
 
         </DescriptionList>

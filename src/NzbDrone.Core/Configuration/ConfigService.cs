@@ -264,7 +264,7 @@ namespace NzbDrone.Core.Configuration
 
         public string MetadataSource
         {
-            get { return GetValue("MetadataSource", ""); }
+            get { return GetValue("MetadataSource", "https://api.bookinfo.pro"); }
 
             set { SetValue("MetadataSource", value); }
         }

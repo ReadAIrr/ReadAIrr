@@ -1,7 +1,7 @@
 {
-  "name": "readarr",
-  "version": "1.0.0",
-  "description": "Readarr",
+  "name": "readairr",
+  "version": "11.0.0.00001",
+  "description": "ReadAIrr",
   "scripts": {
     "build": "webpack --config ./frontend/build/webpack.config.js",
     "prebuild": "yarn clean",
@@ -15,9 +15,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Readarr/Readarr.git"
+    "url": "git://github.com/ReadAIrr/ReadAIrr.git"
   },
-  "author": "Team Readarr",
+  "author": "Team ReadAIrr",
   "license": "GPL-3.0",
   "readmeFilename": "readme.md",
   "main": "index.ts",
@@ -98,6 +98,8 @@
     "@types/redux-actions": "2.6.5",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
+    "ajv": "^6.12.6",
+    "ajv-keywords": "^3.5.2",
     "autoprefixer": "10.4.20",
     "babel-loader": "9.2.1",
     "babel-plugin-inline-classnames": "2.0.1",

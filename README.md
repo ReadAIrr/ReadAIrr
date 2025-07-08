@@ -1,24 +1,24 @@
-# Announcement: Retirement of Readarr
+# Announcement: Retirement of ReadAIrr
 
 We would like to announce that the [Readarr project](<https://github.com/Readarr/Readarr>) has been retired. This difficult decision was made due to a combination of factors: the project's metadata has become unusable, we no longer have the time to remake or repair it, and the community effort to transition to using Open Library as the source has stalled without much progress.
 
 Third-party metadata mirrors exist, but as we're not involved with them at all, we cannot provide support for them. Use of them is entirely at your own risk. The most popular mirror appears to be [rreading-glasses](<https://github.com/blampe/rreading-glasses>).
 
-Without anyone to take over Readarr development, we expect it to wither away, so we still encourage you to seek alternatives to Readarr.
+Without anyone to take over ReadAIrr development, we expect it to wither away, so we still encourage you to seek alternatives to ReadAIrr.
 
 ## Key Points:
 - **Effective Immediately**: The retirement takes effect immediately. Please stay tuned for any possible further communications.
 - **Support Window**: We will provide support during a brief transition period to help with troubleshooting non metadata related issues.
-- **Alternative Solutions**: Users are encouraged to explore and adopt any other possible solutions as alternatives to Readarr.
+- **Alternative Solutions**: Users are encouraged to explore and adopt any other possible solutions as alternatives to ReadAIrr.
 - **Opportunities for Revival**: We are open to someone taking over and revitalizing the project. If you are interested, please get in touch.
-- **Gratitude**: We extend our deepest gratitude to all the contributors and community members who supported Readarr over the years.
+- **Gratitude**: We extend our deepest gratitude to all the contributors and community members who supported ReadAIrr over the years.
 
-Thank you for being part of the Readarr journey. For any inquiries or assistance during this transition, please contact our team.
+Thank you for being part of the ReadAIrr journey. For any inquiries or assistance during this transition, please contact our team.
 
 Sincerely,  
 The Servarr Team
 
-# Readarr
+# ReadAIrr
 
 [![Build Status](https://dev.azure.com/Readarr/Readarr/_apis/build/status/Readarr.Readarr?branchName=develop)](https://dev.azure.com/Readarr/Readarr/_build/latest?definitionId=1&branchName=develop)
 [![Translated](https://translate.servarr.com/widgets/servarr/-/readarr/svg-badge.svg)](https://translate.servarr.com/engage/readarr/?utm_source=widget)
@@ -27,9 +27,9 @@ The Servarr Team
 [![Sponsors on Open Collective](https://opencollective.com/Readarr/sponsors/badge.svg)](#sponsors)
 [![Mega Sponsors on Open Collective](https://opencollective.com/Readarr/megasponsors/badge.svg)](#mega-sponsors)
 
-### Readarr is currently in beta testing and is generally still in a work in progress. Features may be broken, incomplete, or cause spontaneous combustion
+### ReadAIrr is currently in beta testing and is generally still in a work in progress. Features may be broken, incomplete, or cause spontaneous combustion
 
-Readarr is an ebook and audiobook collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new books from your favorite authors and will grab, sort, and rename them.
+ReadAIrr is an ebook and audiobook collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new books from your favorite authors and will grab, sort, and rename them.
 Note that only one type of a given book is supported. If you want both an audiobook and ebook of a given book you will need multiple instances.
 
 ## Major Features Include
@@ -40,7 +40,7 @@ Note that only one type of a given book is supported. If you want both an audiob
 * Can scan your existing library and download any missing books
 * Automatic failed download handling will try another release if one fails
 * Manual search so you can pick any release or to see why a release was not downloaded automatically
-* Advanced customization for profiles, such that Readarr will always download the copy you want
+* Advanced customization for profiles, such that ReadAIrr will always download the copy you want
 * Fully configurable book renaming
 * SABnzbd, NZBGet, QBittorrent, Deluge, rTorrent, Transmission, uTorrent, and other download clients are supported and integrated
 * Full integration with Calibre (add to library, conversion) (Requires Calibre Content Server)
