@@ -21,8 +21,8 @@ namespace NzbDrone.Common.Extensions
 
         private static readonly string UPDATE_SANDBOX_FOLDER_NAME = "readarr_update" + Path.DirectorySeparatorChar;
         private static readonly string UPDATE_PACKAGE_FOLDER_NAME = "Readarr" + Path.DirectorySeparatorChar;
-        private static readonly string UPDATE_BACKUP_FOLDER_NAME = "readarr_backup" + Path.DirectorySeparatorChar;
-        private static readonly string UPDATE_BACKUP_APPDATA_FOLDER_NAME = "readarr_appdata_backup" + Path.DirectorySeparatorChar;
+        private static readonly string UPDATE_BACKUP_FOLDER_NAME = "readairr_backup" + Path.DirectorySeparatorChar;
+        private static readonly string UPDATE_BACKUP_APPDATA_FOLDER_NAME = "readairr_appdata_backup" + Path.DirectorySeparatorChar;
         private static readonly string UPDATE_CLIENT_FOLDER_NAME = "Readarr.Update" + Path.DirectorySeparatorChar;
         private static readonly string UPDATE_LOG_FOLDER_NAME = "UpdateLogs" + Path.DirectorySeparatorChar;
 
