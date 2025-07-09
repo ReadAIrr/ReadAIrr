@@ -171,7 +171,7 @@ check_service_health() {
     
     local max_attempts=30
     local attempt=1
-    local port=${READAIRR_PORT:-8787}
+    local port=${READAIRR_PORT:-8246}
     
     while [[ $attempt -le $max_attempts ]]; do
         if curl -f "http://localhost:$port/api/v1/system/status" >/dev/null 2>&1; then
@@ -222,7 +222,7 @@ show_network_storage_status() {
 show_access_info() {
     step "ReadAIrr access information..."
     
-    local port=${READAIRR_PORT:-8787}
+    local port=${READAIRR_PORT:-8246}
     
     echo
     log "🎉 ReadAIrr is ready!"

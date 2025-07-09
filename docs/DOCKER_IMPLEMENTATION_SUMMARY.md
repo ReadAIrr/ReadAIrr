@@ -143,7 +143,7 @@ docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 3. ReadAIrr Configuration
-1. Access ReadAIrr at `http://localhost:8787`
+1. Access ReadAIrr at `http://localhost:8246`
 2. Complete initial setup
 3. Go to Settings > Media Management
 4. Add root folders:

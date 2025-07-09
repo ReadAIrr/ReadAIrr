@@ -180,7 +180,7 @@ main() {
     READAIRR_PID=$!
     
     log "ReadAIrr started with PID: $READAIRR_PID"
-    log "ReadAIrr is now running and accessible on port 8787"
+    log "ReadAIrr is now running and accessible on port 8246"
     
     # Wait for the process to finish
     wait $READAIRR_PID

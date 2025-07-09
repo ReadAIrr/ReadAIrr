@@ -163,7 +163,7 @@ validate_dockerfile() {
         "nfs-utils"
         "mount-network-storage.sh"
         "docker-entrypoint.sh"
-        "EXPOSE 8787"
+        "EXPOSE 8246"
         "ENTRYPOINT"
     )
     

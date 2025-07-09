@@ -22,11 +22,11 @@ RUN mkdir -p /config /books /downloads && \
 USER readairr
 
 # Expose ports
-EXPOSE 8787
+EXPOSE 8246
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8787/api/v1/system/status || exit 1
+  CMD curl -f http://localhost:8246/api/v1/system/status || exit 1
 
 # Set environment variables
 ENV READAIRR__INSTANCENAME="ReadAIrr (Docker)" \

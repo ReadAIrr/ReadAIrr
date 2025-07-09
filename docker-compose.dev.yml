@@ -22,7 +22,7 @@ services:
     
     # Port mapping
     ports:
-      - "${READAIRR_PORT:-8787}:8787"
+      - "${READAIRR_PORT:-8246}:8246"
     
     # Environment variables
     environment:
@@ -83,7 +83,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8787/ping"]
+      test: ["CMD", "curl", "-f", "http://localhost:8246/ping"]
       interval: 30s
       timeout: 10s
       retries: 5

@@ -168,9 +168,9 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
-        public int Port => _serverOptions.Port ?? GetValueInt("Port", 8787);
+        public int Port => _serverOptions.Port ?? GetValueInt("Port", 8246);
 
-        public int SslPort => _serverOptions.SslPort ?? GetValueInt("SslPort", 6868);
+        public int SslPort => _serverOptions.SslPort ?? GetValueInt("SslPort", 8247);
 
         public bool EnableSsl => _serverOptions.EnableSsl ?? GetValueBoolean("EnableSsl", false);
 

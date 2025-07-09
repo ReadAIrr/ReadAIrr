@@ -257,7 +257,7 @@ show_startup_commands() {
     echo "  docker-compose -f docker-compose.dev.yml logs -f readairr-dev"
     echo
     info "To access ReadAIrr:"
-    echo "  http://localhost:${READAIRR_PORT:-8787}"
+    echo "  http://localhost:${READAIRR_PORT:-8246}"
     echo
     
     if [[ "${NETWORK_STORAGE_ENABLED,,}" == "true" ]]; then

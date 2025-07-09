@@ -105,7 +105,7 @@ cp .env.local.example .env.local
 docker-compose -f docker-compose.dev.yml up -d
 
 # Access ReadAIrr
-open http://localhost:8787
+open http://localhost:8246
 ```
 
 ### Network Storage Support

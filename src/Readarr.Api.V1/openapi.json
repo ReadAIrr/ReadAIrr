@@ -21,7 +21,7 @@
           ]
         },
         "hostpath": {
-          "default": "localhost:8787"
+          "default": "localhost:8246"
         }
       }
     }

@@ -35,7 +35,7 @@ ReadAIrr's Docker development environment supports mounting remote network share
    docker-compose -f docker-compose.dev.yml up -d
    ```
 
-4. **Access ReadAIrr** at `http://localhost:8787` and configure paths:
+4. **Access ReadAIrr** at `http://localhost:8246` and configure paths:
    - Navigate to Settings > Media Management
    - Add `/mnt/smb-media` as a root folder for your books
 
@@ -181,7 +181,7 @@ This is automatically configured in the provided `docker-compose.dev.yml`.
 
 Once network shares are mounted, configure ReadAIrr to use them:
 
-1. **Access ReadAIrr UI**: Navigate to `http://localhost:8787`
+1. **Access ReadAIrr UI**: Navigate to `http://localhost:8246`
 
 2. **Add Root Folders**: 
    - Go to Settings > Media Management
