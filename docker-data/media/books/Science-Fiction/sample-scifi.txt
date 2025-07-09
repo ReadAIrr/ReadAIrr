@@ -1,0 +1,10 @@
+# Sample Sci-Fi Novel - Test Book
+
+Author: SF Test Author  
+Genre: Science Fiction
+Year: 2024
+
+This is a sample science fiction ebook for testing ReadAIrr.
+Demonstrates categorization and organization features.
+
+Would normally be EPUB, MOBI, PDF, etc.

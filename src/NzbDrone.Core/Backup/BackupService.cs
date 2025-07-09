@@ -22,6 +22,8 @@ namespace NzbDrone.Core.Backup
         void Backup(BackupType backupType);
         List<Backup> GetBackups();
         void Restore(string backupFileName);
+        void RestoreWithMigrationDecisions(string backupFileName, Dictionary<string, string> userDecisions);
+        List<ConfigurationConflict> AnalyzeBackupConflicts(string backupFileName);
         string GetBackupFolder();
         string GetBackupFolder(BackupType backupType);
     }
@@ -35,6 +37,7 @@ namespace NzbDrone.Core.Backup
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IArchiveService _archiveService;
         private readonly IConfigService _configService;
+        private readonly IBackupMigrationService _migrationService;
         private readonly Logger _logger;
 
         private string _backupTempFolder;
@@ -48,6 +51,7 @@ namespace NzbDrone.Core.Backup
                              IAppFolderInfo appFolderInfo,
                              IArchiveService archiveService,
                              IConfigService configService,
+                             IBackupMigrationService migrationService,
                              Logger logger)
         {
             _maindDb = maindDb;
@@ -57,6 +61,7 @@ namespace NzbDrone.Core.Backup
             _appFolderInfo = appFolderInfo;
             _archiveService = archiveService;
             _configService = configService;
+            _migrationService = migrationService;
             _logger = logger;
 
             _backupTempFolder = Path.Combine(_appFolderInfo.TempFolder, "readairr_backup");
@@ -135,21 +140,60 @@ namespace NzbDrone.Core.Backup
 
                 _archiveService.Extract(backupFileName, temporaryPath);
 
+                string configFileToRestore = null;
+                string databaseFileToRestore = null;
+
+                // Find files to restore
                 foreach (var file in _diskProvider.GetFiles(temporaryPath, false))
                 {
                     var fileName = Path.GetFileName(file);
 
                     if (fileName.Equals("Config.xml", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        _diskProvider.MoveFile(file, _appFolderInfo.GetConfigPath(), true);
-                        restoredFile = true;
+                        configFileToRestore = file;
                     }
 
                     if (fileName.Equals("readarr.db", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        _diskProvider.MoveFile(file, _appFolderInfo.GetDatabaseRestore(), true);
+                        databaseFileToRestore = file;
+                    }
+                }
+
+                if (configFileToRestore != null)
+                {
+                    var currentConfigPath = _appFolderInfo.GetConfigPath();
+
+                    try
+                    {
+                        // Analyze and migrate the config if needed
+                        _migrationService.AnalyzeAndMigrateBackupConfig(currentConfigPath, configFileToRestore);
+
+                        // If we get here, no conflicts were found or they were resolved
+                        _diskProvider.MoveFile(configFileToRestore, currentConfigPath, true);
+                        restoredFile = true;
+                        _logger.Info("Successfully restored config file");
+                    }
+                    catch (BackupMigrationConflictException)
+                    {
+                        // Re-throw migration conflicts so the API can handle them
+                        _diskProvider.DeleteFolder(temporaryPath, true);
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Error during config migration, falling back to direct restore");
+
+                        // Fall back to direct restore if migration fails
+                        _diskProvider.MoveFile(configFileToRestore, currentConfigPath, true);
                         restoredFile = true;
                     }
+                }
+
+                // Handle database restoration
+                if (databaseFileToRestore != null)
+                {
+                    _diskProvider.MoveFile(databaseFileToRestore, _appFolderInfo.GetDatabaseRestore(), true);
+                    restoredFile = true;
                 }
 
                 if (!restoredFile)
@@ -163,6 +207,123 @@ namespace NzbDrone.Core.Backup
             }
 
             _diskProvider.MoveFile(backupFileName, _appFolderInfo.GetDatabaseRestore(), true);
+        }
+
+        public void RestoreWithMigrationDecisions(string backupFileName, Dictionary<string, string> userDecisions)
+        {
+            if (backupFileName.EndsWith(".zip"))
+            {
+                var restoredFile = false;
+                var temporaryPath = Path.Combine(_appFolderInfo.TempFolder, "readairr_backup_restore");
+
+                _archiveService.Extract(backupFileName, temporaryPath);
+
+                string configFileToRestore = null;
+                string databaseFileToRestore = null;
+
+                // Find files to restore
+                foreach (var file in _diskProvider.GetFiles(temporaryPath, false))
+                {
+                    var fileName = Path.GetFileName(file);
+
+                    if (fileName.Equals("Config.xml", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        configFileToRestore = file;
+                    }
+
+                    if (fileName.Equals("readarr.db", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        databaseFileToRestore = file;
+                    }
+                }
+
+                if (configFileToRestore != null)
+                {
+                    var currentConfigPath = _appFolderInfo.GetConfigPath();
+
+                    try
+                    {
+                        // Apply user decisions during migration
+                        _migrationService.AnalyzeAndMigrateBackupConfig(currentConfigPath, configFileToRestore, false, userDecisions);
+
+                        _diskProvider.MoveFile(configFileToRestore, currentConfigPath, true);
+                        restoredFile = true;
+                        _logger.Info("Successfully restored config file with user migration decisions");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Error during config migration with user decisions");
+                        _diskProvider.DeleteFolder(temporaryPath, true);
+                        throw;
+                    }
+                }
+
+                // Handle database restoration
+                if (databaseFileToRestore != null)
+                {
+                    _diskProvider.MoveFile(databaseFileToRestore, _appFolderInfo.GetDatabaseRestore(), true);
+                    restoredFile = true;
+                }
+
+                if (!restoredFile)
+                {
+                    throw new RestoreBackupFailedException(HttpStatusCode.NotFound, "Unable to restore database file from backup");
+                }
+
+                _diskProvider.DeleteFolder(temporaryPath, true);
+
+                return;
+            }
+
+            _diskProvider.MoveFile(backupFileName, _appFolderInfo.GetDatabaseRestore(), true);
+        }
+
+        public List<ConfigurationConflict> AnalyzeBackupConflicts(string backupFileName)
+        {
+            if (!backupFileName.EndsWith(".zip"))
+            {
+                return new List<ConfigurationConflict>();
+            }
+
+            var temporaryPath = Path.Combine(_appFolderInfo.TempFolder, "readairr_backup_analyze");
+
+            try
+            {
+                _archiveService.Extract(backupFileName, temporaryPath);
+
+                string configFileToAnalyze = null;
+
+                foreach (var file in _diskProvider.GetFiles(temporaryPath, false))
+                {
+                    var fileName = Path.GetFileName(file);
+
+                    if (fileName.Equals("Config.xml", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        configFileToAnalyze = file;
+                        break;
+                    }
+                }
+
+                if (configFileToAnalyze == null)
+                {
+                    return new List<ConfigurationConflict>();
+                }
+
+                var currentConfigPath = _appFolderInfo.GetConfigPath();
+                return _migrationService.AnalyzeConfigConflicts(currentConfigPath, configFileToAnalyze);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error analyzing backup conflicts for {0}", backupFileName);
+                throw;
+            }
+            finally
+            {
+                if (_diskProvider.FolderExists(temporaryPath))
+                {
+                    _diskProvider.DeleteFolder(temporaryPath, true);
+                }
+            }
         }
 
         public string GetBackupFolder()

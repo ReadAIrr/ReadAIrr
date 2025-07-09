@@ -1,0 +1,10 @@
+# Sample Novel - Test Book
+
+Author: Test Author
+Genre: Fiction
+Year: 2024
+
+This is a sample text file representing an ebook for testing ReadAIrr functionality.
+It demonstrates how ReadAIrr can manage and organize your book collection.
+
+Content would normally be in EPUB, PDF, or other ebook formats.

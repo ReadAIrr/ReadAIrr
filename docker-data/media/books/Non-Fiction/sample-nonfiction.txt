@@ -1,0 +1,11 @@
+# Sample Non-Fiction Book - Test Book
+
+Author: NF Test Author
+Genre: Non-Fiction  
+Category: Technology
+Year: 2024
+
+This is a sample non-fiction ebook for testing ReadAIrr.
+Shows how different genres can be organized and managed.
+
+Real books would be in standard ebook formats.

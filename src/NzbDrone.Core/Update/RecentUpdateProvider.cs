@@ -42,7 +42,7 @@ namespace NzbDrone.Core.Update
             catch (Exception ex)
             {
                 _logger.Debug(ex, "Unable to fetch recent updates from ReadAIrr update service. This is expected for new ReadAIrr installations until the update service is available.");
-                
+
                 // Return empty list for now - ReadAIrr update service is not yet available
                 return new List<UpdatePackage>();
             }

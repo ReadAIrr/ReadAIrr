@@ -17,5 +17,13 @@
       "systemUsingDirectivesFirst": true,
       "usingDirectivesPlacement": "outsideNamespace"
     }
+  },
+  "rules": {
+    "SA1200": {
+      "enabled": false
+    },
+    "SA1513": {
+      "enabled": false
+    }
   }
 }

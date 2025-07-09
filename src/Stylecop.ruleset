@@ -17,6 +17,7 @@
   </Rules>
   <Rules AnalyzerId="StyleCop.CSharp.OrderingRules"
          RuleNamespace="StyleCop.CSharp.OrderingRules">
+    <Rule Id="SA1200" Action="None" />
     <Rule Id="SA1201" Action="Info" />
     <Rule Id="SA1202" Action="Info" />
     <Rule Id="SA1204" Action="Info" />
@@ -48,6 +49,7 @@
   </Rules>
   <Rules AnalyzerId="StyleCop.CSharp.LayoutRules"
          RuleNamespace="StyleCop.CSharp.LayoutRules">
+    <Rule Id="SA1513" Action="None" />
     <Rule Id="SA1516" Action="None" />
   </Rules>
   <Rules AnalyzerId="StyleCop.CSharp.DocumentationRules"

@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Update
     public class UpdatePackageProvider : IUpdatePackageProvider
     {
         private const string GitHubApiUrl = "https://api.github.com/repos/ReadAIrr/Readairr/releases";
-        
+
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
 
@@ -192,7 +192,7 @@ namespace NzbDrone.Core.Update
             }
 
             var versionString = tagName.StartsWith("v") ? tagName.Substring(1) : tagName;
-            
+
             if (Version.TryParse(versionString, out var version))
             {
                 return version;
@@ -217,7 +217,7 @@ namespace NzbDrone.Core.Update
             foreach (var line in lines)
             {
                 var trimmedLine = line.Trim();
-                
+
                 if (trimmedLine.StartsWith("#") || string.IsNullOrEmpty(trimmedLine))
                 {
                     continue;
@@ -238,7 +238,7 @@ namespace NzbDrone.Core.Update
         private string DetermineCategoryFromLine(string line, string currentCategory)
         {
             var lowerLine = line.ToLower();
-            
+
             if (lowerLine.Contains("new") || lowerLine.Contains("added") || lowerLine.Contains("feature"))
             {
                 return "new";

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -83,11 +84,81 @@ namespace Readarr.Api.V1.System.Backup
 
             var path = GetBackupPath(backup);
 
-            _backupService.Restore(path);
+            try
+            {
+                _backupService.Restore(path);
+
+                return new
+                {
+                    RestartRequired = true
+                };
+            }
+            catch (BackupMigrationConflictException ex)
+            {
+                return new
+                {
+                    MigrationRequired = true,
+                    IsLegacyReadarrBackup = ex.IsLegacyReadarrBackup,
+                    Conflicts = ex.Conflicts.Select(c => new
+                    {
+                        Setting = c.Setting,
+                        CurrentValue = c.CurrentValue,
+                        BackupValue = c.BackupValue,
+                        Description = c.Description,
+                        Type = c.Type.ToString(),
+                        SuggestedActions = c.SuggestedActions
+                    }).ToList(),
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("restore/{id:int}/migrate")]
+        public object RestoreWithMigration(int id, [FromBody] MigrationDecisionRequest request)
+        {
+            var backup = GetBackup(id);
+
+            if (backup == null)
+            {
+                throw new NotFoundException();
+            }
+
+            var path = GetBackupPath(backup);
+
+            _backupService.RestoreWithMigrationDecisions(path, request.Decisions);
 
             return new
             {
                 RestartRequired = true
+            };
+        }
+
+        [HttpGet("analyze/{id:int}")]
+        public object AnalyzeBackup(int id)
+        {
+            var backup = GetBackup(id);
+
+            if (backup == null)
+            {
+                throw new NotFoundException();
+            }
+
+            var path = GetBackupPath(backup);
+            var conflicts = _backupService.AnalyzeBackupConflicts(path);
+
+            return new
+            {
+                HasConflicts = conflicts.Any(),
+                IsLegacyReadarrBackup = conflicts.Any() && _backupService.GetType().Name.Contains("Migration"), // Simple check for now
+                Conflicts = conflicts.Select(c => new
+                {
+                    Setting = c.Setting,
+                    CurrentValue = c.CurrentValue,
+                    BackupValue = c.BackupValue,
+                    Description = c.Description,
+                    Type = c.Type.ToString(),
+                    SuggestedActions = c.SuggestedActions
+                }).ToList()
             };
         }
 
@@ -113,15 +184,72 @@ namespace Readarr.Api.V1.System.Backup
             var path = Path.Combine(_appFolderInfo.TempFolder, $"readairr_backup_restore{extension}");
 
             _diskProvider.SaveStream(file.OpenReadStream(), path);
-            _backupService.Restore(path);
 
-            // Cleanup restored file
-            _diskProvider.DeleteFile(path);
-
-            return new
+            try
             {
-                RestartRequired = true
-            };
+                _backupService.Restore(path);
+
+                // Cleanup restored file
+                _diskProvider.DeleteFile(path);
+
+                return new
+                {
+                    RestartRequired = true
+                };
+            }
+            catch (BackupMigrationConflictException ex)
+            {
+                // Don't delete the temp file yet, we'll need it for the migration step
+                return new
+                {
+                    MigrationRequired = true,
+                    IsLegacyReadarrBackup = ex.IsLegacyReadarrBackup,
+                    TempFileName = Path.GetFileName(path),
+                    Conflicts = ex.Conflicts.Select(c => new
+                    {
+                        Setting = c.Setting,
+                        CurrentValue = c.CurrentValue,
+                        BackupValue = c.BackupValue,
+                        Description = c.Description,
+                        Type = c.Type.ToString(),
+                        SuggestedActions = c.SuggestedActions
+                    }).ToList(),
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("restore/upload/migrate")]
+        public object UploadAndRestoreWithMigration([FromBody] UploadMigrationDecisionRequest request)
+        {
+            var path = Path.Combine(_appFolderInfo.TempFolder, request.TempFileName);
+
+            if (!_diskProvider.FileExists(path))
+            {
+                throw new NotFoundException("Temporary backup file not found");
+            }
+
+            try
+            {
+                _backupService.RestoreWithMigrationDecisions(path, request.Decisions);
+
+                // Cleanup restored file
+                _diskProvider.DeleteFile(path);
+
+                return new
+                {
+                    RestartRequired = true
+                };
+            }
+            catch (Exception)
+            {
+                // Cleanup on error
+                if (_diskProvider.FileExists(path))
+                {
+                    _diskProvider.DeleteFile(path);
+                }
+                throw;
+            }
         }
 
         private string GetBackupPath(NzbDrone.Core.Backup.Backup backup)
@@ -138,5 +266,16 @@ namespace Readarr.Api.V1.System.Backup
         {
             return _backupService.GetBackups().SingleOrDefault(b => GetBackupId(b) == id);
         }
+    }
+
+    public class MigrationDecisionRequest
+    {
+        public Dictionary<string, string> Decisions { get; set; }
+    }
+
+    public class UploadMigrationDecisionRequest
+    {
+        public string TempFileName { get; set; }
+        public Dictionary<string, string> Decisions { get; set; }
     }
 }
