@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  readairr-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: ${READAIRR_CONTAINER_NAME:-readairr-dev}
+    image: ${READAIRR_IMAGE_NAME:-readairr-dev}:latest
+    restart: unless-stopped
+    
+    # Required for mounting network shares
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    
+    # Port mapping
+    ports:
+      - "${READAIRR_PORT:-8787}:8787"
+    
+    # Environment variables
+    environment:
+      - READAIRR_BRANCH=${READAIRR_BRANCH:-develop}
+      - READAIRR_LOG_LEVEL=${READAIRR_LOG_LEVEL:-info}
+      - READAIRR_ANALYTICS_ENABLED=${READAIRR_ANALYTICS_ENABLED:-false}
+      - READAIRR_AUTH_REQUIRED=${READAIRR_AUTH_REQUIRED:-false}
+      - READAIRR_API_KEY=${READAIRR_API_KEY}
+      - XDG_CONFIG_HOME=/config
+      
+      # Network storage configuration
+      - NETWORK_STORAGE_ENABLED=${NETWORK_STORAGE_ENABLED:-false}
+      
+      # SMB/CIFS configuration
+      - SMB_SHARE_PATH=${SMB_SHARE_PATH}
+      - SMB_USERNAME=${SMB_USERNAME}
+      - SMB_PASSWORD=${SMB_PASSWORD}
+      - SMB_DOMAIN=${SMB_DOMAIN}
+      - SMB_VERSION=${SMB_VERSION:-3.0}
+      - SMB_MOUNT_POINT=${SMB_MOUNT_POINT:-/mnt/smb-media}
+      
+      # NFS configuration
+      - NFS_SHARE_PATH=${NFS_SHARE_PATH}
+      - NFS_OPTIONS=${NFS_OPTIONS:-rw,hard,intr,rsize=8192,wsize=8192,timeo=14}
+      - NFS_MOUNT_POINT=${NFS_MOUNT_POINT:-/mnt/nfs-media}
+      
+      # Additional network shares
+      - SMB_SHARE_PATH_2=${SMB_SHARE_PATH_2}
+      - SMB_MOUNT_POINT_2=${SMB_MOUNT_POINT_2:-/mnt/smb-audiobooks}
+      - NFS_SHARE_PATH_2=${NFS_SHARE_PATH_2}
+      - NFS_MOUNT_POINT_2=${NFS_MOUNT_POINT_2:-/mnt/nfs-downloads}
+    
+    # Volume mounts for persistent storage
+    volumes:
+      # Configuration and database
+      - "${READAIRR_CONFIG_PATH:-./docker-data/config}:/config"
+      
+      # Downloads directory
+      - "${READAIRR_DOWNLOADS_PATH:-./docker-data/downloads}:/downloads"
+      
+      # Media library
+      - "${READAIRR_MEDIA_PATH:-./docker-data/media}:/media"
+      
+      # Backups
+      - "${READAIRR_BACKUP_PATH:-./docker-data/backups}:/backups"
+      
+      # Development: Mount source code for live development (optional)
+      - "./src:/app/src:ro"
+      - "./frontend:/app/frontend:ro"
+      
+      # Network storage mount points (only accessible when network storage is enabled)
+      # These are just mount points - actual network shares are mounted by the entrypoint script
+      # Users can access these paths in ReadAIrr UI when shares are mounted:
+      # - /mnt/smb-media (primary SMB share)
+      # - /mnt/nfs-media (primary NFS share)  
+      # - /mnt/smb-audiobooks (secondary SMB share)
+      # - /mnt/nfs-downloads (secondary NFS share)
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Labels for management
+    labels:
+      - "com.readairr.service=application"
+      - "com.readairr.environment=development"
+      - "com.readairr.version=11.0.0"
+
+  # Optional: Development database (if using PostgreSQL instead of SQLite)
+  readairr-db:
+    image: postgres:15-alpine
+    container_name: readairr-db-dev
+    restart: unless-stopped
+    profiles: ["postgres"]  # Only start when specifically requested
+    
+    environment:
+      - POSTGRES_DB=readairr
+      - POSTGRES_USER=readairr
+      - POSTGRES_PASSWORD=readairr_dev_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    
+    volumes:
+      - readairr-db-data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    
+    ports:
+      - "5432:5432"
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U readairr -d readairr"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Named volumes
+volumes:
+  readairr-db-data:
+    driver: local
+
+# Networks
+networks:
+  default:
+    name: ${READAIRR_NETWORK:-readairr-network}
+    driver: bridge

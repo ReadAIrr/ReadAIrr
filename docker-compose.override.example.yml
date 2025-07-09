@@ -1,0 +1,63 @@
+# Docker Compose Override for Network Storage Testing
+# 
+# This file provides examples for testing network storage functionality
+# Copy this to docker-compose.override.yml and modify for your environment
+#
+# Usage:
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#   # Edit docker-compose.override.yml with your settings
+#   docker-compose -f docker-compose.dev.yml up -d
+
+version: '3.8'
+
+services:
+  readairr-dev:
+    environment:
+      # Enable network storage for testing
+      - NETWORK_STORAGE_ENABLED=true
+      
+      # Example SMB/CIFS configuration (modify for your environment)
+      - SMB_SHARE_PATH=//your-nas.local/books
+      - SMB_USERNAME=your-username  
+      - SMB_PASSWORD=your-password
+      - SMB_DOMAIN=
+      - SMB_VERSION=3.0
+      - SMB_MOUNT_POINT=/mnt/smb-media
+      
+      # Example NFS configuration (modify for your environment)
+      - NFS_SHARE_PATH=your-nfs-server.local:/path/to/books
+      - NFS_OPTIONS=rw,hard,intr,rsize=8192,wsize=8192,timeo=14
+      - NFS_MOUNT_POINT=/mnt/nfs-media
+      
+      # Example secondary shares
+      # - SMB_SHARE_PATH_2=//your-nas.local/audiobooks
+      # - SMB_MOUNT_POINT_2=/mnt/smb-audiobooks
+      # - NFS_SHARE_PATH_2=your-nfs-server.local:/path/to/downloads
+      # - NFS_MOUNT_POINT_2=/mnt/nfs-downloads
+
+# Example: Test NAS server using SMB (for development/testing only)
+# Uncomment this section to run a test Samba server alongside ReadAIrr
+#
+# test-nas:
+#   image: dperson/samba
+#   container_name: readairr-test-nas
+#   restart: unless-stopped
+#   ports:
+#     - "139:139"
+#     - "445:445"
+#   environment:
+#     - TZ=UTC
+#   command: >
+#     -u "testuser;testpass"
+#     -s "books;/shared/books;yes;no;no;testuser"
+#     -s "audiobooks;/shared/audiobooks;yes;no;no;testuser"
+#   volumes:
+#     - ./test-data/books:/shared/books
+#     - ./test-data/audiobooks:/shared/audiobooks
+#   networks:
+#     - default
+
+# To use the test NAS, update your .env.local with:
+# SMB_SHARE_PATH=//test-nas/books
+# SMB_USERNAME=testuser
+# SMB_PASSWORD=testpass

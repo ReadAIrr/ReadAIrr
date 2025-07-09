@@ -1,0 +1,58 @@
+# ReadAIrr Development Docker Container with Network Storage Support
+FROM mcr.microsoft.com/dotnet/runtime:6.0-alpine
+
+# Install dependencies including SMB and NFS clients
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    cifs-utils \
+    nfs-utils \
+    bash \
+    jq \
+    util-linux
+
+# Create app directory
+WORKDIR /app
+
+# Create readairr user and group with sudo privileges for mounting
+RUN addgroup -g 1000 readairr && \
+    adduser -D -u 1000 -G readairr readairr && \
+    apk add --no-cache sudo && \
+    echo "readairr ALL=(ALL) NOPASSWD: /bin/mount, /bin/umount, /sbin/mount.cifs, /sbin/mount.nfs, /sbin/umount.cifs, /sbin/umount.nfs" >> /etc/sudoers
+
+# Copy the published application
+COPY _output/net6.0/linux-x64/publish/ ./
+
+# Create directories for ReadAIrr data and network mounts
+RUN mkdir -p /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-downloads && \
+    chown -R readairr:readairr /app /config /books /downloads /media /backups && \
+    chmod 755 /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-downloads
+
+# Copy network storage mounting script
+COPY docker/mount-network-storage.sh /usr/local/bin/mount-network-storage.sh
+RUN chmod +x /usr/local/bin/mount-network-storage.sh
+
+# Create entrypoint script that handles network mounts
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Switch to readairr user
+USER readairr
+
+# Expose ports
+EXPOSE 8787
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8787/api/v1/system/status || exit 1
+
+# Set environment variables
+ENV READAIRR__INSTANCENAME="ReadAIrr (Docker Dev)" \
+    READAIRR__BRANCH="develop" \
+    READAIRR__APIKEY="" \
+    READAIRR__LOGLEVEL="debug"
+
+# Use custom entrypoint that handles network storage
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["./Readarr", "-nobrowser", "-data=/config"]

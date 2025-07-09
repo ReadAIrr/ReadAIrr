@@ -90,6 +90,70 @@ This project is also supported by DigitalOcean
   </a>
 </p>
 
+## Docker Development Environment
+
+ReadAIrr includes a comprehensive Docker development environment with support for network storage (SMB/NFS) integration.
+
+### Quick Start with Docker
+
+```bash
+# Copy and configure environment
+cp .env.local.example .env.local
+# Edit .env.local with your settings
+
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# Access ReadAIrr
+open http://localhost:8787
+```
+
+### Network Storage Support
+
+The Docker environment supports mounting remote network shares directly:
+
+- **SMB/CIFS**: Windows shares, Samba, NAS devices
+- **NFS**: Linux/Unix network file systems
+- **Multiple Shares**: Configure primary and secondary mount points
+- **Persistent Storage**: All configuration and data persists across restarts
+
+Example configuration in `.env.local`:
+```bash
+# Enable network storage
+NETWORK_STORAGE_ENABLED=true
+
+# SMB share configuration
+SMB_SHARE_PATH=//nas.local/books
+SMB_USERNAME=your-username
+SMB_PASSWORD=your-password
+
+# NFS share configuration  
+NFS_SHARE_PATH=192.168.1.100:/volume1/books
+```
+
+For detailed network storage setup, see: [Network Storage Guide](docs/NETWORK_STORAGE.md)
+
+### Development Features
+
+- **Live Reload**: Source code changes reflected immediately
+- **Persistent Data**: Configuration, downloads, and media persist across restarts
+- **Health Checks**: Automatic service monitoring
+- **Resource Limits**: Configurable CPU and memory constraints
+- **Test Scripts**: Validation tools for network storage setup
+
+### Testing Network Storage
+
+```bash
+# Test your network storage configuration
+./scripts/test-network-storage.sh
+
+# View container logs
+docker-compose -f docker-compose.dev.yml logs -f readairr-dev
+
+# Access container shell
+docker-compose -f docker-compose.dev.yml exec readairr-dev bash
+```
+
 ### License
 
 * [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
