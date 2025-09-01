@@ -1,0 +1,128 @@
+.googleBooksContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.infoCard {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.cardContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.iconSection {
+  flex-shrink: 0;
+}
+
+.textSection {
+  flex: 1;
+}
+
+.textSection h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.textSection p {
+  margin: 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.setupSection {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.setupButtonContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.statusSection {
+  margin: 15px 0;
+}
+
+.configSection {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.testResult {
+  margin-top: 15px;
+}
+
+/* Alert customization */
+.statusSection .alert,
+.testResult .alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Form styling */
+.configSection .form-group {
+  margin-bottom: 20px;
+}
+
+.configSection .form-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Button styling */
+.buttonGroup button {
+  min-width: 120px;
+}
+
+.setupButtonContainer button {
+  padding: 12px 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cardContent {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .buttonGroup {
+    justify-content: center;
+  }
+  
+  .buttonGroup button {
+    flex: 1;
+    min-width: auto;
+  }
+  
+  .setupButtonContainer {
+    width: 100%;
+  }
+  
+  .setupButtonContainer button {
+    width: 100%;
+    max-width: 300px;
+  }
+}
