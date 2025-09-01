@@ -269,6 +269,20 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MetadataSource", value); }
         }
 
+        public string GoogleBooksApiKey
+        {
+            get { return GetValue("GoogleBooksApiKey", ""); }
+
+            set { SetValue("GoogleBooksApiKey", value); }
+        }
+
+        public bool EnableGoogleBooksMetadata
+        {
+            get { return GetValueBoolean("EnableGoogleBooksMetadata", false); }
+
+            set { SetValue("EnableGoogleBooksMetadata", value); }
+        }
+
         public WriteAudioTagsType WriteAudioTags
         {
             get { return GetValueEnum("WriteAudioTags", WriteAudioTagsType.No); }

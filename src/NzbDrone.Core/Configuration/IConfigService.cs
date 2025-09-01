@@ -67,6 +67,8 @@ namespace NzbDrone.Core.Configuration
 
         //Metadata
         string MetadataSource { get; set; }
+        string GoogleBooksApiKey { get; set; }
+        bool EnableGoogleBooksMetadata { get; set; }
         WriteAudioTagsType WriteAudioTags { get; set; }
         bool ScrubAudioTags { get; set; }
         WriteBookTagsType WriteBookTags { get; set; }
