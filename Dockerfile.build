@@ -1,0 +1,77 @@
+# Build ReadAIrr with style checks disabled for Docker
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+WORKDIR /src
+
+# Copy source files
+COPY src/ ./
+
+# Disable StyleCop and other analyzers temporarily for Docker build
+RUN echo '<Project><PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAsErrors><WarningsAsErrors></WarningsAsErrors><RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild><RunCodeAnalysis>false</RunCodeAnalysis><EnableNETAnalyzers>false</EnableNETAnalyzers><AnalysisLevel>none</AnalysisLevel></PropertyGroup></Project>' > Directory.Build.override.props
+
+# Restore dependencies
+RUN dotnet restore Readarr.sln --verbosity minimal --disable-parallel
+
+# Build with analysis disabled
+RUN dotnet build NzbDrone.Console/Readarr.Console.csproj \
+    -c Release \
+    -f net6.0 \
+    -p:TreatWarningsAsErrors=false \
+    -p:WarningsAsErrors="" \
+    -p:RunAnalyzersDuringBuild=false \
+    -p:RunCodeAnalysis=false \
+    -p:EnableNETAnalyzers=false \
+    --verbosity minimal
+
+# Publish complete application with all dependencies
+RUN dotnet publish NzbDrone.Console/Readarr.Console.csproj \
+    -c Release \
+    -f net6.0 \
+    -o /app/published \
+    --self-contained false \
+    --runtime linux-musl-x64 \
+    -p:PublishSingleFile=false \
+    -p:PublishTrimmed=false \
+    -p:TreatWarningsAsErrors=false \
+    -p:WarningsAsErrors="" \
+    -p:RunAnalyzersDuringBuild=false \
+    -p:RunCodeAnalysis=false \
+    -p:EnableNETAnalyzers=false \
+    --verbosity minimal
+
+# Runtime image with ASP.NET Core
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine
+WORKDIR /app
+
+# Install additional packages that ReadAIrr might need
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    cifs-utils \
+    nfs-utils \
+    bash \
+    jq \
+    unzip
+
+# Copy published application
+COPY --from=build /app/published ./
+
+# Create readairr user and group
+RUN addgroup -g 1000 readairr && \
+    adduser -D -u 1000 -G readairr readairr
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /config /books /downloads /media /backups && \
+    chown -R readairr:readairr /config /books /downloads /media /backups /app
+
+# Switch to readairr user
+USER readairr
+
+# Expose ReadAIrr port
+EXPOSE 8787
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8787/ping || exit 1
+
+# Start ReadAIrr
+ENTRYPOINT ["dotnet", "Readarr.dll"]

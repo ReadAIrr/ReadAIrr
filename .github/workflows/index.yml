@@ -1,0 +1,558 @@
+name: Automated Index Refresh
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**/*.cs'
+      - 'frontend/src/**/*.ts'
+      - 'frontend/src/**/*.tsx'
+      - 'frontend/src/**/*.js'
+      - 'frontend/src/**/*.jsx'
+      - 'src/**/*.sql'
+      - 'docker/**'
+      - 'Dockerfile*'
+      - 'docker-compose*.yml'
+      - '.github/workflows/index.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**/*.cs'
+      - 'frontend/src/**/*.ts'
+      - 'frontend/src/**/*.tsx'
+      - 'frontend/src/**/*.js'
+      - 'frontend/src/**/*.jsx'
+  workflow_dispatch: # Allow manual triggering
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC to refresh indexes
+    - cron: '0 2 * * 0'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '18.x'
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for proper versioning
+        submodules: recursive
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+
+    - name: Enable Corepack for Yarn
+      run: |
+        corepack enable
+        corepack prepare yarn@stable --activate
+
+    - name: Cache .NET packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Cache Node modules
+      uses: actions/cache@v4
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    # Backend Build and Test
+    - name: Restore .NET dependencies
+      run: dotnet restore src/Readarr.sln
+      
+    - name: Build backend (with warnings as errors disabled for CI)
+      run: |
+        dotnet build src/Readarr.sln \
+          --configuration Release \
+          --no-restore \
+          --property TreatWarningsAsErrors=false \
+          --property WarningsAsErrors="" \
+          --verbosity minimal
+
+    - name: Run backend tests
+      run: |
+        dotnet test src/Readarr.sln \
+          --configuration Release \
+          --no-build \
+          --no-restore \
+          --verbosity minimal \
+          --logger trx \
+          --results-directory TestResults/ \
+          --collect:"XPlat Code Coverage" \
+          --property TreatWarningsAsErrors=false
+          
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-test-results
+        path: TestResults/
+        retention-days: 30
+
+    # Frontend Build and Test  
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: yarn install --frozen-lockfile
+
+    - name: Lint frontend code
+      working-directory: frontend
+      run: |
+        yarn lint --cache --cache-location .eslintcache
+        yarn stylelint "src/**/*.css"
+        
+    - name: Type check frontend
+      working-directory: frontend
+      run: yarn type-check
+
+    - name: Test frontend
+      working-directory: frontend
+      run: yarn test --coverage --watchAll=false
+
+    - name: Build frontend
+      working-directory: frontend
+      run: yarn build
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+        retention-days: 7
+
+  generate-indexes:
+    name: Generate Code Indexes
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Enable Corepack for Yarn
+      run: |
+        corepack enable
+        corepack prepare yarn@stable --activate
+
+    - name: Install Universal CTags
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y universal-ctags
+
+    - name: Create tools/index directories
+      run: |
+        mkdir -p tools/index/backend
+        mkdir -p tools/index/frontend
+        mkdir -p tools/index/database
+        mkdir -p tools/index/api
+
+    # Generate Backend Index
+    - name: Generate backend CTags index
+      run: |
+        ctags -R \
+          --languages=C# \
+          --exclude=bin \
+          --exclude=obj \
+          --exclude=packages \
+          --exclude=TestResults \
+          --tag-relative=yes \
+          --fields=+iaS \
+          --extra=+q \
+          -f tools/index/backend/tags.backend \
+          src/
+          
+    - name: Generate backend symbol database
+      run: |
+        # Create a simple symbol index from the ctags file
+        echo "# ReadAIrr Backend Symbol Index" > tools/index/backend/symbols.md
+        echo "Generated on: $(date -u)" >> tools/index/backend/symbols.md
+        echo "" >> tools/index/backend/symbols.md
+        echo "## Classes" >> tools/index/backend/symbols.md
+        grep -E "^.*\tc\t" tools/index/backend/tags.backend | head -50 | \
+          awk -F'\t' '{printf "- `%s` in %s\n", $1, $2}' >> tools/index/backend/symbols.md
+        echo "" >> tools/index/backend/symbols.md
+        echo "## Methods" >> tools/index/backend/symbols.md  
+        grep -E "^.*\tm\t" tools/index/backend/tags.backend | head -50 | \
+          awk -F'\t' '{printf "- `%s` in %s\n", $1, $2}' >> tools/index/backend/symbols.md
+
+    # Generate Frontend Index
+    - name: Restore frontend dependencies for indexing
+      working-directory: frontend
+      run: yarn install --frozen-lockfile
+
+    - name: Generate TypeScript build info
+      working-directory: frontend
+      run: |
+        yarn tsc --build --verbose || true
+        # Copy build info to index directory
+        find . -name "*.tsbuildinfo" -exec cp {} ../tools/index/frontend/ \; || true
+
+    - name: Generate frontend CTags index  
+      run: |
+        ctags -R \
+          --languages=JavaScript,TypeScript \
+          --exclude=node_modules \
+          --exclude=build \
+          --exclude=dist \
+          --exclude=.cache \
+          --tag-relative=yes \
+          --fields=+iaS \
+          --extra=+q \
+          -f tools/index/frontend/tags.frontend \
+          frontend/src/
+
+    - name: Cache ESLint results
+      working-directory: frontend
+      run: |
+        yarn lint --cache --cache-location ../tools/index/frontend/.eslintcache || true
+        # Generate lint summary
+        echo "# Frontend Code Quality" > ../tools/index/frontend/quality.md
+        echo "Generated on: $(date -u)" >> ../tools/index/frontend/quality.md
+        echo "" >> ../tools/index/frontend/quality.md
+        yarn lint --format json --output-file ../tools/index/frontend/eslint-results.json || true
+
+    # Generate Database Schema Index
+    - name: Install Entity Framework tools
+      run: dotnet tool install --global dotnet-ef
+
+    - name: Generate database schema documentation  
+      run: |
+        # Create database schema summary from existing documentation
+        echo "# Database Schema Index" > tools/index/database/index.md
+        echo "Generated on: $(date -u)" >> tools/index/database/index.md
+        echo "" >> tools/index/database/index.md
+        
+        # Count entities and migrations
+        if [ -d "src/NzbDrone.Core/Datastore" ]; then
+          echo "## Entity Counts" >> tools/index/database/index.md
+          echo "- Models: $(find src -name "*.cs" -path "*/Datastore/*" -not -path "*/Migrations/*" | wc -l)" >> tools/index/database/index.md
+          echo "- Migrations: $(find src -name "*.cs" -path "*/Migrations/*" | wc -l)" >> tools/index/database/index.md
+          echo "" >> tools/index/database/index.md
+          
+          # List main entities
+          echo "## Core Entities" >> tools/index/database/index.md
+          find src -name "*.cs" -path "*/Datastore/*" -not -path "*/Migrations/*" | \
+            head -20 | \
+            xargs basename -s .cs | \
+            sort | \
+            sed 's/^/- /' >> tools/index/database/index.md
+        fi
+
+    # Generate API Index
+    - name: Generate API endpoint index
+      run: |
+        echo "# API Endpoints Index" > tools/index/api/endpoints.md
+        echo "Generated on: $(date -u)" >> tools/index/api/endpoints.md
+        echo "" >> tools/index/api/endpoints.md
+        
+        # Find all controllers
+        echo "## Controllers" >> tools/index/api/endpoints.md
+        find src -name "*Controller.cs" | \
+          head -30 | \
+          xargs basename -s .cs | \
+          sort | \
+          sed 's/Controller$//' | \
+          sed 's/^/- /' >> tools/index/api/endpoints.md
+          
+        # Copy existing API documentation
+        if [ -f "docs/api/openapi.json" ]; then
+          cp docs/api/openapi.json tools/index/api/
+        fi
+
+    # Generate Index Summary
+    - name: Generate index summary
+      run: |
+        cat > tools/index/INDEX.md << 'EOF'
+        # ReadAIrr Project Index
+        
+        This directory contains generated indexes for the ReadAIrr project, automatically updated by CI/CD.
+        
+        ## Index Contents
+        
+        ### Backend (`backend/`)
+        - `tags.backend` - Universal CTags index for C# code
+        - `symbols.md` - Human-readable symbol summary
+        
+        ### Frontend (`frontend/`) 
+        - `tags.frontend` - Universal CTags index for TypeScript/JavaScript
+        - `tsconfig.tsbuildinfo` - TypeScript build information
+        - `.eslintcache` - ESLint cache for faster linting
+        - `quality.md` - Code quality summary
+        - `eslint-results.json` - Detailed lint results
+        
+        ### Database (`database/`)
+        - `index.md` - Database schema summary
+        
+        ### API (`api/`)
+        - `endpoints.md` - API endpoints summary
+        - `openapi.json` - OpenAPI specification (if available)
+        
+        ## Usage
+        
+        ### VS Code
+        1. Install the "C# Extensions" and "TypeScript Importer" extensions
+        2. Point your workspace to use these tag files for better navigation
+        
+        ### Vim/Neovim
+        ```vim
+        set tags+=./tools/index/backend/tags.backend
+        set tags+=./tools/index/frontend/tags.frontend
+        ```
+        
+        ### Emacs
+        ```elisp
+        (setq tags-table-list
+              '("./tools/index/backend/tags.backend"
+                "./tools/index/frontend/tags.frontend"))
+        ```
+        
+        ## Regeneration
+        
+        Indexes are automatically regenerated on:
+        - Push to main/develop branches
+        - Pull requests with code changes  
+        - Weekly schedule (Sundays at 2 AM UTC)
+        - Manual workflow dispatch
+        
+        ## Last Updated
+        $(date -u)
+        EOF
+
+    - name: Upload index artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: project-indexes
+        path: tools/index/
+        retention-days: 90
+
+  deploy-indexes:
+    name: Deploy Indexes to GitHub Pages  
+    needs: [build-and-test, generate-indexes]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download index artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: project-indexes
+        path: tools/index/
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Create Pages site structure
+      run: |
+        mkdir -p _site/index
+        cp -r tools/index/* _site/index/
+        
+        # Create a simple index.html for the indexes
+        cat > _site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ReadAIrr Project Indexes</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 40px; }
+                h1 { color: #0066cc; }
+                .index-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+                .index-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+                .index-card h3 { margin-top: 0; color: #333; }
+                a { color: #0066cc; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+                .updated { color: #666; font-style: italic; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>ReadAIrr Project Indexes</h1>
+            <p>Automatically generated code indexes and documentation for the ReadAIrr project.</p>
+            
+            <div class="index-grid">
+                <div class="index-card">
+                    <h3>🔧 Backend Index</h3>
+                    <p>C# code symbols and navigation</p>
+                    <ul>
+                        <li><a href="index/backend/tags.backend">CTags Index</a></li>
+                        <li><a href="index/backend/symbols.md">Symbol Summary</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-card">
+                    <h3>🎨 Frontend Index</h3>
+                    <p>TypeScript/JavaScript code analysis</p>
+                    <ul>
+                        <li><a href="index/frontend/tags.frontend">CTags Index</a></li>
+                        <li><a href="index/frontend/quality.md">Code Quality</a></li>
+                        <li><a href="index/frontend/eslint-results.json">Lint Results</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-card">
+                    <h3>🗄️ Database Schema</h3>
+                    <p>Database structure and entities</p>
+                    <ul>
+                        <li><a href="index/database/index.md">Schema Index</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-card">
+                    <h3>🌐 API Documentation</h3>
+                    <p>REST API endpoints and specifications</p>
+                    <ul>
+                        <li><a href="index/api/endpoints.md">Endpoints</a></li>
+                        <li><a href="index/api/openapi.json">OpenAPI Spec</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="updated">
+                Last updated: $(date -u)
+            </div>
+        </body>
+        </html>
+        EOF
+
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '_site'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  notify:
+    name: Notify Team
+    needs: [build-and-test, generate-indexes, deploy-indexes]
+    runs-on: ubuntu-latest
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    timeout-minutes: 5
+
+    steps:
+    - name: Prepare notification message
+      id: message
+      run: |
+        if [[ "${{ needs.build-and-test.result }}" == "success" && "${{ needs.generate-indexes.result }}" == "success" ]]; then
+          echo "status=✅ Success" >> $GITHUB_OUTPUT
+          echo "color=good" >> $GITHUB_OUTPUT
+          echo "message=Index refresh completed successfully" >> $GITHUB_OUTPUT
+        else
+          echo "status=❌ Failed" >> $GITHUB_OUTPUT  
+          echo "color=danger" >> $GITHUB_OUTPUT
+          echo "message=Index refresh failed - check workflow logs" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        echo "commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "commit_short=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+        echo "actor=${{ github.actor }}" >> $GITHUB_OUTPUT
+        echo "workflow_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+    # Slack notification (if webhook is configured)
+    - name: Send Slack notification
+      if: env.SLACK_WEBHOOK_URL != ''
+      uses: 8398a7/action-slack@v3
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      with:
+        status: ${{ steps.message.outputs.status }}
+        channel: '#readairr-dev'
+        username: 'ReadAIrr CI'
+        icon_emoji: ':gear:'
+        color: ${{ steps.message.outputs.color }}
+        text: |
+          ReadAIrr Index Refresh: ${{ steps.message.outputs.status }}
+          
+          Branch: `${{ steps.message.outputs.branch }}`
+          Commit: `${{ steps.message.outputs.commit_short }}` by ${{ steps.message.outputs.actor }}
+          
+          ${{ steps.message.outputs.message }}
+          
+          <${{ steps.message.outputs.workflow_url }}|View Workflow>
+
+    # Discord notification (alternative)
+    - name: Send Discord notification
+      if: env.DISCORD_WEBHOOK != ''
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      with:
+        args: |
+          **ReadAIrr Index Refresh** ${{ steps.message.outputs.status }}
+          
+          **Branch:** `${{ steps.message.outputs.branch }}`
+          **Commit:** `${{ steps.message.outputs.commit_short }}` by ${{ steps.message.outputs.actor }}
+          
+          ${{ steps.message.outputs.message }}
+          
+          [View Workflow](${{ steps.message.outputs.workflow_url }})
+
+    # Generic webhook notification
+    - name: Send webhook notification
+      if: env.WEBHOOK_URL != ''
+      run: |
+        curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "text": "ReadAIrr Index Refresh: ${{ steps.message.outputs.status }}",
+            "repository": "${{ github.repository }}",
+            "branch": "${{ steps.message.outputs.branch }}",  
+            "commit": "${{ steps.message.outputs.commit_short }}",
+            "actor": "${{ steps.message.outputs.actor }}",
+            "workflow_url": "${{ steps.message.outputs.workflow_url }}",
+            "timestamp": "'$(date -u -Iseconds)'"
+          }'

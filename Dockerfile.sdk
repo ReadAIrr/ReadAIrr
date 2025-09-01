@@ -1,0 +1,63 @@
+# ReadAIrr Docker Image using .NET SDK for Complete Dependencies
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine
+
+# Install essential packages for ReadAIrr
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    cifs-utils \
+    nfs-utils \
+    bash \
+    jq \
+    unzip \
+    shadow \
+    python3
+
+# Set working directory
+WORKDIR /app
+
+# Create readairr user
+RUN addgroup -g 1000 readairr && \
+    adduser -D -u 1000 -G readairr readairr && \
+    apk add --no-cache shadow
+
+# Copy the entire source code
+COPY src/ ./src/
+COPY _output/app/ ./published/
+COPY frontend/build/ ./published/UI/
+
+# Create necessary directories
+RUN mkdir -p /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks \
+    /mnt/nfs-audiobooks && \
+    chown -R readairr:readairr /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-audiobooks
+
+# Copy scripts
+COPY docker/mount-network-storage.sh /usr/local/bin/mount-network-storage.sh
+RUN chmod +x /usr/local/bin/mount-network-storage.sh
+
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set ownership of the app directory
+RUN chown -R readairr:readairr /app
+
+# Expose ReadAIrr port
+EXPOSE 8246
+
+# Set environment variables
+ENV READAIRR_BRANCH=develop \
+    READAIRR_LOG_LEVEL=info \
+    READAIRR_ANALYTICS_ENABLED=false \
+    READAIRR_AUTH_REQUIRED=false
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8246/health || exit 1
+
+# Use the entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# Default command: run ReadAIrr using dotnet
+CMD ["dotnet", "/app/published/Readarr.dll"]

@@ -1,0 +1,59 @@
+# ReadAIrr Docker Image for Local Development
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine
+
+# Install essential packages for ReadAIrr
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    cifs-utils \
+    nfs-utils \
+    bash \
+    jq \
+    unzip \
+    shadow
+
+# Create app directory
+WORKDIR /app
+
+# Create readairr user and group
+RUN addgroup -g 1000 readairr && \
+    adduser -D -u 1000 -G readairr readairr && \
+    apk add --no-cache shadow
+
+# Copy the prepared application
+COPY _output/app/ ./
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-audiobooks && \
+    chown -R readairr:readairr /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-audiobooks /app
+
+# Copy scripts
+COPY docker/mount-network-storage.sh /usr/local/bin/mount-network-storage.sh
+RUN chmod +x /usr/local/bin/mount-network-storage.sh
+
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set proper file permissions for the main executable
+RUN find /app -name "Readarr" -exec chmod +x {} \; || \
+    find /app -name "Readarr.exe" -exec chmod +x {} \; || \
+    find /app -name "*.dll" -exec chmod +r {} \; || true
+
+# Expose port
+EXPOSE 8246
+
+# Set up volumes
+VOLUME ["/config", "/books", "/downloads", "/media", "/backups"]
+
+# Switch to readairr user
+USER readairr
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8246/ping || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["dotnet", "Readarr.dll"]

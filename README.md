@@ -154,6 +154,23 @@ docker-compose -f docker-compose.dev.yml logs -f readairr-dev
 docker-compose -f docker-compose.dev.yml exec readairr-dev bash
 ```
 
+## Documentation
+
+### Migration Guides
+- **[Backup Migration Guide](docs/BACKUP_MIGRATION.md)** - Complete guide for migrating from Readarr to ReadAIrr
+- **[Network Storage Setup](docs/NETWORK_STORAGE.md)** - SMB/NFS configuration and troubleshooting
+- **[Docker Implementation](docs/DOCKER_IMPLEMENTATION_SUMMARY.md)** - Containerization details and best practices
+
+### Getting Started
+ReadAIrr maintains full compatibility with Readarr configurations while adding modern improvements. Users can:
+
+1. **Import existing Readarr backups** with intelligent migration assistance
+2. **Preserve library configurations** and download client settings  
+3. **Upgrade seamlessly** with automatic conflict resolution
+4. **Choose migration options** for ports, instance names, and paths
+
+For detailed migration instructions, see the [Backup Migration Guide](docs/BACKUP_MIGRATION.md).
+
 ### License
 
 * [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)

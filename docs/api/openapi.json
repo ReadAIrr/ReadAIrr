@@ -1,0 +1,1150 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ReadAIrr",
+    "description": "ReadAIrr API Documentation - A complete ebook library management system",
+    "version": "1.0.0",
+    "license": {
+      "name": "GPL-3.0",
+      "url": "https://github.com/Readarr/Readarr/blob/develop/LICENSE.md"
+    }
+  },
+  "servers": [
+    {
+      "url": "{protocol}://{hostpath}/api/v1",
+      "description": "ReadAIrr API Server",
+      "variables": {
+        "protocol": {
+          "enum": ["http", "https"],
+          "default": "http"
+        },
+        "hostpath": {
+          "default": "localhost:8246"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "X-Api-Key": []
+    },
+    {
+      "apikey": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Author",
+      "description": "Author management operations"
+    },
+    {
+      "name": "Book",
+      "description": "Book management operations"
+    },
+    {
+      "name": "BookFile",
+      "description": "Book file management"
+    },
+    {
+      "name": "Command",
+      "description": "Background command execution"
+    },
+    {
+      "name": "Queue",
+      "description": "Download queue management"
+    },
+    {
+      "name": "Calendar",
+      "description": "Calendar and scheduling"
+    },
+    {
+      "name": "System",
+      "description": "System information and health"
+    },
+    {
+      "name": "Configuration",
+      "description": "Application configuration"
+    }
+  ],
+  "paths": {
+    "/author": {
+      "get": {
+        "tags": ["Author"],
+        "summary": "Get all authors",
+        "description": "Retrieve all authors in the library",
+        "responses": {
+          "200": {
+            "description": "List of authors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuthorResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Author"],
+        "summary": "Add new author",
+        "description": "Add a new author to the library",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Author created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/author/{id}": {
+      "get": {
+        "tags": ["Author"],
+        "summary": "Get author by ID",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Author details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Author"],
+        "summary": "Update author",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          },
+          {
+            "name": "moveFiles",
+            "in": "query",
+            "description": "Move files when updating path",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Author updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Author"],
+        "summary": "Delete author",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          },
+          {
+            "name": "deleteFiles",
+            "in": "query",
+            "description": "Delete files from disk",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "addImportListExclusion",
+            "in": "query",
+            "description": "Add to import list exclusions",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Author deleted successfully"
+          }
+        }
+      }
+    },
+    "/book": {
+      "get": {
+        "tags": ["Book"],
+        "summary": "Get books",
+        "parameters": [
+          {
+            "name": "authorId",
+            "in": "query",
+            "description": "Filter by author ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "bookIds",
+            "in": "query",
+            "description": "Filter by book IDs",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "name": "titleSlug",
+            "in": "query",
+            "description": "Filter by title slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeAllAuthorBooks",
+            "in": "query",
+            "description": "Include all books by author",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of books",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Book"],
+        "summary": "Add new book",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Book created successfully"
+          }
+        }
+      }
+    },
+    "/book/{id}": {
+      "get": {
+        "tags": ["Book"],
+        "summary": "Get book by ID",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Book"],
+        "summary": "Update book",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Book updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Book"],
+        "summary": "Delete book",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          },
+          {
+            "name": "deleteFiles",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "addImportListExclusion",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book deleted successfully"
+          }
+        }
+      }
+    },
+    "/book/monitor": {
+      "put": {
+        "tags": ["Book"],
+        "summary": "Set book monitoring",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BooksMonitoredResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Books monitoring updated"
+          }
+        }
+      }
+    },
+    "/command": {
+      "get": {
+        "tags": ["Command"],
+        "summary": "Get all commands",
+        "responses": {
+          "200": {
+            "description": "List of commands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommandResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Command"],
+        "summary": "Execute command",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Command queued successfully"
+          }
+        }
+      }
+    },
+    "/command/{id}": {
+      "get": {
+        "tags": ["Command"],
+        "summary": "Get command by ID",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Command"],
+        "summary": "Cancel command",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ResourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command cancelled successfully"
+          }
+        }
+      }
+    },
+    "/queue": {
+      "get": {
+        "tags": ["Queue"],
+        "summary": "Get download queue",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "$ref": "#/components/parameters/SortKey"
+          },
+          {
+            "$ref": "#/components/parameters/SortDirection"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/status": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Get system status",
+        "responses": {
+          "200": {
+            "description": "System status information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Get health checks",
+        "responses": {
+          "200": {
+            "description": "System health check results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HealthCheckResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "X-Api-Key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key",
+        "description": "API key passed as header"
+      },
+      "apikey": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "apikey",
+        "description": "API key passed as query parameter"
+      }
+    },
+    "parameters": {
+      "ResourceId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "description": "Resource identifier"
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        },
+        "description": "Page number"
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 100
+        },
+        "description": "Number of items per page"
+      },
+      "SortKey": {
+        "name": "sortKey",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Field to sort by"
+      },
+      "SortDirection": {
+        "name": "sortDirection",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": ["ascending", "descending"],
+          "default": "ascending"
+        },
+        "description": "Sort direction"
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationProblemDetails"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "AuthorResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "sortName": {
+            "type": "string"
+          },
+          "foreignAuthorId": {
+            "type": "string"
+          },
+          "titleSlug": {
+            "type": "string"
+          },
+          "overview": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["continuing", "ended"]
+          },
+          "ended": {
+            "type": "boolean"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaCoverResource"
+            }
+          },
+          "path": {
+            "type": "string"
+          },
+          "qualityProfileId": {
+            "type": "integer"
+          },
+          "metadataProfileId": {
+            "type": "integer"
+          },
+          "monitored": {
+            "type": "boolean"
+          },
+          "rootFolderPath": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "added": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/AuthorStatisticsResource"
+          }
+        },
+        "required": ["authorName", "foreignAuthorId", "qualityProfileId", "metadataProfileId"]
+      },
+      "BookResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorTitle": {
+            "type": "string"
+          },
+          "seriesTitle": {
+            "type": "string"
+          },
+          "overview": {
+            "type": "string"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaCoverResource"
+            }
+          },
+          "monitored": {
+            "type": "boolean"
+          },
+          "anyEditionOk": {
+            "type": "boolean"
+          },
+          "authorId": {
+            "type": "integer"
+          },
+          "foreignBookId": {
+            "type": "string"
+          },
+          "titleSlug": {
+            "type": "string"
+          },
+          "grabbed": {
+            "type": "boolean"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorResource"
+          },
+          "editions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EditionResource"
+            }
+          },
+          "bookFiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookFileResource"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "BookFileResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "authorId": {
+            "type": "integer"
+          },
+          "bookId": {
+            "type": "integer"
+          },
+          "editionId": {
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dateAdded": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/QualityResource"
+          },
+          "qualityCutoffNotMet": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "CommandResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "commandName": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "started", "completed", "failed", "aborted", "cancelled", "orphaned"]
+          },
+          "result": {
+            "type": "string",
+            "enum": ["unknown", "successful", "unsuccessful"]
+          },
+          "queued": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ended": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": ["unspecified", "manual", "scheduled"]
+          },
+          "sendUpdatesToClient": {
+            "type": "boolean"
+          },
+          "updateScheduledTask": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BooksMonitoredResource": {
+        "type": "object",
+        "properties": {
+          "bookIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "monitored": {
+            "type": "boolean"
+          }
+        },
+        "required": ["bookIds", "monitored"]
+      },
+      "EditionResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "bookId": {
+            "type": "integer"
+          },
+          "foreignEditionId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "overview": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "monitored": {
+            "type": "boolean"
+          },
+          "manualAdd": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QualityResource": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "revision": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "real": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "MediaCoverResource": {
+        "type": "object",
+        "properties": {
+          "coverType": {
+            "type": "string",
+            "enum": ["poster", "banner", "fanart", "screenshot", "headshot", "logo", "clearlogo", "disc", "unknown"]
+          },
+          "url": {
+            "type": "string"
+          },
+          "remoteUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthorStatisticsResource": {
+        "type": "object",
+        "properties": {
+          "bookCount": {
+            "type": "integer"
+          },
+          "bookFileCount": {
+            "type": "integer"
+          },
+          "totalBookCount": {
+            "type": "integer"
+          },
+          "sizeOnDisk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "percentOfBooks": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "SystemStatusResource": {
+        "type": "object",
+        "properties": {
+          "appName": {
+            "type": "string"
+          },
+          "instanceName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "buildTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isDebug": {
+            "type": "boolean"
+          },
+          "isProduction": {
+            "type": "boolean"
+          },
+          "isAdmin": {
+            "type": "boolean"
+          },
+          "isUserInteractive": {
+            "type": "boolean"
+          },
+          "startupPath": {
+            "type": "string"
+          },
+          "appData": {
+            "type": "string"
+          },
+          "osName": {
+            "type": "string"
+          },
+          "osVersion": {
+            "type": "string"
+          },
+          "isLinux": {
+            "type": "boolean"
+          },
+          "isOsx": {
+            "type": "boolean"
+          },
+          "isWindows": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "authentication": {
+            "type": "string",
+            "enum": ["none", "basic", "forms"]
+          },
+          "sqliteVersion": {
+            "type": "string"
+          },
+          "urlBase": {
+            "type": "string"
+          },
+          "runtimeVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthCheckResource": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ok", "notice", "warning", "error"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "wikiUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "sortKey": {
+            "type": "string"
+          },
+          "sortDirection": {
+            "type": "string"
+          },
+          "totalRecords": {
+            "type": "integer"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      },
+      "ValidationProblemDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errors": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

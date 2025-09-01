@@ -1,0 +1,66 @@
+# Multi-stage build for ReadAIrr with complete dependencies
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+WORKDIR /src
+
+# Copy source files
+COPY src/ ./
+
+# Restore packages and build
+RUN dotnet restore Readarr.sln
+RUN dotnet publish NzbDrone.Console/Readarr.Console.csproj \
+    -c Release \
+    -f net6.0 \
+    -o /app/published \
+    --self-contained false \
+    --runtime linux-musl-x64 \
+    -p:PublishSingleFile=false \
+    -p:PublishTrimmed=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    cifs-utils \
+    nfs-utils \
+    bash \
+    jq \
+    unzip \
+    shadow
+
+# Create readairr user
+RUN addgroup -g 1000 readairr && \
+    adduser -D -u 1000 -G readairr readairr
+
+# Copy published application
+COPY --from=build /app/published/ ./published/
+
+# Copy frontend
+COPY frontend/build/ ./published/UI/
+
+# Create volume directories
+RUN mkdir -p /config /books /downloads /media /backups \
+    /mnt/smb-media /mnt/nfs-media /mnt/smb-audiobooks /mnt/nfs-audiobooks
+
+# Copy scripts
+COPY docker/mount-network-storage.sh /usr/local/bin/mount-network-storage.sh
+RUN chmod +x /usr/local/bin/mount-network-storage.sh
+
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set ownership
+RUN chown -R readairr:readairr /app
+
+# Expose port
+EXPOSE 8787
+
+# Set user
+USER readairr
+
+# Entry point
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["dotnet", "/app/published/Readarr.dll"]

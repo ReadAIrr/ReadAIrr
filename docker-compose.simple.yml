@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  readairr:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: readairr-local
+    image: readairr-local
+    ports:
+      - "8787:8787"
+    environment:
+      - READAIRR_LOG_LEVEL=info
+      - READAIRR_ANALYTICS_ENABLED=false
+      - READAIRR_AUTH_REQUIRED=false
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8787
+    volumes:
+      - ./docker-data/config:/config
+      - ./docker-data/downloads:/downloads
+      - ./docker-data/media:/media
+      - ./docker-data/backups:/backups
+    restart: unless-stopped
+    networks:
+      - readairr-network
+
+networks:
+  readairr-network:
+    driver: bridge
