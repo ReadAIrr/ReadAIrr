@@ -1,0 +1,13 @@
+.git
+.github
+_artifacts
+_output
+_temp
+_tests
+frontend/.cache
+node_modules
+**/bin
+**/obj
+*.log
+*.user
+.DS_Store

@@ -143,6 +143,10 @@ const links = [
       {
         title: () => translate('Ui'),
         to: '/settings/ui'
+      },
+      {
+        title: () => translate('Development'),
+        to: '/settings/development'
       }
     ]
   },

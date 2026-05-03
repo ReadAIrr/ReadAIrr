@@ -1,0 +1,79 @@
+name: Container
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - dev
+      - prod
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/prod' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/prod' }}
+            type=ref,event=tag
+            type=sha,prefix={{branch}}-
+          labels: |
+            org.opencontainers.image.title=Readarr
+            org.opencontainers.image.description=Readarr built from this fork
+            org.opencontainers.image.licenses=GPL-3.0
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILD_SOURCEBRANCHNAME=${{ github.ref_name }}
+            READARR_VERSION=0.4.19.${{ github.run_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

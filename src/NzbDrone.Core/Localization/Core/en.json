@@ -294,6 +294,7 @@
   "DetailedProgressBar": "Detailed Progress Bar",
   "DetailedProgressBarHelpText": "Show text on progress bar",
   "Development": "Development",
+  "DevelopmentSettingsSummary": "Metadata source, logging and analytics debugging options",
   "Disabled": "Disabled",
   "DisabledForLocalAddresses": "Disabled for Local Addresses",
   "DiscCount": "Disc Count",

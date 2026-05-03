@@ -1,0 +1,30 @@
+name: ${COMPOSE_PROJECT_NAME:-readarr}
+
+services:
+  readarr:
+    image: ${READARR_IMAGE:?Set READARR_IMAGE in your env file}
+    container_name: ${READARR_CONTAINER_NAME:-readarr}
+    restart: unless-stopped
+    user: "${READARR_UID:-1000}:${READARR_GID:-1000}"
+    environment:
+      HOME: /config
+      TZ: ${TZ:-UTC}
+      UMASK: ${UMASK:-022}
+    ports:
+      - "${READARR_BIND_ADDRESS:-0.0.0.0}:${READARR_PORT:-8787}:8787"
+    volumes:
+      - type: bind
+        source: ${READARR_CONFIG_DIR:?Set READARR_CONFIG_DIR in your env file}
+        target: /config
+      - type: bind
+        source: ${READARR_DOWNLOADS_DIR:?Set READARR_DOWNLOADS_DIR in your env file}
+        target: /downloads
+      - type: bind
+        source: ${READARR_MEDIA_DIR:?Set READARR_MEDIA_DIR in your env file}
+        target: /mnt/user/audiobooks
+      - type: bind
+        source: ${READARR_MEDIA_DIR:?Set READARR_MEDIA_DIR in your env file}
+        target: /media/audiobooks
+      - type: bind
+        source: ${READARR_MEDIA_DIR:?Set READARR_MEDIA_DIR in your env file}
+        target: /audiobooks
