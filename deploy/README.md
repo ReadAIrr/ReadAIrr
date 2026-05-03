@@ -42,4 +42,5 @@ The example env follows the existing `arrs` VM convention:
   choices.
 - Selecting `Automatic self-hosted rreading-glasses` in
   `Settings > Development` points Readarr at `http://rreading-glasses:8788`,
-  the compose-network address for the local sidecar.
+  the compose-network address for the local sidecar. The sidecar is not exposed
+  on the Docker host because Readarr only needs internal network access to it.
