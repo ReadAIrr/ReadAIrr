@@ -9,6 +9,7 @@ using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Security;
 
@@ -264,7 +265,7 @@ namespace NzbDrone.Core.Configuration
 
         public string MetadataSource
         {
-            get { return GetValue("MetadataSource", ""); }
+            get { return GetValue("MetadataSource", MetadataSourceConfig.LocalRReadingGlasses); }
 
             set { SetValue("MetadataSource", value); }
         }

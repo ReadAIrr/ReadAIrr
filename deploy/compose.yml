@@ -5,6 +5,9 @@ services:
     image: ${READARR_IMAGE:?Set READARR_IMAGE in your env file}
     container_name: ${READARR_CONTAINER_NAME:-readarr}
     restart: unless-stopped
+    depends_on:
+      rreading-glasses:
+        condition: service_started
     user: "${READARR_UID:-1000}:${READARR_GID:-1000}"
     environment:
       HOME: /config
@@ -28,3 +31,41 @@ services:
       - type: bind
         source: ${READARR_MEDIA_DIR:?Set READARR_MEDIA_DIR in your env file}
         target: /audiobooks
+
+  rreading-glasses:
+    image: ${RREADING_GLASSES_IMAGE:-blampe/rreading-glasses:latest}
+    hostname: rreading-glasses
+    restart: unless-stopped
+    depends_on:
+      rreading-glasses-db:
+        condition: service_started
+    entrypoint:
+      - /main
+      - serve
+    command:
+      - --upstream=${RREADING_GLASSES_UPSTREAM:-www.goodreads.com}
+      - --verbose
+    mem_limit: ${RREADING_GLASSES_MEMORY_LIMIT:-128m}
+    environment:
+      POSTGRES_HOST: rreading-glasses-db
+      POSTGRES_DATABASE: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
+      POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
+      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:-readarr-rreading-glasses}
+    ports:
+      - "${RREADING_GLASSES_BIND_ADDRESS:-127.0.0.1}:${RREADING_GLASSES_PORT:-8788}:8788"
+
+  rreading-glasses-db:
+    image: ${RREADING_GLASSES_POSTGRES_IMAGE:-postgres:17}
+    hostname: rreading-glasses-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
+      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:-readarr-rreading-glasses}
+      POSTGRES_DB: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
+    volumes:
+      - type: volume
+        source: rreading_glasses_data
+        target: /var/lib/postgresql/data
+
+volumes:
+  rreading_glasses_data:

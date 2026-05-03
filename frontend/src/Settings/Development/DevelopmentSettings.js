@@ -18,13 +18,18 @@ const logLevelOptions = [
   { key: 'trace', value: 'Trace' }
 ];
 
+const GOODREADS_METADATA_SOURCE = 'https://api.bookinfo.pro';
+const HARDCOVER_METADATA_SOURCE = 'https://hardcover.bookinfo.pro';
+const LOCAL_METADATA_SOURCE = 'http://rreading-glasses:8788';
+const ORIGINAL_METADATA_SOURCE = 'readarr://metadata/original';
 const CUSTOM_METADATA_SOURCE = 'custom';
 
 const metadataSourceOptions = [
-  { key: '', value: 'Readarr Default', hint: 'Built-in metadata source' },
-  { key: 'https://api.bookinfo.pro', value: 'rreading-glasses (Goodreads)', hint: 'https://api.bookinfo.pro' },
-  { key: 'https://hardcover.bookinfo.pro', value: 'rreading-glasses (Hardcover)', hint: 'https://hardcover.bookinfo.pro' },
-  { key: CUSTOM_METADATA_SOURCE, value: 'Custom URL' }
+  { key: LOCAL_METADATA_SOURCE, value: 'Automatic self-hosted rreading-glasses', hint: LOCAL_METADATA_SOURCE },
+  { key: GOODREADS_METADATA_SOURCE, value: 'rreading-glasses (Goodreads hosted)', hint: GOODREADS_METADATA_SOURCE },
+  { key: HARDCOVER_METADATA_SOURCE, value: 'rreading-glasses (Hardcover hosted)', hint: HARDCOVER_METADATA_SOURCE },
+  { key: ORIGINAL_METADATA_SOURCE, value: 'Original Readarr metadata', hint: 'Legacy built-in source' },
+  { key: CUSTOM_METADATA_SOURCE, value: 'Custom/self-hosted URL' }
 ];
 
 function getMetadataSourceOption(metadataSource, metadataSourceMode) {
@@ -32,7 +37,7 @@ function getMetadataSourceOption(metadataSource, metadataSourceMode) {
     return CUSTOM_METADATA_SOURCE;
   }
 
-  const metadataSourceValue = metadataSource || '';
+  const metadataSourceValue = metadataSource || LOCAL_METADATA_SOURCE;
   const metadataSourceOption = metadataSourceOptions.find((option) => option.key === metadataSourceValue);
 
   return metadataSourceOption ? metadataSourceValue : CUSTOM_METADATA_SOURCE;
@@ -90,7 +95,7 @@ class DevelopmentSettings extends Component {
       ...otherProps
     } = this.props;
 
-    const metadataSource = settings.metadataSource.value || '';
+    const metadataSource = settings.metadataSource.value || LOCAL_METADATA_SOURCE;
     const metadataSourceOption = getMetadataSourceOption(metadataSource, this.state.metadataSourceMode);
     const isCustomMetadataSource = metadataSourceOption === CUSTOM_METADATA_SOURCE;
 

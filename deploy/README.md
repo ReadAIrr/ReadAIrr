@@ -5,7 +5,8 @@ Readarr image on a Docker host.
 
 ## Files
 
-- `compose.yml` runs one Readarr container.
+- `compose.yml` runs Readarr plus an automatic self-hosted
+  `rreading-glasses` metadata service and its Postgres database.
 - `readarr.env.example` documents the required variables.
 - `install-host.sh` prepares the Docker host, adds the NFS media mount when
   configured, and starts the compose project.
@@ -17,6 +18,8 @@ Readarr image on a Docker host.
 2. Fill in the image, config path, port, UID/GID, and optional NFS settings.
    The development image published by this fork is
    `ghcr.io/tvanroo/readarr:dev`.
+   Override the `RREADING_GLASSES_*` variables if you want to change the local
+   metadata sidecar settings.
 3. Run:
 
    ```sh
@@ -37,3 +40,6 @@ The example env follows the existing `arrs` VM convention:
 - Audiobook media is available as `/mnt/user/audiobooks`, `/media/audiobooks`,
   and `/audiobooks` for compatibility with different Readarr root-folder
   choices.
+- Selecting `Automatic self-hosted rreading-glasses` in
+  `Settings > Development` points Readarr at `http://rreading-glasses:8788`,
+  the compose-network address for the local sidecar.
