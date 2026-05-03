@@ -18,7 +18,63 @@ const logLevelOptions = [
   { key: 'trace', value: 'Trace' }
 ];
 
+const CUSTOM_METADATA_SOURCE = 'custom';
+
+const metadataSourceOptions = [
+  { key: '', value: 'Readarr Default', hint: 'Built-in metadata source' },
+  { key: 'https://api.bookinfo.pro', value: 'rreading-glasses (Goodreads)', hint: 'https://api.bookinfo.pro' },
+  { key: 'https://hardcover.bookinfo.pro', value: 'rreading-glasses (Hardcover)', hint: 'https://hardcover.bookinfo.pro' },
+  { key: CUSTOM_METADATA_SOURCE, value: 'Custom URL' }
+];
+
+function getMetadataSourceOption(metadataSource, metadataSourceMode) {
+  if (metadataSourceMode === CUSTOM_METADATA_SOURCE) {
+    return CUSTOM_METADATA_SOURCE;
+  }
+
+  const metadataSourceValue = metadataSource || '';
+  const metadataSourceOption = metadataSourceOptions.find((option) => option.key === metadataSourceValue);
+
+  return metadataSourceOption ? metadataSourceValue : CUSTOM_METADATA_SOURCE;
+}
+
 class DevelopmentSettings extends Component {
+
+  //
+  // Lifecycle
+
+  constructor(props, context) {
+    super(props, context);
+
+    this.state = {
+      metadataSourceMode: null
+    };
+  }
+
+  //
+  // Listeners
+
+  onMetadataSourceOptionChange = ({ value }) => {
+    if (value === CUSTOM_METADATA_SOURCE) {
+      this.setState({ metadataSourceMode: CUSTOM_METADATA_SOURCE });
+
+      return;
+    }
+
+    this.setState({ metadataSourceMode: null });
+
+    this.props.onInputChange({
+      name: 'metadataSource',
+      value
+    });
+  };
+
+  onCustomMetadataSourceChange = ({ value }) => {
+    this.props.onInputChange({
+      name: 'metadataSource',
+      value
+    });
+  };
 
   //
   // Render
@@ -33,6 +89,10 @@ class DevelopmentSettings extends Component {
       onSavePress,
       ...otherProps
     } = this.props;
+
+    const metadataSource = settings.metadataSource.value || '';
+    const metadataSourceOption = getMetadataSourceOption(metadataSource, this.state.metadataSourceMode);
+    const isCustomMetadataSource = metadataSourceOption === CUSTOM_METADATA_SOURCE;
 
     return (
       <PageContent title={translate('Development')}>
@@ -67,14 +127,34 @@ class DevelopmentSettings extends Component {
                     </FormLabel>
 
                     <FormInputGroup
-                      type={inputTypes.TEXT}
-                      name="metadataSource"
+                      type={inputTypes.SELECT}
+                      name="metadataSourceOption"
+                      value={metadataSourceOption}
+                      values={metadataSourceOptions}
                       helpText={translate('MetadataSourceHelpText')}
-                      helpLink="https://wiki.servarr.com/readarr/settings#metadata"
-                      onChange={onInputChange}
-                      {...settings.metadataSource}
+                      helpTextWarning={translate('MetadataSourceHelpTextWarning')}
+                      helpLink="https://github.com/blampe/rreading-glasses#usage"
+                      onChange={this.onMetadataSourceOptionChange}
                     />
                   </FormGroup>
+
+                  {
+                    isCustomMetadataSource &&
+                      <FormGroup>
+                        <FormLabel>
+                          {translate('CustomMetadataSource')}
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.TEXT}
+                          name="metadataSource"
+                          helpText={translate('CustomMetadataSourceHelpText')}
+                          helpLink="https://github.com/blampe/rreading-glasses#self-hosting"
+                          onChange={this.onCustomMetadataSourceChange}
+                          {...settings.metadataSource}
+                        />
+                      </FormGroup>
+                  }
                 </FieldSet>
 
                 <FieldSet legend={translate('Logging')}>
