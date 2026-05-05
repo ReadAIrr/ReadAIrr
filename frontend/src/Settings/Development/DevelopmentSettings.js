@@ -95,7 +95,8 @@ class DevelopmentSettings extends Component {
       ...otherProps
     } = this.props;
 
-    const metadataSource = settings.metadataSource.value || LOCAL_METADATA_SOURCE;
+    const metadataSourceSetting = settings.metadataSource || {};
+    const metadataSource = metadataSourceSetting.value || LOCAL_METADATA_SOURCE;
     const metadataSourceOption = getMetadataSourceOption(metadataSource, this.state.metadataSourceMode);
     const isCustomMetadataSource = metadataSourceOption === CUSTOM_METADATA_SOURCE;
 
@@ -156,7 +157,7 @@ class DevelopmentSettings extends Component {
                           helpText={translate('CustomMetadataSourceHelpText')}
                           helpLink="https://github.com/blampe/rreading-glasses#self-hosting"
                           onChange={this.onCustomMetadataSourceChange}
-                          {...settings.metadataSource}
+                          {...metadataSourceSetting}
                         />
                       </FormGroup>
                   }
