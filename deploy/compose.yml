@@ -33,12 +33,12 @@ services:
         target: /audiobooks
 
   rreading-glasses:
-    image: ${RREADING_GLASSES_IMAGE:-blampe/rreading-glasses:latest}
+    image: ${RREADING_GLASSES_IMAGE:?Set RREADING_GLASSES_IMAGE in your env file}
     hostname: rreading-glasses
     restart: unless-stopped
     depends_on:
       rreading-glasses-db:
-        condition: service_started
+        condition: service_healthy
     entrypoint:
       - /main
       - serve
@@ -50,16 +50,21 @@ services:
       POSTGRES_HOST: rreading-glasses-db
       POSTGRES_DATABASE: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
       POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
-      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:-readarr-rreading-glasses}
+      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:?Set RREADING_GLASSES_POSTGRES_PASSWORD in your env file}
 
   rreading-glasses-db:
-    image: ${RREADING_GLASSES_POSTGRES_IMAGE:-postgres:17}
+    image: ${RREADING_GLASSES_POSTGRES_IMAGE:?Set RREADING_GLASSES_POSTGRES_IMAGE in your env file}
     hostname: rreading-glasses-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
-      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:-readarr-rreading-glasses}
+      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:?Set RREADING_GLASSES_POSTGRES_PASSWORD in your env file}
       POSTGRES_DB: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - type: volume
         source: rreading_glasses_data

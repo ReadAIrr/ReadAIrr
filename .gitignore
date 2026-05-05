@@ -153,3 +153,8 @@ _temp_*/**/*
 
 # API doc generation
 .config/
+
+# Local Codex secret-store overrides. Do not commit tokens or local IDs.
+.codex/*.local.json
+.codex/*.local.env
+.codex/*.local.md

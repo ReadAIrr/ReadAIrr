@@ -59,9 +59,10 @@ jobs:
             type=ref,event=tag
             type=sha,prefix={{branch}}-
           labels: |
-            org.opencontainers.image.title=Readarr
-            org.opencontainers.image.description=Readarr built from this fork
+            org.opencontainers.image.title=ReadAIrr
+            org.opencontainers.image.description=ReadAIrr container image built from this fork
             org.opencontainers.image.licenses=GPL-3.0
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Build and publish image
         uses: docker/build-push-action@v7
