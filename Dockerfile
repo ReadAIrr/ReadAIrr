@@ -56,13 +56,11 @@ RUN apt-get update \
         libsqlite3-0 \
         tzdata \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 1000 readarr \
-    && useradd --uid 1000 --gid readarr --home-dir /config --shell /usr/sbin/nologin readarr \
     && mkdir -p /app/readarr /config \
-    && chown -R readarr:readarr /app/readarr /config
+    && chown -R 1000:1000 /app/readarr /config
 
 WORKDIR /app/readarr
-COPY --from=build --chown=readarr:readarr /app/Readarr/ ./
+COPY --from=build --chown=1000:1000 /app/Readarr/ ./
 COPY docker/entrypoint.sh /usr/local/bin/readarr-entrypoint
 
 RUN chmod 0755 /usr/local/bin/readarr-entrypoint
@@ -70,5 +68,5 @@ RUN chmod 0755 /usr/local/bin/readarr-entrypoint
 VOLUME ["/config"]
 EXPOSE 8787
 
-USER readarr
+USER 1000:1000
 ENTRYPOINT ["/usr/local/bin/readarr-entrypoint"]
