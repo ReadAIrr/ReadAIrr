@@ -15,9 +15,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Readarr/Readarr.git"
+    "url": "git://github.com/ReadAIrr/App.git"
   },
-  "author": "Team Readarr",
+  "author": "ReadAIrr contributors",
   "license": "GPL-3.0",
   "readmeFilename": "readme.md",
   "main": "index.ts",
