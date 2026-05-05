@@ -3,6 +3,8 @@
 interface CssExports {
   'additionalFile': string;
   'customFormatTooltip': string;
+  'importError': string;
+  'importing': string;
   'label': string;
   'path': string;
   'quality': string;

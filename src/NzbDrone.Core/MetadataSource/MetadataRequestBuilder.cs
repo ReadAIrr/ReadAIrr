@@ -8,6 +8,7 @@ namespace NzbDrone.Core.MetadataSource
     public interface IMetadataRequestBuilder
     {
         IHttpRequestBuilderFactory GetRequestBuilder();
+        IHttpRequestBuilderFactory GetRequestBuilder(string metadataSource);
     }
 
     public class MetadataRequestBuilder : IMetadataRequestBuilder
@@ -24,8 +25,11 @@ namespace NzbDrone.Core.MetadataSource
 
         public IHttpRequestBuilderFactory GetRequestBuilder()
         {
-            var metadataSource = _configService.MetadataSource;
+            return GetRequestBuilder(_configService.MetadataSource);
+        }
 
+        public IHttpRequestBuilderFactory GetRequestBuilder(string metadataSource)
+        {
             if (metadataSource.IsNullOrWhiteSpace())
             {
                 metadataSource = MetadataSourceConfig.LocalRReadingGlasses;

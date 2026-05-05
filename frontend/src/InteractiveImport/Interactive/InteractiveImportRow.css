@@ -30,6 +30,18 @@
   color: var(--disabledColor);
 }
 
+.importing {
+  composes: row from '~Components/Table/TableRow.css';
+
+  background-color: var(--alertInfoBackgroundColor);
+}
+
+.importError {
+  composes: row from '~Components/Table/TableRow.css';
+
+  background-color: var(--alertDangerBackgroundColor);
+}
+
 .customFormatTooltip {
   max-width: 250px;
 }

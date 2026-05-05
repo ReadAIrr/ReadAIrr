@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { clearPendingChanges } from 'Store/Actions/baseActions';
-import { fetchDevelopmentSettings, saveDevelopmentSettings, setDevelopmentSettingsValue } from 'Store/Actions/settingsActions';
+import { fetchDevelopmentSettings, saveDevelopmentSettings, setDevelopmentSettingsValue, testDevelopmentMetadataSource } from 'Store/Actions/settingsActions';
 import createSettingsSectionSelector from 'Store/Selectors/createSettingsSectionSelector';
 import DevelopmentSettings from './DevelopmentSettings';
 
@@ -25,6 +25,7 @@ function createMapStateToProps() {
 const mapDispatchToProps = {
   setDevelopmentSettingsValue,
   saveDevelopmentSettings,
+  testDevelopmentMetadataSource,
   fetchDevelopmentSettings,
   clearPendingChanges
 };
@@ -53,6 +54,10 @@ class DevelopmentSettingsConnector extends Component {
     this.props.saveDevelopmentSettings();
   };
 
+  onTestMetadataSourcePress = () => {
+    this.props.testDevelopmentMetadataSource();
+  };
+
   //
   // Render
 
@@ -61,6 +66,7 @@ class DevelopmentSettingsConnector extends Component {
       <DevelopmentSettings
         onInputChange={this.onInputChange}
         onSavePress={this.onSavePress}
+        onTestMetadataSourcePress={this.onTestMetadataSourcePress}
         {...this.props}
       />
     );
@@ -70,6 +76,7 @@ class DevelopmentSettingsConnector extends Component {
 DevelopmentSettingsConnector.propTypes = {
   setDevelopmentSettingsValue: PropTypes.func.isRequired,
   saveDevelopmentSettings: PropTypes.func.isRequired,
+  testDevelopmentMetadataSource: PropTypes.func.isRequired,
   fetchDevelopmentSettings: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };

@@ -270,6 +270,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MetadataSource", value); }
         }
 
+        public int MinimumBookMatchSimilarity
+        {
+            get { return GetValueInt("MinimumBookMatchSimilarity", 80); }
+
+            set { SetValue("MinimumBookMatchSimilarity", value); }
+        }
+
         public WriteAudioTagsType WriteAudioTags
         {
             get { return GetValueEnum("WriteAudioTags", WriteAudioTagsType.No); }

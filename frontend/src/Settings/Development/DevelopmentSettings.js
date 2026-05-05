@@ -1,16 +1,19 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
+import SpinnerButton from 'Components/Link/SpinnerButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import { inputTypes } from 'Helpers/Props';
+import { inputTypes, kinds } from 'Helpers/Props';
 import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
 import translate from 'Utilities/String/translate';
+import styles from './DevelopmentSettings.css';
 
 const logLevelOptions = [
   { key: 'info', value: 'Info' },
@@ -92,6 +95,10 @@ class DevelopmentSettings extends Component {
       hasSettings,
       onInputChange,
       onSavePress,
+      onTestMetadataSourcePress,
+      isTestingMetadataSource,
+      metadataSourceTestResult,
+      metadataSourceTestError,
       ...otherProps
     } = this.props;
 
@@ -161,6 +168,72 @@ class DevelopmentSettings extends Component {
                         />
                       </FormGroup>
                   }
+
+                  <FormGroup>
+                    <FormLabel>
+                      {translate('Test')}
+                    </FormLabel>
+
+                    <div>
+                      <SpinnerButton
+                        kind={kinds.PRIMARY}
+                        isSpinning={isTestingMetadataSource}
+                        onPress={onTestMetadataSourcePress}
+                      >
+                        {translate('TestMetadataSource')}
+                      </SpinnerButton>
+
+                      {
+                        metadataSourceTestResult &&
+                          <Alert
+                            className={styles.testResult}
+                            kind={metadataSourceTestResult.isHealthy ? kinds.SUCCESS : kinds.DANGER}
+                          >
+                            <div>{metadataSourceTestResult.message}</div>
+
+                            {
+                              metadataSourceTestResult.detail &&
+                                <div className={styles.testDetail}>{metadataSourceTestResult.detail}</div>
+                            }
+
+                            {
+                              metadataSourceTestResult.statusCode &&
+                                <div className={styles.testDetail}>
+                                  HTTP {metadataSourceTestResult.statusCode}
+                                </div>
+                            }
+                          </Alert>
+                      }
+
+                      {
+                        metadataSourceTestError &&
+                          <Alert
+                            className={styles.testResult}
+                            kind={kinds.DANGER}
+                          >
+                            {translate('MetadataSourceTestFailed')}
+                          </Alert>
+                      }
+                    </div>
+                  </FormGroup>
+                </FieldSet>
+
+                <FieldSet legend={translate('Matching')}>
+                  <FormGroup>
+                    <FormLabel>
+                      {translate('MinimumBookMatchSimilarity')}
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.NUMBER}
+                      name="minimumBookMatchSimilarity"
+                      min={50}
+                      max={100}
+                      helpText={translate('MinimumBookMatchSimilarityHelpText')}
+                      onChange={onInputChange}
+                      {...settings.minimumBookMatchSimilarity}
+                    />
+                  </FormGroup>
                 </FieldSet>
 
                 <FieldSet legend={translate('Logging')}>
@@ -236,7 +309,11 @@ DevelopmentSettings.propTypes = {
   settings: PropTypes.object.isRequired,
   hasSettings: PropTypes.bool.isRequired,
   onSavePress: PropTypes.func.isRequired,
-  onInputChange: PropTypes.func.isRequired
+  onInputChange: PropTypes.func.isRequired,
+  onTestMetadataSourcePress: PropTypes.func.isRequired,
+  isTestingMetadataSource: PropTypes.bool.isRequired,
+  metadataSourceTestResult: PropTypes.object,
+  metadataSourceTestError: PropTypes.object
 };
 
 export default DevelopmentSettings;

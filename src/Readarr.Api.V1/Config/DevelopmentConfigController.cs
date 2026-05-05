@@ -17,12 +17,15 @@ namespace Prowlarr.Api.V1.Config
     {
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IConfigService _configService;
+        private readonly IMetadataSourceHealthService _metadataSourceHealthService;
 
         public DevelopmentConfigController(IConfigFileProvider configFileProvider,
-                                IConfigService configService)
+                                IConfigService configService,
+                                IMetadataSourceHealthService metadataSourceHealthService)
         {
             _configFileProvider = configFileProvider;
             _configService = configService;
+            _metadataSourceHealthService = metadataSourceHealthService;
 
             SharedValidator.RuleFor(c => c.MetadataSource)
                            .NotEmpty()
@@ -31,6 +34,10 @@ namespace Prowlarr.Api.V1.Config
             SharedValidator.RuleFor(c => c.MetadataSource)
                            .Must(source => MetadataSourceConfig.IsOriginalReadarr(source) || source.IsValidUrl())
                            .WithMessage("Metadata source must be a valid URL or the original Readarr source");
+
+            SharedValidator.RuleFor(c => c.MinimumBookMatchSimilarity)
+                           .InclusiveBetween(50, 100)
+                           .WithMessage("Minimum match similarity must be between 50 and 100");
         }
 
         protected override DevelopmentConfigResource GetResourceById(int id)
@@ -58,6 +65,40 @@ namespace Prowlarr.Api.V1.Config
             _configService.SaveConfigDictionary(dictionary);
 
             return Accepted(resource.Id);
+        }
+
+        [HttpPost("test")]
+        [Consumes("application/json")]
+        public DevelopmentConfigTestResource TestDevelopmentConfig([FromBody] DevelopmentConfigTestResource resource)
+        {
+            var metadataSource = resource.MetadataSource;
+
+            if (metadataSource.IsNullOrWhiteSpace())
+            {
+                metadataSource = MetadataSourceConfig.LocalRReadingGlasses;
+            }
+
+            if (!MetadataSourceConfig.IsOriginalReadarr(metadataSource) && !metadataSource.IsValidUrl())
+            {
+                return new DevelopmentConfigTestResource
+                {
+                    MetadataSource = metadataSource,
+                    IsHealthy = false,
+                    Message = "Metadata source must be a valid URL or the original Readarr source"
+                };
+            }
+
+            var result = _metadataSourceHealthService.Test(metadataSource);
+
+            return new DevelopmentConfigTestResource
+            {
+                MetadataSource = result.MetadataSource,
+                IsHealthy = result.IsHealthy,
+                Message = result.Message,
+                Detail = result.Detail,
+                StatusCode = result.StatusCode,
+                ResponseTimeMs = result.ResponseTimeMs
+            };
         }
     }
 }

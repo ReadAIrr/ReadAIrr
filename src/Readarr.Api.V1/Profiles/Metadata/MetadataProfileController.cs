@@ -24,6 +24,9 @@ namespace Readarr.Api.V1.Profiles.Metadata
                 .NotEmpty();
             SharedValidator.RuleFor(c => c.MinPopularity).GreaterThanOrEqualTo(0);
             SharedValidator.RuleFor(c => c.MinPages).GreaterThanOrEqualTo(0);
+            SharedValidator.RuleForEach(c => c.Ignored)
+                .NotEmpty()
+                .WithMessage("Ignored terms cannot be empty");
             SharedValidator.RuleFor(c => c.AllowedLanguages)
                 .Must(x => x
                     .Trim(',')

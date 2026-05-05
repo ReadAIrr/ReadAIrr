@@ -8,6 +8,7 @@ import MonitoringOptionsModal from 'Author/MonitoringOptions/MonitoringOptionsMo
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
 import Alert from 'Components/Alert';
+import SelectInput from 'Components/Form/SelectInput';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -41,6 +42,12 @@ function getExpandedState(newState) {
   };
 }
 
+const bookMonitorFilterOptions = [
+  { key: 'all', value: () => translate('All') },
+  { key: 'monitored', value: () => translate('Monitored') },
+  { key: 'unmonitored', value: () => translate('Unmonitored') }
+];
+
 class AuthorDetails extends Component {
 
   //
@@ -64,7 +71,8 @@ class AuthorDetails extends Component {
       allUnselected: false,
       lastToggled: null,
       selectedState: {},
-      selectedTabIndex: 0
+      selectedTabIndex: 0,
+      bookMonitorFilter: 'all'
     };
   }
 
@@ -212,6 +220,10 @@ class AuthorDetails extends Component {
     this.setState({ selectedTabIndex: index });
   };
 
+  onBookMonitorFilterChange = ({ value }) => {
+    this.setState({ bookMonitorFilter: value });
+  };
+
   //
   // Render
 
@@ -261,7 +273,8 @@ class AuthorDetails extends Component {
       allExpanded,
       allCollapsed,
       expandedState,
-      selectedTabIndex
+      selectedTabIndex,
+      bookMonitorFilter
     } = this.state;
 
     let expandIcon = icons.EXPAND_INDETERMINATE;
@@ -367,6 +380,13 @@ class AuthorDetails extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <SelectInput
+              name="bookMonitorFilter"
+              value={bookMonitorFilter}
+              values={bookMonitorFilterOptions}
+              onChange={this.onBookMonitorFilterChange}
+            />
+
             <PageToolbarButton
               label={allExpanded ? translate('AllExpandedCollapseAll') : translate('AllExpandedExpandAll')}
               iconName={expandIcon}
@@ -436,7 +456,7 @@ class AuthorDetails extends Component {
 
             {
               isPopulated &&
-                <Tabs selectedIndex={this.state.tabIndex} onSelect={this.onTabSelect}>
+                <Tabs selectedIndex={selectedTabIndex} onSelect={this.onTabSelect}>
                   <TabList
                     className={styles.tabList}
                   >
@@ -494,6 +514,7 @@ class AuthorDetails extends Component {
                       setSelectedState={this.setSelectedState}
                       onSelectedChange={this.onSelectedChange}
                       isEditorActive={isEditorActive}
+                      bookMonitorFilter={bookMonitorFilter}
                     />
                   </TabPanel>
 
@@ -510,6 +531,7 @@ class AuthorDetails extends Component {
                                   authorId={id}
                                   isExpanded={expandedState[item.id]}
                                   onExpandPress={this.onExpandPress}
+                                  bookMonitorFilter={bookMonitorFilter}
                                 />
                               );
                             })

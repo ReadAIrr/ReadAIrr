@@ -16,13 +16,14 @@ import AuthorDetailsSeries from './AuthorDetailsSeries';
 function createMapStateToProps() {
   return createSelector(
     (state, { seriesId }) => seriesId,
+    (state, { bookMonitorFilter }) => bookMonitorFilter,
     (state) => state.books,
     createAuthorSelector(),
     (state) => state.series,
     createCommandsSelector(),
     createDimensionsSelector(),
     createUISettingsSelector(),
-    (seriesId, books, author, series, commands, dimensions, uiSettings) => {
+    (seriesId, bookMonitorFilter, books, author, series, commands, dimensions, uiSettings) => {
 
       const currentSeries = _.find(series.items, { id: seriesId });
 
@@ -32,7 +33,13 @@ function createMapStateToProps() {
         return acc;
       }, {});
 
-      const booksInSeries = _.filter(books.items, (book) => bookIds.includes(book.id));
+      let booksInSeries = _.filter(books.items, (book) => bookIds.includes(book.id));
+
+      if (bookMonitorFilter === 'monitored') {
+        booksInSeries = booksInSeries.filter((book) => book.monitored);
+      } else if (bookMonitorFilter === 'unmonitored') {
+        booksInSeries = booksInSeries.filter((book) => !book.monitored);
+      }
 
       let sortDir = 'asc';
 
@@ -111,6 +118,7 @@ class AuthorDetailsSeasonConnector extends Component {
 
 AuthorDetailsSeasonConnector.propTypes = {
   authorId: PropTypes.number.isRequired,
+  bookMonitorFilter: PropTypes.string.isRequired,
   toggleBooksMonitored: PropTypes.func.isRequired,
   setSeriesTableOption: PropTypes.func.isRequired,
   dispatchSetSeriesSort: PropTypes.func.isRequired,

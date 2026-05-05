@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Profiles.Metadata;
 using Readarr.Http.REST;
 
@@ -38,7 +40,7 @@ namespace Readarr.Api.V1.Profiles.Metadata
                 SkipSeriesSecondary = model.SkipSeriesSecondary,
                 AllowedLanguages = model.AllowedLanguages,
                 MinPages = model.MinPages,
-                Ignored = model.Ignored
+                Ignored = CleanIgnored(model.Ignored)
             };
         }
 
@@ -60,8 +62,17 @@ namespace Readarr.Api.V1.Profiles.Metadata
                 SkipSeriesSecondary = resource.SkipSeriesSecondary,
                 AllowedLanguages = resource.AllowedLanguages,
                 MinPages = resource.MinPages,
-                Ignored = resource.Ignored
+                Ignored = CleanIgnored(resource.Ignored)
             };
+        }
+
+        private static List<string> CleanIgnored(IEnumerable<string> ignored)
+        {
+            return (ignored ?? Enumerable.Empty<string>())
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
         }
 
         public static List<MetadataProfileResource> ToResource(this IEnumerable<MetadataProfile> models)

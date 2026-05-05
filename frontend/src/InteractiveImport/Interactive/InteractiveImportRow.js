@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import BookFormats from 'Book/BookFormats';
@@ -187,6 +188,8 @@ class InteractiveImportRow extends Component {
       additionalFile,
       isSelected,
       isReprocessing,
+      isImporting,
+      importError,
       onSelectedChange,
       audioTags
     } = this.props;
@@ -234,14 +237,78 @@ class InteractiveImportRow extends Component {
     );
 
     const isIndexerFlagsColumnVisible = columns.find((c) => c.name === 'indexerFlags')?.isVisible ?? false;
+    let statusCell = null;
+
+    if (isImporting) {
+      statusCell = (
+        <Tooltip
+          anchor={
+            <Icon
+              name={icons.SPINNER}
+              kind={kinds.PRIMARY}
+              isSpinning={true}
+            />
+          }
+          tooltip={translate('Importing')}
+          position={tooltipPositions.LEFT}
+        />
+      );
+    } else if (importError) {
+      statusCell = (
+        <Popover
+          anchor={
+            <Icon
+              name={icons.DANGER}
+              kind={kinds.DANGER}
+            />
+          }
+          title={translate('ReleaseRejected')}
+          body={importError}
+          position={tooltipPositions.LEFT}
+          canFlip={false}
+        />
+      );
+    } else if (rejections.length) {
+      statusCell = (
+        <Popover
+          anchor={
+            <Icon
+              name={icons.DANGER}
+              kind={kinds.DANGER}
+            />
+          }
+          title={translate('ReleaseRejected')}
+          body={
+            <ul>
+              {
+                rejections.map((rejection, index) => {
+                  return (
+                    <li key={index}>
+                      {rejection.reason}
+                    </li>
+                  );
+                })
+              }
+            </ul>
+          }
+          position={tooltipPositions.LEFT}
+          canFlip={false}
+        />
+      );
+    }
 
     return (
       <TableRow
-        className={additionalFile ? styles.additionalFile : undefined}
+        className={classNames(
+          additionalFile && styles.additionalFile,
+          isImporting && styles.importing,
+          importError && styles.importError
+        )}
       >
         <TableSelectCell
           id={id}
           isSelected={isSelected}
+          isDisabled={isImporting}
           onSelectedChange={onSelectedChange}
         />
 
@@ -253,7 +320,7 @@ class InteractiveImportRow extends Component {
         </TableRowCell>
 
         <TableRowCellButton
-          isDisabled={!allowAuthorChange}
+          isDisabled={!allowAuthorChange || isImporting}
           title={allowAuthorChange ? translate('AllowAuthorChangeClickToChangeAuthor') : undefined}
           onPress={this.onSelectAuthorPress}
         >
@@ -263,7 +330,7 @@ class InteractiveImportRow extends Component {
         </TableRowCellButton>
 
         <TableRowCellButton
-          isDisabled={!author}
+          isDisabled={!author || isImporting}
           title={author ? translate('AuthorClickToChangeBook') : undefined}
           onPress={this.onSelectBookPress}
         >
@@ -273,6 +340,7 @@ class InteractiveImportRow extends Component {
         </TableRowCellButton>
 
         <TableRowCellButton
+          isDisabled={isImporting}
           title={translate('ClickToChangeReleaseGroup')}
           onPress={this.onSelectReleaseGroupPress}
         >
@@ -287,6 +355,7 @@ class InteractiveImportRow extends Component {
 
         <TableRowCellButton
           className={styles.quality}
+          isDisabled={isImporting}
           title={translate('ClickToChangeQuality')}
           onPress={this.onSelectQualityPress}
         >
@@ -329,6 +398,7 @@ class InteractiveImportRow extends Component {
 
         {isIndexerFlagsColumnVisible ? (
           <TableRowCellButton
+            isDisabled={isImporting}
             title={translate('ClickToChangeIndexerFlags')}
             onPress={this.onSelectIndexerFlagsPress}
           >
@@ -350,34 +420,7 @@ class InteractiveImportRow extends Component {
         ) : null}
 
         <TableRowCell>
-          {
-            rejections.length ?
-              <Popover
-                anchor={
-                  <Icon
-                    name={icons.DANGER}
-                    kind={kinds.DANGER}
-                  />
-                }
-                title={translate('ReleaseRejected')}
-                body={
-                  <ul>
-                    {
-                      rejections.map((rejection, index) => {
-                        return (
-                          <li key={index}>
-                            {rejection.reason}
-                          </li>
-                        );
-                      })
-                    }
-                  </ul>
-                }
-                position={tooltipPositions.LEFT}
-                canFlip={false}
-              /> :
-              null
-          }
+          {statusCell}
         </TableRowCell>
 
         <ConfirmModal
@@ -450,6 +493,8 @@ InteractiveImportRow.propTypes = {
   audioTags: PropTypes.object.isRequired,
   additionalFile: PropTypes.bool.isRequired,
   isReprocessing: PropTypes.bool,
+  isImporting: PropTypes.bool,
+  importError: PropTypes.string,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired,
   onValidRowChange: PropTypes.func.isRequired

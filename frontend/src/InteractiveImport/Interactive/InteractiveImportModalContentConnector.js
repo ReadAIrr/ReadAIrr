@@ -8,10 +8,12 @@ import { executeCommand } from 'Store/Actions/commandActions';
 import {
   clearInteractiveImport,
   fetchInteractiveImportItems,
+  removeInteractiveImportItems,
   saveInteractiveImportItem,
   setInteractiveImportMode,
   setInteractiveImportSort,
-  updateInteractiveImportItem } from 'Store/Actions/interactiveImportActions';
+  updateInteractiveImportItem,
+  updateInteractiveImportItems } from 'Store/Actions/interactiveImportActions';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import InteractiveImportModalContent from './InteractiveImportModalContent';
 
@@ -30,6 +32,8 @@ const mapDispatchToProps = {
   setInteractiveImportMode,
   clearInteractiveImport,
   updateInteractiveImportItem,
+  updateInteractiveImportItems,
+  removeInteractiveImportItems,
   saveInteractiveImportItem,
   executeCommand
 };
@@ -170,14 +174,47 @@ class InteractiveImportModalContentConnector extends Component {
       return;
     }
 
-    this.props.executeCommand({
+    this.setState({ interactiveImportErrorMessage: null });
+
+    this.props.updateInteractiveImportItems({
+      ids: selected,
+      isImporting: true,
+      importError: null
+    });
+
+    const importCommand = this.props.executeCommand({
       name: commandNames.INTERACTIVE_IMPORT,
       files,
       importMode,
-      replaceExistingFiles: this.state.replaceExistingFiles
+      replaceExistingFiles: this.state.replaceExistingFiles,
+      commandFinished: (command) => {
+        if (command.status === 'completed') {
+          this.props.removeInteractiveImportItems({ ids: selected });
+
+          if (this.props.items.length === selected.length) {
+            this.props.onModalClose();
+          }
+
+          return;
+        }
+
+        this.props.updateInteractiveImportItems({
+          ids: selected,
+          isImporting: false,
+          importError: command.message || 'Import failed'
+        });
+      }
     });
 
-    this.props.onModalClose();
+    if (importCommand && importCommand.fail) {
+      importCommand.fail((xhr) => {
+        this.props.updateInteractiveImportItems({
+          ids: selected,
+          isImporting: false,
+          importError: xhr.responseJSON?.message || 'Unable to start import command'
+        });
+      });
+    }
   };
 
   //
@@ -218,6 +255,8 @@ InteractiveImportModalContentConnector.propTypes = {
   clearInteractiveImport: PropTypes.func.isRequired,
   setInteractiveImportMode: PropTypes.func.isRequired,
   updateInteractiveImportItem: PropTypes.func.isRequired,
+  updateInteractiveImportItems: PropTypes.func.isRequired,
+  removeInteractiveImportItems: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };

@@ -15,13 +15,20 @@ import AuthorDetailsSeason from './AuthorDetailsSeason';
 
 function createMapStateToProps() {
   return createSelector(
+    (state, { bookMonitorFilter }) => bookMonitorFilter,
     createClientSideCollectionSelector('books', 'authorDetails'),
     createAuthorSelector(),
     createDimensionsSelector(),
     createUISettingsSelector(),
-    (books, author, dimensions, uiSettings) => {
+    (bookMonitorFilter, books, author, dimensions, uiSettings) => {
 
-      const booksInGroup = books.items;
+      let booksInGroup = books.items;
+
+      if (bookMonitorFilter === 'monitored') {
+        booksInGroup = booksInGroup.filter((book) => book.monitored);
+      } else if (bookMonitorFilter === 'unmonitored') {
+        booksInGroup = booksInGroup.filter((book) => !book.monitored);
+      }
 
       let sortDir = 'asc';
 
@@ -96,6 +103,7 @@ class AuthorDetailsSeasonConnector extends Component {
 
 AuthorDetailsSeasonConnector.propTypes = {
   authorId: PropTypes.number.isRequired,
+  bookMonitorFilter: PropTypes.string.isRequired,
   toggleBooksMonitored: PropTypes.func.isRequired,
   setBooksTableOption: PropTypes.func.isRequired,
   setAuthorDetailsId: PropTypes.func.isRequired,
