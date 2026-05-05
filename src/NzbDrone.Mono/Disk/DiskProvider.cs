@@ -397,8 +397,14 @@ namespace NzbDrone.Mono.Disk
                             srcStream.Position = srcInfo.Length - checkLength;
                             dstStream.Position = dstInfo.Length - checkLength;
 
-                            srcStream.Read(srcData, 0, checkLength);
-                            dstStream.Read(dstData, 0, checkLength);
+                            var srcBytesRead = srcStream.ReadAtLeast(srcData, checkLength, throwOnEndOfStream: false);
+                            var dstBytesRead = dstStream.ReadAtLeast(dstData, checkLength, throwOnEndOfStream: false);
+
+                            if (srcBytesRead != checkLength || dstBytesRead != checkLength)
+                            {
+                                _logger.Trace("Copy was incomplete, rethrowing original error");
+                                throw;
+                            }
                         }
 
                         for (var i = 0; i < checkLength; i++)
