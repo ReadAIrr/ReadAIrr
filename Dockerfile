@@ -44,7 +44,7 @@ RUN case "${TARGETARCH}" in \
     && mkdir -p /app \
     && cp -a "_artifacts/${rid}/net10.0/Readarr" /app/Readarr
 
-FROM debian:${DEBIAN_VERSION} AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime
 
 ENV HOME=/config \
     UMASK=022
