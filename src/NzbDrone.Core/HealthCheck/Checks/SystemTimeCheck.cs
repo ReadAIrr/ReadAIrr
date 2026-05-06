@@ -24,11 +24,22 @@ namespace NzbDrone.Core.HealthCheck.Checks
         public override HealthCheck Check()
         {
             var request = _cloudRequestBuilder.Create()
-                                              .Resource("/time")
+                                              .Resource("/time/")
                                               .Build();
 
-            var response = _client.Execute(request);
-            var result = Json.Deserialize<ServiceTimeResponse>(response.Content);
+            ServiceTimeResponse result;
+
+            try
+            {
+                var response = _client.Execute(request);
+                result = Json.Deserialize<ServiceTimeResponse>(response.Content);
+            }
+            catch (HttpException ex)
+            {
+                _logger.Warn(ex, "Unable to validate system time against the ReadAIrr service; skipping system time health check.");
+                return new HealthCheck(GetType());
+            }
+
             var systemTime = DateTime.UtcNow;
 
             // +/- more than 1 day

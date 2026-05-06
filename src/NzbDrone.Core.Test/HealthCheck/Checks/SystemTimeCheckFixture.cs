@@ -50,5 +50,18 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
             Subject.Check().ShouldBeError();
             ExceptionVerification.ExpectedErrors(1);
         }
+
+        [Test]
+        public void should_not_return_error_when_service_time_is_unavailable()
+        {
+            var request = new HttpRequest("https://readairr.com/v1/time/");
+            var response = new HttpResponse(request, new HttpHeader(), Array.Empty<byte>(), System.Net.HttpStatusCode.NotFound);
+
+            Mocker.GetMock<IHttpClient>()
+                  .Setup(s => s.Execute(It.IsAny<HttpRequest>()))
+                  .Throws(new HttpException(response));
+
+            Subject.Check().ShouldBeOk();
+        }
     }
 }
