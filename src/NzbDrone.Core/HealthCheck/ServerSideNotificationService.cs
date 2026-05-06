@@ -48,7 +48,7 @@ namespace NzbDrone.Core.HealthCheck
         private List<HealthCheck> RetrieveServerChecks()
         {
             var request = _cloudRequestBuilder.Create()
-                                      .Resource("/notification")
+                                      .Resource("/notification/")
                                       .AddQueryParam("version", BuildInfo.Version)
                                       .AddQueryParam("os", OsInfo.Os.ToString().ToLowerInvariant())
                                       .AddQueryParam("arch", RuntimeInformation.OSArchitecture)
