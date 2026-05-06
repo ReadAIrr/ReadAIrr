@@ -45,6 +45,27 @@ If this is shared beyond your homelab, make the GHCR package public or provide
 users with registry login instructions. For repeatable installs, prefer a
 version tag or digest over a moving branch tag.
 
+## Fast Homelab QA Deploys
+
+For quick iteration on the dedicated `ReadAIrrEggLab` VM, use the local QA
+deploy helper instead of waiting for GitHub Actions and GHCR:
+
+```sh
+deploy/qa-lab-deploy.sh --version 0.4.19.19
+```
+
+If the local `readairr:qa-bindings` image is already built, skip the rebuild:
+
+```sh
+deploy/qa-lab-deploy.sh --skip-build
+```
+
+The helper streams the local image over SSH, updates `READARR_IMAGE` in the
+remote env file, recreates only the `readarr` service, leaves the
+`rreading-glasses` sidecars running, and checks `http://127.0.0.1:8789/ping`
+from inside the VM. It also resets the app's internal config port to `8787`
+before restart, which keeps the Docker host mapping `8789 -> 8787` intact.
+
 ## Sidecar Image Pinning
 
 The example env pins the `rreading-glasses` and Postgres sidecar images by
@@ -58,11 +79,12 @@ come from a host-local secret source. The placeholder in `readarr.env.example`
 is only there so compose configuration validation can run without a real
 secret.
 
-## Arrs VM Layout
+## Eggman QA Layout
 
-The example env follows the existing `arrs` VM convention:
+The example env follows the dedicated Eggman-hosted `ReadAIrrEggLab` VM
+convention:
 
-- Compose project files live under `/opt/arrs`.
+- Compose project files live under `/opt/readairr/dev`.
 - Unraid NFS shares mount on the host under `/mnt/unraid`.
 - Container config is a bind mount under `/config`.
 - Downloads are available as `/downloads`.

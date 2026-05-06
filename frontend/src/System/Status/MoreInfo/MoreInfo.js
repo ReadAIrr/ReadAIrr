@@ -22,7 +22,7 @@ class MoreInfo extends Component {
 
           <DescriptionListItemTitle>Upstream Wiki</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://wiki.servarr.com/readarr">Wiki</Link>
+            <Link to="https://readairr.com/docs/">Wiki</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Upstream Reddit</DescriptionListItemTitle>
@@ -32,7 +32,7 @@ class MoreInfo extends Component {
 
           <DescriptionListItemTitle>Upstream Discord</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://readarr.com/discord">Readarr on Discord</Link>
+            <Link to="https://readairr.com/discord">ReadAIrr on Discord</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Source</DescriptionListItemTitle>

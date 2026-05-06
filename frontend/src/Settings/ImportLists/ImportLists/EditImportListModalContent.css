@@ -19,3 +19,43 @@
 
   margin-bottom: 30px;
 }
+
+.preview {
+  margin-top: 4px;
+}
+
+.previewLoading,
+.previewSummary,
+.previewSampleReason {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.previewBuckets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.previewBucket {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--borderColor);
+  font-weight: 600;
+}
+
+.previewSamples {
+  margin-top: 14px;
+}
+
+.previewSample {
+  padding: 8px 0;
+  border-top: 1px solid var(--borderColor);
+}
+
+.previewSampleTitle {
+  font-weight: 600;
+}

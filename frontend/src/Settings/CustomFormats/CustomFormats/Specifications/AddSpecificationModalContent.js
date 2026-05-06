@@ -56,7 +56,7 @@ class AddSpecificationModalContent extends Component {
                   </div>
                   <div>
                     {'Visit the wiki for more details: '}
-                    <Link to="https://wiki.servarr.com/readarr/settings#custom-formats-2">{'Wiki'}</Link>
+                    <Link to="https://readairr.com/docs/wiki/readarr/settings.html#custom-formats-2">{'Wiki'}</Link>
                   </div>
                 </Alert>
 

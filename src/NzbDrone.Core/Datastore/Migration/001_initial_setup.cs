@@ -171,6 +171,13 @@ namespace NzbDrone.Core.Datastore.Migration
                 .WithColumn("SkipMissingIsbn").AsBoolean()
                 .WithColumn("SkipPartsAndSets").AsBoolean()
                 .WithColumn("SkipSeriesSecondary").AsBoolean()
+                .WithColumn("RequireReadable").AsBoolean().WithDefaultValue(false)
+                .WithColumn("RequireAudio").AsBoolean().WithDefaultValue(false)
+                .WithColumn("SkipAnthologies").AsBoolean().WithDefaultValue(false)
+                .WithColumn("SkipCollections").AsBoolean().WithDefaultValue(false)
+                .WithColumn("SkipSerializedParts").AsBoolean().WithDefaultValue(false)
+                .WithColumn("SkipEssays").AsBoolean().WithDefaultValue(false)
+                .WithColumn("SkipShortStories").AsBoolean().WithDefaultValue(false)
                 .WithColumn("AllowedLanguages").AsString().Nullable();
 
             Create.TableForModel("QualityDefinitions")

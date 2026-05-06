@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Profiles.Metadata;
+using NzbDrone.Core.Profiles.Releases;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 
@@ -223,6 +226,66 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
             Subject.Delete(1);
 
             Mocker.GetMock<IMetadataProfileRepository>().Verify(c => c.Delete(1), Times.Once());
+        }
+
+        [Test]
+        public void preview_should_count_metadata_profile_exclusions()
+        {
+            var profile = new MetadataProfile
+            {
+                MinPages = 200,
+                SkipMissingDate = true,
+                SkipMissingIsbn = true,
+                SkipCollections = true,
+                RequireAudio = true,
+                Ignored = new[] { "sample" }.ToList()
+            };
+
+            var books = new List<Book>
+            {
+                new Book
+                {
+                    Id = 1,
+                    Title = "Sample Collection",
+                    ReleaseDate = null
+                }
+            };
+
+            var editions = new List<Edition>
+            {
+                new Edition
+                {
+                    BookId = 1,
+                    Title = "Sample Collection",
+                    Format = "Hardcover",
+                    PageCount = 120,
+                    Isbn13 = null,
+                    Asin = null
+                }
+            };
+
+            Mocker.GetMock<IBookService>()
+                .Setup(x => x.GetAllBooks())
+                .Returns(books);
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(x => x.GetEditionsByBook(It.IsAny<IEnumerable<int>>()))
+                .Returns(editions);
+
+            Mocker.GetMock<ITermMatcherService>()
+                .Setup(x => x.IsMatch(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns((string term, string value) => value.IndexOf(term, StringComparison.InvariantCultureIgnoreCase) >= 0);
+
+            var preview = Subject.Preview(profile);
+
+            preview.EvaluatedBooks.Should().Be(1);
+            preview.EvaluatedEditions.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "skipMissingDate").Count.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "skipCollections").Count.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "minPages").Count.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "requireAudio").Count.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "skipMissingIsbn").Count.Should().Be(1);
+            preview.Rules.Single(x => x.Key == "ignored").Count.Should().Be(1);
         }
     }
 }

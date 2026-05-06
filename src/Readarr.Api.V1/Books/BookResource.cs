@@ -37,6 +37,7 @@ namespace Readarr.Api.V1.Books
         public string RemoteCover { get; set; }
         public DateTime? LastSearchTime { get; set; }
         public List<EditionResource> Editions { get; set; }
+        public string MissingReason { get; set; }
 
         //Hiding this so people don't think its usable (only used to set the initial state)
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]

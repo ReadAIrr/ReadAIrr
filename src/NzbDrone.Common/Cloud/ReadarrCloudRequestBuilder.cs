@@ -12,8 +12,7 @@ namespace NzbDrone.Common.Cloud
     {
         public ReadarrCloudRequestBuilder()
         {
-            //TODO: Create Update Endpoint
-            Services = new HttpRequestBuilder("https://readarr.servarr.com/v1/")
+            Services = new HttpRequestBuilder("https://readairr.com/v1/")
                 .CreateFactory();
 
             Metadata = new HttpRequestBuilder("https://api.bookinfo.club/v1/{route}")

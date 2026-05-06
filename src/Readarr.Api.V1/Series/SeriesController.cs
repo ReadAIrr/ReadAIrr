@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.MediaFiles;
 using Readarr.Http;
 
 namespace Readarr.Api.V1.Series
@@ -9,16 +11,43 @@ namespace Readarr.Api.V1.Series
     public class SeriesController : Controller
     {
         protected readonly ISeriesService _seriesService;
+        protected readonly ISeriesBookLinkService _seriesBookLinkService;
+        protected readonly IMediaFileService _mediaFileService;
 
-        public SeriesController(ISeriesService seriesService)
+        public SeriesController(ISeriesService seriesService,
+                                ISeriesBookLinkService seriesBookLinkService,
+                                IMediaFileService mediaFileService)
         {
             _seriesService = seriesService;
+            _seriesBookLinkService = seriesBookLinkService;
+            _mediaFileService = mediaFileService;
         }
 
         [HttpGet]
-        public List<SeriesResource> GetSeries(int authorId)
+        public List<SeriesResource> GetSeries(int? authorId)
         {
-            return _seriesService.GetByAuthorId(authorId).ToResource();
+            var series = authorId.HasValue ? _seriesService.GetByAuthorId(authorId.Value) : _seriesService.All();
+            var links = series.ToDictionary(x => x.Id, x => _seriesBookLinkService.GetLinksBySeries(x.Id));
+            var files = links.SelectMany(x => x.Value)
+                .Select(x => x.Book.Value.Id)
+                .Distinct()
+                .SelectMany(x => _mediaFileService.GetFilesByBook(x))
+                .ToList();
+
+            return series.ToResource(links, files);
+        }
+
+        [HttpGet("{id:int}")]
+        public SeriesResource GetSeriesById(int id)
+        {
+            var series = _seriesService.Get(id);
+            var links = _seriesBookLinkService.GetLinksBySeries(id);
+            var files = links.Select(x => x.Book.Value.Id)
+                .Distinct()
+                .SelectMany(x => _mediaFileService.GetFilesByBook(x))
+                .ToList();
+
+            return series.ToResource(links, files);
         }
     }
 }

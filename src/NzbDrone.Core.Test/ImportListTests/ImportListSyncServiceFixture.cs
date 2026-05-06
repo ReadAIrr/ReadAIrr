@@ -33,6 +33,10 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Setup(v => v.Fetch())
                 .Returns(_importListReports);
 
+            Mocker.GetMock<IFetchAndParseImportList>()
+                .Setup(v => v.FetchSingleList(It.IsAny<ImportListDefinition>()))
+                .Returns(_importListReports);
+
             Mocker.GetMock<IGoodreadsSearchProxy>()
                 .Setup(v => v.Search(It.IsAny<string>()))
                 .Returns(new List<SearchJsonResource>());
@@ -353,6 +357,20 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             Mocker.GetMock<IImportListExclusionService>()
                 .Verify(v => v.All(), Times.Never);
+        }
+
+        [Test]
+        public void preview_should_classify_items_without_adding()
+        {
+            WithAuthorId();
+
+            var preview = Subject.Preview(new ImportListDefinition { ShouldMonitor = ImportListMonitorType.SpecificBook });
+
+            Assert.That(preview.TotalItems, Is.EqualTo(1));
+            Assert.That(preview.Buckets.Single(x => x.Status == ImportListPreviewStatus.WouldAddAuthor).Count, Is.EqualTo(1));
+
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthors(It.IsAny<List<Author>>(), false), Times.Never);
         }
     }
 }

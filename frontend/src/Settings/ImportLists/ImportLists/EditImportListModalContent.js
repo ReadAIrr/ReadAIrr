@@ -60,13 +60,17 @@ function EditImportListModalContent(props) {
     error,
     isSaving,
     isTesting,
+    isPreviewFetching,
     saveError,
     item,
+    preview,
+    previewError,
     onInputChange,
     onFieldChange,
     onModalClose,
     onSavePress,
     onTestPress,
+    onPreviewPress,
     onAdvancedSettingsPress,
     onDeleteImportListPress,
     showMetadataProfile,
@@ -319,6 +323,76 @@ function EditImportListModalContent(props) {
                   </FieldSet>
               }
 
+              {
+                (preview || previewError || isPreviewFetching) &&
+                  <FieldSet legend="Import list preview">
+                    {
+                      isPreviewFetching &&
+                        <div className={styles.previewLoading}>
+                          Previewing list...
+                        </div>
+                    }
+
+                    {
+                      previewError &&
+                        <Alert
+                          className={styles.message}
+                          kind={kinds.DANGER}
+                        >
+                          Unable to preview this import list.
+                        </Alert>
+                    }
+
+                    {
+                      preview &&
+                        <div className={styles.preview}>
+                          <div className={styles.previewSummary}>
+                            Evaluated {preview.totalItems} list items.
+                          </div>
+
+                          <div className={styles.previewBuckets}>
+                            {
+                              preview.buckets.map((bucket) => {
+                                return (
+                                  <div
+                                    key={bucket.status}
+                                    className={styles.previewBucket}
+                                  >
+                                    <span>{bucket.label}</span>
+                                    <span>{bucket.count}</span>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+
+                          {
+                            !!preview.samples.length &&
+                              <div className={styles.previewSamples}>
+                                {
+                                  preview.samples.map((sample, index) => {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className={styles.previewSample}
+                                      >
+                                        <div className={styles.previewSampleTitle}>
+                                          {sample.book || sample.author || sample.bookForeignId || sample.authorForeignId || 'Unknown item'}
+                                        </div>
+                                        <div className={styles.previewSampleReason}>
+                                          {sample.reason}
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </div>
+                          }
+                        </div>
+                    }
+                  </FieldSet>
+              }
+
             </Form>
         }
       </ModalBody>
@@ -348,6 +422,14 @@ function EditImportListModalContent(props) {
           {translate('Test')}
         </SpinnerErrorButton>
 
+        <SpinnerErrorButton
+          isSpinning={isPreviewFetching}
+          error={previewError}
+          onPress={onPreviewPress}
+        >
+          Preview
+        </SpinnerErrorButton>
+
         <Button
           onPress={onModalClose}
         >
@@ -372,7 +454,10 @@ EditImportListModalContent.propTypes = {
   error: PropTypes.object,
   isSaving: PropTypes.bool.isRequired,
   isTesting: PropTypes.bool.isRequired,
+  isPreviewFetching: PropTypes.bool.isRequired,
   saveError: PropTypes.object,
+  preview: PropTypes.object,
+  previewError: PropTypes.object,
   item: PropTypes.object.isRequired,
   showMetadataProfile: PropTypes.bool.isRequired,
   onInputChange: PropTypes.func.isRequired,
@@ -380,6 +465,7 @@ EditImportListModalContent.propTypes = {
   onModalClose: PropTypes.func.isRequired,
   onSavePress: PropTypes.func.isRequired,
   onTestPress: PropTypes.func.isRequired,
+  onPreviewPress: PropTypes.func.isRequired,
   onAdvancedSettingsPress: PropTypes.func.isRequired,
   onDeleteImportListPress: PropTypes.func
 };

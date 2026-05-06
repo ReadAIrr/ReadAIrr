@@ -55,7 +55,7 @@ namespace Prowlarr.Api.V1.Config
         }
 
         [RestPutById]
-        public ActionResult<DevelopmentConfigResource> SaveDevelopmentConfig(DevelopmentConfigResource resource)
+        public ActionResult<DevelopmentConfigResource> SaveDevelopmentConfig([FromBody] DevelopmentConfigResource resource)
         {
             var dictionary = resource.GetType()
                                      .GetProperties(BindingFlags.Instance | BindingFlags.Public)

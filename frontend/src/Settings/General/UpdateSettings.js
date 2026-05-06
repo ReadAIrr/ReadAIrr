@@ -60,7 +60,7 @@ function UpdateSettings(props) {
           type={inputTypes.AUTO_COMPLETE}
           name="branch"
           helpText={usingExternalUpdateMechanism ? translate('BranchUpdateMechanism') : translate('BranchUpdate')}
-          helpLink="https://wiki.servarr.com/readarr/settings#updates"
+          helpLink="https://readairr.com/docs/wiki/readarr/settings.html#updates"
           {...branch}
           values={branchValues}
           onChange={onInputChange}
@@ -97,7 +97,7 @@ function UpdateSettings(props) {
             name="updateMechanism"
             values={updateOptions}
             helpText={translate('UpdateMechanismHelpText')}
-            helpLink="https://wiki.servarr.com/readarr/settings#updates"
+            helpLink="https://readairr.com/docs/wiki/readarr/settings.html#updates"
             onChange={onInputChange}
             {...updateMechanism}
           />

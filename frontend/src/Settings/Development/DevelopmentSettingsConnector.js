@@ -12,10 +12,14 @@ const SECTION = 'development';
 function createMapStateToProps() {
   return createSelector(
     (state) => state.settings.advancedSettings,
+    (state) => state.settings[SECTION],
     createSettingsSectionSelector(SECTION),
-    (advancedSettings, sectionSettings) => {
+    (advancedSettings, developmentState, sectionSettings) => {
       return {
         advancedSettings,
+        isTestingMetadataSource: developmentState.isTestingMetadataSource,
+        metadataSourceTestResult: developmentState.metadataSourceTestResult,
+        metadataSourceTestError: developmentState.metadataSourceTestError,
         ...sectionSettings
       };
     }

@@ -13,6 +13,8 @@ import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
 import AddNewItemConnector from 'Search/AddNewItemConnector';
+import SeriesDetailsConnector from 'Series/SeriesDetailsConnector';
+import SeriesIndexConnector from 'Series/SeriesIndexConnector';
 import CustomFormatSettingsConnector from 'Settings/CustomFormats/CustomFormatSettingsConnector';
 import DevelopmentSettingsConnector from 'Settings/Development/DevelopmentSettingsConnector';
 import DownloadClientSettingsConnector from 'Settings/DownloadClients/DownloadClientSettingsConnector';
@@ -92,6 +94,17 @@ function AppRoutes(props) {
         exact={true}
         path="/books"
         component={BookIndexConnector}
+      />
+
+      <Route
+        exact={true}
+        path="/series"
+        component={SeriesIndexConnector}
+      />
+
+      <Route
+        path="/series/:id"
+        component={SeriesDetailsConnector}
       />
 
       <Route

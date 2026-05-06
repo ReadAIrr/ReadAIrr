@@ -16,6 +16,7 @@ function MissingRow(props) {
     releaseDate,
     titleSlug,
     title,
+    missingReason,
     lastSearchTime,
     disambiguation,
     isSelected,
@@ -59,7 +60,10 @@ function MissingRow(props) {
 
           if (name === 'books.title') {
             return (
-              <TableRowCell key={name}>
+              <TableRowCell
+                key={name}
+                title={missingReason}
+              >
                 <BookTitleLink
                   titleSlug={titleSlug}
                   title={title}
@@ -114,6 +118,7 @@ MissingRow.propTypes = {
   releaseDate: PropTypes.string.isRequired,
   titleSlug: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
+  missingReason: PropTypes.string,
   lastSearchTime: PropTypes.string,
   disambiguation: PropTypes.string,
   isSelected: PropTypes.bool,

@@ -12,12 +12,19 @@ using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Profiles.Metadata;
 
 namespace NzbDrone.Core.ImportLists
 {
-    public class ImportListSyncService : IExecute<ImportListSyncCommand>
+    public interface IImportListPreviewService
+    {
+        ImportListPreview Preview(ImportListDefinition definition);
+    }
+
+    public class ImportListSyncService : IExecute<ImportListSyncCommand>, IImportListPreviewService
     {
         private readonly IImportListFactory _importListFactory;
         private readonly IImportListExclusionService _importListExclusionService;
@@ -30,6 +37,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IEditionService _editionService;
         private readonly IAddAuthorService _addAuthorService;
         private readonly IAddBookService _addBookService;
+        private readonly IMetadataProfileService _metadataProfileService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
@@ -45,6 +53,7 @@ namespace NzbDrone.Core.ImportLists
                                      IEditionService editionService,
                                      IAddAuthorService addAuthorService,
                                      IAddBookService addBookService,
+                                     IMetadataProfileService metadataProfileService,
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger)
@@ -60,6 +69,7 @@ namespace NzbDrone.Core.ImportLists
             _editionService = editionService;
             _addAuthorService = addAuthorService;
             _addBookService = addBookService;
+            _metadataProfileService = metadataProfileService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
             _logger = logger;
@@ -90,17 +100,33 @@ namespace NzbDrone.Core.ImportLists
             return ProcessListItems(listItems);
         }
 
+        public ImportListPreview Preview(ImportListDefinition definition)
+        {
+            var listItems = _listFetcherAndParser.FetchSingleList(definition).ToList();
+            var result = ProcessListItems(listItems, definition, false);
+
+            return ImportListPreview.FromDecisions(result.Decisions);
+        }
+
         private List<Book> ProcessListItems(List<ImportListItemInfo> items)
+        {
+            var result = ProcessListItems(items, null, true);
+
+            return result.Processed;
+        }
+
+        private ImportListProcessingResult ProcessListItems(List<ImportListItemInfo> items, ImportListDefinition fallbackDefinition, bool applyChanges)
         {
             var processed = new List<Book>();
             var authorsToAdd = new List<Author>();
             var booksToAdd = new List<Book>();
+            var decisions = new List<ImportListPreviewItem>();
 
             if (items.Count == 0)
             {
                 _logger.ProgressInfo("No list items to process");
 
-                return new List<Book>();
+                return new ImportListProcessingResult(processed, authorsToAdd, booksToAdd, decisions);
             }
 
             _logger.ProgressInfo("Processing {0} list items", items.Count);
@@ -115,7 +141,7 @@ namespace NzbDrone.Core.ImportLists
 
                 reportNumber++;
 
-                var importList = _importListFactory.Get(report.ImportListId);
+                var importList = fallbackDefinition ?? _importListFactory.Get(report.ImportListId);
 
                 if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace())
                 {
@@ -124,7 +150,7 @@ namespace NzbDrone.Core.ImportLists
                         MapBookReport(report);
                     }
 
-                    ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd);
+                    decisions.Add(ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd, applyChanges));
                 }
                 else if (report.Author.IsNotNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNotNullOrWhiteSpace())
                 {
@@ -133,24 +159,29 @@ namespace NzbDrone.Core.ImportLists
                         MapAuthorReport(report);
                     }
 
-                    ProcessAuthorReport(importList, report, listExclusions, authorsToAdd);
+                    ProcessAuthorReport(importList, report, listExclusions, authorsToAdd, applyChanges, out var decision);
+                    decisions.Add(decision);
+                }
+                else
+                {
+                    decisions.Add(new ImportListPreviewItem(report, ImportListPreviewStatus.InvalidMetadata, "List item did not include a book or author"));
                 }
             }
 
-            var addedAuthors = _addAuthorService.AddAuthors(authorsToAdd, false);
-            var addedBooks = _addBookService.AddBooks(booksToAdd, false);
+            var addedAuthors = applyChanges ? _addAuthorService.AddAuthors(authorsToAdd, false) : new List<Author>();
+            var addedBooks = applyChanges ? _addBookService.AddBooks(booksToAdd, false) : new List<Book>();
 
             var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Authors added: {authorsToAdd.Count}, Books added: {booksToAdd.Count}");
 
             _logger.ProgressInfo(message);
 
             var toRefresh = addedAuthors.Select(x => x.Id).Concat(addedBooks.Select(x => x.Author.Value.Id)).Distinct().ToList();
-            if (toRefresh.Any())
+            if (applyChanges && toRefresh.Any())
             {
                 _commandQueueManager.Push(new BulkRefreshAuthorCommand(toRefresh, true));
             }
 
-            return processed;
+            return new ImportListProcessingResult(processed, authorsToAdd, booksToAdd, decisions);
         }
 
         private void MapBookReport(ImportListItemInfo report)
@@ -220,8 +251,13 @@ namespace NzbDrone.Core.ImportLists
             }
         }
 
-        private void ProcessBookReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Book> booksToAdd, List<Author> authorsToAdd)
+        private ImportListPreviewItem ProcessBookReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Book> booksToAdd, List<Author> authorsToAdd, bool applyChanges)
         {
+            if (report.BookGoodreadsId.IsNullOrWhiteSpace())
+            {
+                return new ImportListPreviewItem(report, ImportListPreviewStatus.InvalidMetadata, "Book metadata could not be mapped");
+            }
+
             // Check to see if book in DB
             var existingBook = _bookService.FindById(report.BookGoodreadsId);
 
@@ -234,28 +270,37 @@ namespace NzbDrone.Core.ImportLists
             if (excludedBook != null)
             {
                 _logger.Debug("{0} [{1}] Rejected due to list exclusion", report.EditionGoodreadsId, report.Book);
-                return;
+                return new ImportListPreviewItem(report, ImportListPreviewStatus.ExcludedByImportListExclusion, "Book is on the import-list exclusion list");
             }
 
             if (excludedAuthor != null)
             {
                 _logger.Debug("{0} [{1}] Rejected due to list exclusion for parent author", report.EditionGoodreadsId, report.Book);
-                return;
+                return new ImportListPreviewItem(report, ImportListPreviewStatus.ExcludedByImportListExclusion, "Author is on the import-list exclusion list");
             }
 
             if (existingBook != null)
             {
                 _logger.Debug("{0} [{1}] Rejected, Book Exists in DB.  Ensuring Book and Author monitored.", report.EditionGoodreadsId, report.Book);
 
+                var wouldMonitorExisting = false;
                 if (importList.ShouldMonitorExisting && importList.ShouldMonitor != ImportListMonitorType.None)
                 {
                     if (!existingBook.Monitored)
                     {
-                        _bookService.SetBookMonitored(existingBook.Id, true);
+                        wouldMonitorExisting = true;
+
+                        if (applyChanges)
+                        {
+                            _bookService.SetBookMonitored(existingBook.Id, true);
+                        }
 
                         if (importList.ShouldMonitor == ImportListMonitorType.SpecificBook)
                         {
-                            _commandQueueManager.Push(new BookSearchCommand(new List<int> { existingBook.Id }));
+                            if (applyChanges)
+                            {
+                                _commandQueueManager.Push(new BookSearchCommand(new List<int> { existingBook.Id }));
+                            }
                         }
                     }
 
@@ -267,24 +312,43 @@ namespace NzbDrone.Core.ImportLists
                         if (existingAuthor.Books.Value.Any(x => !x.Monitored))
                         {
                             doSearch = true;
-                            _bookService.SetMonitored(existingAuthor.Books.Value.Select(x => x.Id), true);
+                            wouldMonitorExisting = true;
+
+                            if (applyChanges)
+                            {
+                                _bookService.SetMonitored(existingAuthor.Books.Value.Select(x => x.Id), true);
+                            }
                         }
                     }
 
                     if (!existingAuthor.Monitored)
                     {
                         doSearch = true;
+                        wouldMonitorExisting = true;
                         existingAuthor.Monitored = true;
-                        _authorService.UpdateAuthor(existingAuthor);
+
+                        if (applyChanges)
+                        {
+                            _authorService.UpdateAuthor(existingAuthor);
+                        }
                     }
 
-                    if (doSearch)
+                    if (applyChanges && doSearch)
                     {
                         _commandQueueManager.Push(new MissingBookSearchCommand(existingAuthor.Id));
                     }
                 }
 
-                return;
+                return new ImportListPreviewItem(
+                    report,
+                    wouldMonitorExisting ? ImportListPreviewStatus.WouldMonitorExisting : ImportListPreviewStatus.AlreadyExists,
+                    wouldMonitorExisting ? "Existing book/author will be monitored by this list" : "Book already exists in the library");
+            }
+
+            var metadataProfileReason = GetMetadataProfileExclusionReason(importList, report);
+            if (metadataProfileReason.IsNotNullOrWhiteSpace())
+            {
+                return new ImportListPreviewItem(report, ImportListPreviewStatus.ExcludedByMetadataProfile, $"Excluded by metadata profile: {metadataProfileReason}");
             }
 
             // Append Book if not already in DB or already on add list
@@ -310,7 +374,7 @@ namespace NzbDrone.Core.ImportLists
 
                 if (report.AuthorGoodreadsId != null && report.Author != null)
                 {
-                    toAddAuthor = ProcessAuthorReport(importList, report, listExclusions, authorsToAdd);
+                    toAddAuthor = ProcessAuthorReport(importList, report, listExclusions, authorsToAdd, applyChanges, out _);
                 }
 
                 var toAdd = new Book
@@ -344,7 +408,11 @@ namespace NzbDrone.Core.ImportLists
                 }
 
                 booksToAdd.Add(toAdd);
+
+                return new ImportListPreviewItem(report, ImportListPreviewStatus.WouldAdd, monitored ? "Book will be added and monitored" : "Book will be added unmonitored");
             }
+
+            return new ImportListPreviewItem(report, ImportListPreviewStatus.AlreadyQueued, "Book is already queued from another item in this import list");
         }
 
         private void MapAuthorReport(ImportListItemInfo report)
@@ -363,10 +431,11 @@ namespace NzbDrone.Core.ImportLists
             report.AuthorGoodreadsId = mappedBook.Author.Id.ToString();
         }
 
-        private Author ProcessAuthorReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Author> authorsToAdd)
+        private Author ProcessAuthorReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Author> authorsToAdd, bool applyChanges, out ImportListPreviewItem decision)
         {
             if (report.AuthorGoodreadsId == null)
             {
+                decision = new ImportListPreviewItem(report, ImportListPreviewStatus.InvalidMetadata, "Author metadata could not be mapped");
                 return null;
             }
 
@@ -382,6 +451,7 @@ namespace NzbDrone.Core.ImportLists
             if (excludedAuthor != null)
             {
                 _logger.Debug("{0} [{1}] Rejected due to list exclusion", report.AuthorGoodreadsId, report.Author);
+                decision = new ImportListPreviewItem(report, ImportListPreviewStatus.ExcludedByImportListExclusion, "Author is on the import-list exclusion list");
                 return null;
             }
 
@@ -389,11 +459,22 @@ namespace NzbDrone.Core.ImportLists
             {
                 _logger.Debug("{0} [{1}] Rejected, Author Exists in DB.  Ensuring Author monitored", report.AuthorGoodreadsId, report.Author);
 
+                var wouldMonitorExisting = false;
                 if (importList.ShouldMonitorExisting && !existingAuthor.Monitored)
                 {
+                    wouldMonitorExisting = true;
                     existingAuthor.Monitored = true;
-                    _authorService.UpdateAuthor(existingAuthor);
+
+                    if (applyChanges)
+                    {
+                        _authorService.UpdateAuthor(existingAuthor);
+                    }
                 }
+
+                decision = new ImportListPreviewItem(
+                    report,
+                    wouldMonitorExisting ? ImportListPreviewStatus.WouldMonitorExisting : ImportListPreviewStatus.AlreadyExists,
+                    wouldMonitorExisting ? "Existing author will be monitored by this list" : "Author already exists in the library");
 
                 return existingAuthor;
             }
@@ -401,6 +482,8 @@ namespace NzbDrone.Core.ImportLists
             if (existingImportAuthor != null)
             {
                 _logger.Debug("{0} [{1}] Rejected, Author Exists in Import.", report.AuthorGoodreadsId, report.Author);
+
+                decision = new ImportListPreviewItem(report, ImportListPreviewStatus.AlreadyQueued, "Author is already queued from another item in this import list");
 
                 return existingImportAuthor;
             }
@@ -430,7 +513,48 @@ namespace NzbDrone.Core.ImportLists
 
             authorsToAdd.Add(toAdd);
 
+            decision = new ImportListPreviewItem(report, ImportListPreviewStatus.WouldAddAuthor, monitored ? "Author will be added and monitored" : "Author will be added unmonitored");
+
             return toAdd;
+        }
+
+        private string GetMetadataProfileExclusionReason(ImportListDefinition importList, ImportListItemInfo report)
+        {
+            if (importList.MetadataProfileId <= 0 || report.BookGoodreadsId.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            try
+            {
+                var book = _bookInfoProxy.GetBookInfo(report.BookGoodreadsId).Item2;
+                return _metadataProfileService.ExplainBookExclusion(book, importList.MetadataProfileId);
+            }
+            catch (BookNotFoundException)
+            {
+                return "book metadata could not be found";
+            }
+            catch (BookInfoException e)
+            {
+                _logger.Debug(e, "Unable to load book metadata for import-list profile preview: {0}", report.BookGoodreadsId);
+                return "book metadata could not be loaded";
+            }
+        }
+
+        private class ImportListProcessingResult
+        {
+            public ImportListProcessingResult(List<Book> processed, List<Author> authorsToAdd, List<Book> booksToAdd, List<ImportListPreviewItem> decisions)
+            {
+                Processed = processed;
+                AuthorsToAdd = authorsToAdd;
+                BooksToAdd = booksToAdd;
+                Decisions = decisions;
+            }
+
+            public List<Book> Processed { get; }
+            public List<Author> AuthorsToAdd { get; }
+            public List<Book> BooksToAdd { get; }
+            public List<ImportListPreviewItem> Decisions { get; }
         }
 
         public void Execute(ImportListSyncCommand message)

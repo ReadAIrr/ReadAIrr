@@ -104,6 +104,7 @@ class AuthorDetailsSeries extends Component {
 
   render() {
     const {
+      id,
       label,
       items,
       positionMap,
@@ -164,6 +165,15 @@ class AuthorDetailsSeries extends Component {
 
             </div>
           </Link>
+
+          <IconButton
+            className={styles.seriesLinkButton}
+            iconClassName={styles.actionButtonIcon}
+            name={icons.EXTERNAL_LINK}
+            size={14}
+            title={translate('Series')}
+            to={`/series/${id}`}
+          />
         </div>
 
         <div>

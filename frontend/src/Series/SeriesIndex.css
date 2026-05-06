@@ -1,0 +1,23 @@
+.seriesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.seriesItem {
+  display: block;
+  padding: 12px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.seriesTitle {
+  font-weight: 600;
+}
+
+.seriesMeta {
+  margin-top: 4px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}

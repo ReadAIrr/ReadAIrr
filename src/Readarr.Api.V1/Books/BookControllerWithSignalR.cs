@@ -59,6 +59,7 @@ namespace Readarr.Api.V1.Books
             }
 
             FetchAndLinkBookStatistics(resource);
+            LinkMissingReason(book, resource);
             MapCoversToLocal(resource);
 
             return resource;
@@ -100,6 +101,7 @@ namespace Readarr.Api.V1.Books
 
             var authorStats = _authorStatisticsService.AuthorStatistics();
             LinkAuthorStatistics(result, authorStats);
+            LinkMissingReasons(books, result);
             MapCoversToLocal(result.ToArray());
 
             return result;
@@ -131,6 +133,42 @@ namespace Readarr.Api.V1.Books
 
                 resource.Statistics = dictBookStats.GetValueOrDefault(resource.Id).ToResource();
             }
+        }
+
+        private void LinkMissingReasons(List<Book> books, List<BookResource> resources)
+        {
+            for (var i = 0; i < books.Count; i++)
+            {
+                LinkMissingReason(books[i], resources[i]);
+            }
+        }
+
+        private void LinkMissingReason(Book book, BookResource resource)
+        {
+            if (resource.Statistics?.BookFileCount > 0)
+            {
+                return;
+            }
+
+            if (book.Author?.Value != null && !book.Author.Value.Monitored)
+            {
+                resource.MissingReason = "Missing because the author is not monitored.";
+                return;
+            }
+
+            if (!book.Monitored)
+            {
+                resource.MissingReason = "Missing because the book is not monitored.";
+                return;
+            }
+
+            if (book.Editions?.Value != null && !book.AnyEditionOk && !book.Editions.Value.Any(x => x.Monitored))
+            {
+                resource.MissingReason = "Missing because no edition is monitored.";
+                return;
+            }
+
+            resource.MissingReason = "Missing because no imported file exists for the monitored book or edition.";
         }
 
         private void MapCoversToLocal(params BookResource[] books)

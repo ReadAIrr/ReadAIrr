@@ -12,7 +12,14 @@ namespace Readarr.Api.V1.Profiles.Metadata
         {
             var profile = new MetadataProfile
             {
-                AllowedLanguages = "eng"
+                AllowedLanguages = "eng",
+                RequireReadable = false,
+                RequireAudio = false,
+                SkipAnthologies = false,
+                SkipCollections = false,
+                SkipSerializedParts = false,
+                SkipEssays = false,
+                SkipShortStories = false
             };
 
             return profile.ToResource();

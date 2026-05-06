@@ -146,7 +146,7 @@ class InteractiveImportModalContent extends Component {
     const selectedItems = _.filter(this.props.items, (x) => _.includes(selectedIds, x.id));
 
     const inconsistent = _(selectedItems)
-      .map((x) => ({ bookId: x.book ? x.book.id : 0, foreignEditionId: x.ForeignEditionId }))
+      .map((x) => ({ bookId: x.book ? x.book.id : 0, foreignEditionId: x.foreignEditionId }))
       .groupBy('bookId')
       .mapValues((book) => _(book).groupBy((x) => x.foreignEditionId).values().value().length)
       .values()
@@ -398,7 +398,7 @@ class InteractiveImportModalContent extends Component {
 
                   <MenuContent>
                     <SelectedMenuItem
-                      name={replaceExistingFiles.COMBINE}
+                      name={replaceExistingFilesOptions.COMBINE}
                       isSelected={!replaceExistingFiles}
                       onPress={this.onReplaceExistingFilesChange}
                     >

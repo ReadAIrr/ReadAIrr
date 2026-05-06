@@ -35,11 +35,13 @@ namespace Readarr.Api.V1.Books
         protected readonly IAuthorService _authorService;
         protected readonly IEditionService _editionService;
         protected readonly IAddBookService _addBookService;
+        protected readonly IMediaFileService _mediaFileService;
 
         public BookController(IAuthorService authorService,
                           IBookService bookService,
                           IAddBookService addBookService,
                           IEditionService editionService,
+                          IMediaFileService mediaFileService,
                           ISeriesBookLinkService seriesBookLinkService,
                           IAuthorStatisticsService authorStatisticsService,
                           IMapCoversToLocal coverMapper,
@@ -53,6 +55,7 @@ namespace Readarr.Api.V1.Books
             _authorService = authorService;
             _editionService = editionService;
             _addBookService = addBookService;
+            _mediaFileService = mediaFileService;
 
             PostValidator.RuleFor(s => s.ForeignBookId).NotEmpty();
             PostValidator.RuleFor(s => s.Author.QualityProfileId).SetValidator(qualityProfileExistsValidator);
@@ -152,7 +155,7 @@ namespace Readarr.Api.V1.Books
         }
 
         [RestPostById]
-        public ActionResult<BookResource> AddBook(BookResource bookResource)
+        public ActionResult<BookResource> AddBook([FromBody] BookResource bookResource)
         {
             var book = _addBookService.AddBook(bookResource.ToModel());
 
@@ -160,18 +163,45 @@ namespace Readarr.Api.V1.Books
         }
 
         [RestPutById]
-        public ActionResult<BookResource> UpdateBook(BookResource bookResource)
+        public ActionResult<BookResource> UpdateBook([FromBody] BookResource bookResource)
         {
             var book = _bookService.GetBook(bookResource.Id);
+            var oldMonitoredEdition = book.Editions.Value.SingleOrDefault(x => x.Monitored);
 
             var model = bookResource.ToModel(book);
+            var newMonitoredEdition = model.Editions.Value.SingleOrDefault(x => x.Monitored);
 
             _bookService.UpdateBook(model);
             _editionService.UpdateMany(model.Editions.Value);
+            UpdateFileEditionLinks(oldMonitoredEdition, newMonitoredEdition);
 
             BroadcastResourceChange(ModelAction.Updated, model.Id);
 
             return Accepted(model.Id);
+        }
+
+        private void UpdateFileEditionLinks(Edition oldMonitoredEdition, Edition newMonitoredEdition)
+        {
+            if (oldMonitoredEdition == null ||
+                newMonitoredEdition == null ||
+                oldMonitoredEdition.Id == newMonitoredEdition.Id)
+            {
+                return;
+            }
+
+            var files = _mediaFileService.GetFilesByEdition(oldMonitoredEdition.Id);
+
+            if (!files.Any())
+            {
+                return;
+            }
+
+            foreach (var file in files)
+            {
+                file.EditionId = newMonitoredEdition.Id;
+            }
+
+            _mediaFileService.Update(files);
         }
 
         [RestDeleteById]

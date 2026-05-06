@@ -18,7 +18,7 @@ namespace NzbDrone.Core.Notifications.Webhook
             _proxy = proxy;
         }
 
-        public override string Link => "https://wiki.servarr.com/readarr/settings#connections";
+        public override string Link => "https://readairr.com/docs/wiki/readarr/settings.html#connections";
 
         public override void OnGrab(GrabMessage message)
         {

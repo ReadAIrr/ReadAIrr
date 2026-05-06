@@ -1,3 +1,70 @@
 .deleteButtonContainer {
   margin-right: auto;
 }
+
+.preview {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.previewTitle {
+  font-weight: 600;
+}
+
+.previewSummary,
+.previewRuleDescription,
+.previewLoading {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.previewError {
+  margin-top: 12px;
+  color: var(--dangerColor);
+}
+
+.previewRules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.previewRule {
+  padding-top: 10px;
+  border-top: 1px solid var(--borderColor);
+}
+
+.previewRuleHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.previewExamples {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.previewExamples li {
+  margin-bottom: 6px;
+}
+
+.previewExamples span {
+  display: block;
+}
+
+.previewExamples span + span {
+  color: var(--textSecondaryColor);
+}

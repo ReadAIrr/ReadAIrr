@@ -10,6 +10,7 @@ import {
   toggleAdvancedSettings
 } from 'Store/Actions/settingsActions';
 import createProviderSettingsSelector from 'Store/Selectors/createProviderSettingsSelector';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import EditImportListModalContent from './EditImportListModalContent';
 
 function createMapStateToProps() {
@@ -36,6 +37,15 @@ const mapDispatchToProps = {
 };
 
 class EditImportListModalContentConnector extends Component {
+  constructor(props, context) {
+    super(props, context);
+
+    this.state = {
+      isPreviewFetching: false,
+      previewError: null,
+      preview: null
+    };
+  }
 
   //
   // Lifecycle
@@ -43,6 +53,12 @@ class EditImportListModalContentConnector extends Component {
   componentDidUpdate(prevProps, prevState) {
     if (prevProps.isSaving && !this.props.isSaving && !this.props.saveError) {
       this.props.onModalClose();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this._abortPreviewRequest) {
+      this._abortPreviewRequest();
     }
   }
 
@@ -65,6 +81,63 @@ class EditImportListModalContentConnector extends Component {
     this.props.testImportList({ id: this.props.id });
   };
 
+  onPreviewPress = () => {
+    if (this._abortPreviewRequest) {
+      this._abortPreviewRequest();
+    }
+
+    const {
+      request,
+      abortRequest
+    } = createAjaxRequest({
+      url: '/importlist/preview',
+      method: 'POST',
+      dataType: 'json',
+      data: JSON.stringify(this.getPreviewPayload())
+    });
+
+    this._abortPreviewRequest = abortRequest;
+    this.setState({
+      isPreviewFetching: true,
+      previewError: null
+    });
+
+    request.done((preview) => {
+      this.setState({
+        isPreviewFetching: false,
+        preview
+      });
+    }).fail((xhr) => {
+      if (xhr.aborted) {
+        return;
+      }
+
+      this.setState({
+        isPreviewFetching: false,
+        previewError: xhr
+      });
+    });
+  };
+
+  getPreviewPayload = () => {
+    const {
+      item,
+      id
+    } = this.props;
+
+    return Object.keys(item).reduce((result, key) => {
+      const setting = item[key];
+
+      if (key === 'fields') {
+        result.fields = setting;
+      } else if (setting && Object.prototype.hasOwnProperty.call(setting, 'value')) {
+        result[key] = setting.value;
+      }
+
+      return result;
+    }, { id: id || 0 });
+  };
+
   onAdvancedSettingsPress = () => {
     this.props.toggleAdvancedSettings();
   };
@@ -75,9 +148,11 @@ class EditImportListModalContentConnector extends Component {
   render() {
     return (
       <EditImportListModalContent
+        {...this.state}
         {...this.props}
         onSavePress={this.onSavePress}
         onTestPress={this.onTestPress}
+        onPreviewPress={this.onPreviewPress}
         onAdvancedSettingsPress={this.onAdvancedSettingsPress}
         onInputChange={this.onInputChange}
         onFieldChange={this.onFieldChange}

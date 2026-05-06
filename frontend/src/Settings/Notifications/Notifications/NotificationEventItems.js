@@ -53,7 +53,7 @@ function NotificationEventItems(props) {
       <div>
         <FormInputHelpText
           text="Select which events should trigger this notification"
-          link="https://wiki.servarr.com/readarr/settings#connections"
+          link="https://readairr.com/docs/wiki/readarr/settings.html#connections"
         />
         <div className={styles.events}>
           <div>

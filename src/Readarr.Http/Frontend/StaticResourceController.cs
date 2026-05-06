@@ -10,7 +10,6 @@ using Readarr.Http.Frontend.Mappers;
 namespace Readarr.Http.Frontend
 {
     [Authorize(Policy="UI")]
-    [ApiController]
     public class StaticResourceController : Controller
     {
         private readonly IEnumerable<IMapHttpRequestsToDisk> _requestMappers;

@@ -15,6 +15,13 @@ namespace Readarr.Api.V1.Profiles.Metadata
         public bool SkipMissingIsbn { get; set; }
         public bool SkipPartsAndSets { get; set; }
         public bool SkipSeriesSecondary { get; set; }
+        public bool RequireReadable { get; set; }
+        public bool RequireAudio { get; set; }
+        public bool SkipAnthologies { get; set; }
+        public bool SkipCollections { get; set; }
+        public bool SkipSerializedParts { get; set; }
+        public bool SkipEssays { get; set; }
+        public bool SkipShortStories { get; set; }
         public string AllowedLanguages { get; set; }
         public int MinPages { get; set; }
         public List<string> Ignored { get; set; }
@@ -38,6 +45,13 @@ namespace Readarr.Api.V1.Profiles.Metadata
                 SkipMissingIsbn = model.SkipMissingIsbn,
                 SkipPartsAndSets = model.SkipPartsAndSets,
                 SkipSeriesSecondary = model.SkipSeriesSecondary,
+                RequireReadable = model.RequireReadable,
+                RequireAudio = model.RequireAudio,
+                SkipAnthologies = model.SkipAnthologies,
+                SkipCollections = model.SkipCollections,
+                SkipSerializedParts = model.SkipSerializedParts,
+                SkipEssays = model.SkipEssays,
+                SkipShortStories = model.SkipShortStories,
                 AllowedLanguages = model.AllowedLanguages,
                 MinPages = model.MinPages,
                 Ignored = CleanIgnored(model.Ignored)
@@ -60,6 +74,13 @@ namespace Readarr.Api.V1.Profiles.Metadata
                 SkipMissingIsbn = resource.SkipMissingIsbn,
                 SkipPartsAndSets = resource.SkipPartsAndSets,
                 SkipSeriesSecondary = resource.SkipSeriesSecondary,
+                RequireReadable = resource.RequireReadable,
+                RequireAudio = resource.RequireAudio,
+                SkipAnthologies = resource.SkipAnthologies,
+                SkipCollections = resource.SkipCollections,
+                SkipSerializedParts = resource.SkipSerializedParts,
+                SkipEssays = resource.SkipEssays,
+                SkipShortStories = resource.SkipShortStories,
                 AllowedLanguages = resource.AllowedLanguages,
                 MinPages = resource.MinPages,
                 Ignored = CleanIgnored(resource.Ignored)

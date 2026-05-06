@@ -1,0 +1,92 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.summary,
+.bookMeta,
+.reason {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.completeness {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.completeness div {
+  padding: 10px 0;
+  border-top: 1px solid var(--borderColor);
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.completeness span {
+  display: block;
+  color: var(--textColor);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.bookList {
+  border-top: 1px solid var(--borderColor);
+}
+
+.bookRow {
+  display: grid;
+  grid-template-columns: 70px minmax(180px, 1fr) 100px minmax(220px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--borderColor);
+}
+
+.position {
+  color: var(--textSecondaryColor);
+}
+
+.bookMain {
+  min-width: 0;
+}
+
+.available {
+  color: var(--successColor);
+}
+
+.missing {
+  color: var(--dangerColor);
+}
+
+@media only screen and (max-width: 700px) {
+  .header,
+  .actions {
+    display: block;
+  }
+
+  .bookRow {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .available,
+  .missing,
+  .reason {
+    grid-column: 2;
+  }
+}
