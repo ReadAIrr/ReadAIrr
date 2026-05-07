@@ -5,7 +5,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
-import { toggleAuthorMonitored } from 'Store/Actions/authorActions';
+import { fetchAuthor, toggleAuthorMonitored } from 'Store/Actions/authorActions';
 import { clearBookFiles, fetchBookFiles } from 'Store/Actions/bookFileActions';
 import { saveBookEditor } from 'Store/Actions/bookIndexActions';
 import { executeCommand } from 'Store/Actions/commandActions';
@@ -17,6 +17,7 @@ import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createSortedSectionSelector from 'Store/Selectors/createSortedSectionSelector';
 import { findCommand, isCommandExecuting } from 'Utilities/Command';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { registerPagePopulator, unregisterPagePopulator } from 'Utilities/pagePopulator';
 import AuthorDetails from './AuthorDetails';
 
@@ -196,6 +197,7 @@ function createMapStateToProps() {
         hasSeries,
         series: seriesItems,
         hasBookFiles,
+        allAuthors: sortedAuthor,
         previousAuthor,
         nextAuthor,
         isSmallScreen: dimensions.isSmallScreen
@@ -205,6 +207,7 @@ function createMapStateToProps() {
 }
 
 const mapDispatchToProps = {
+  fetchAuthor,
   fetchSeries,
   clearSeries,
   saveBookEditor,
@@ -266,7 +269,7 @@ class AuthorDetailsConnector extends Component {
   populate = () => {
     const authorId = this.props.id;
 
-    this.props.fetchSeries({ authorId });
+    this.props.fetchSeries({ authorId, includeLinkedAuthors: true });
     this.props.fetchBookFiles({ authorId });
     this.props.fetchQueueDetails({ authorId });
   };
@@ -303,6 +306,32 @@ class AuthorDetailsConnector extends Component {
     });
   };
 
+  onLinkAuthorPress = (payload) => {
+    const { request } = createAjaxRequest({
+      url: '/authoridentitylink',
+      method: 'POST',
+      data: JSON.stringify(payload),
+      dataType: 'json'
+    });
+
+    request.done(() => {
+      this.props.fetchAuthor();
+      this.populate();
+    });
+  };
+
+  onUnlinkAuthorPress = (linkId) => {
+    const { request } = createAjaxRequest({
+      url: `/authoridentitylink/${linkId}`,
+      method: 'DELETE'
+    });
+
+    request.done(() => {
+      this.props.fetchAuthor();
+      this.populate();
+    });
+  };
+
   onSaveSelected = (payload) => {
     this.props.saveBookEditor(payload);
   };
@@ -317,6 +346,8 @@ class AuthorDetailsConnector extends Component {
         onMonitorTogglePress={this.onMonitorTogglePress}
         onRefreshPress={this.onRefreshPress}
         onSearchPress={this.onSearchPress}
+        onLinkAuthorPress={this.onLinkAuthorPress}
+        onUnlinkAuthorPress={this.onUnlinkAuthorPress}
         onSaveSelected={this.onSaveSelected}
       />
     );
@@ -331,6 +362,7 @@ AuthorDetailsConnector.propTypes = {
   isRefreshing: PropTypes.bool.isRequired,
   isRenamingFiles: PropTypes.bool.isRequired,
   isRenamingAuthor: PropTypes.bool.isRequired,
+  fetchAuthor: PropTypes.func.isRequired,
   fetchSeries: PropTypes.func.isRequired,
   clearSeries: PropTypes.func.isRequired,
   saveBookEditor: PropTypes.func.isRequired,

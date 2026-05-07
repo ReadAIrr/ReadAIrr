@@ -21,7 +21,9 @@ import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectReleaseGroupModal from 'InteractiveImport/ReleaseGroup/SelectReleaseGroupModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import InteractiveImportDecisionDetails from './InteractiveImportDecisionDetails';
 import InteractiveImportRowCellPlaceholder from './InteractiveImportRowCellPlaceholder';
+import { getManualImportDecision } from './manualImportReviewContext';
 import styles from './InteractiveImportRow.css';
 
 class InteractiveImportRow extends Component {
@@ -183,12 +185,12 @@ class InteractiveImportRow extends Component {
       size,
       customFormats,
       indexerFlags,
-      rejections,
       columns,
       additionalFile,
       isSelected,
       isReprocessing,
       isImporting,
+      importStatus,
       importError,
       onSelectedChange,
       audioTags
@@ -237,11 +239,12 @@ class InteractiveImportRow extends Component {
     );
 
     const isIndexerFlagsColumnVisible = columns.find((c) => c.name === 'indexerFlags')?.isVisible ?? false;
+    const decision = getManualImportDecision(this.props);
     let statusCell = null;
 
     if (isImporting) {
       statusCell = (
-        <Tooltip
+        <Popover
           anchor={
             <Icon
               name={icons.SPINNER}
@@ -249,8 +252,10 @@ class InteractiveImportRow extends Component {
               isSpinning={true}
             />
           }
-          tooltip={translate('Importing')}
+          title={translate('Importing')}
+          body={importStatus || importError || 'Import command queued or running.'}
           position={tooltipPositions.LEFT}
+          canFlip={false}
         />
       );
     } else if (importError) {
@@ -268,7 +273,7 @@ class InteractiveImportRow extends Component {
           canFlip={false}
         />
       );
-    } else if (rejections.length) {
+    } else if (decision.reasons.length) {
       statusCell = (
         <Popover
           anchor={
@@ -277,20 +282,23 @@ class InteractiveImportRow extends Component {
               kind={kinds.DANGER}
             />
           }
-          title={translate('ReleaseRejected')}
-          body={
-            <ul>
-              {
-                rejections.map((rejection, index) => {
-                  return (
-                    <li key={index}>
-                      {rejection.reason}
-                    </li>
-                  );
-                })
-              }
-            </ul>
+          title="Import decision"
+          body={<InteractiveImportDecisionDetails {...this.props} />}
+          position={tooltipPositions.LEFT}
+          canFlip={false}
+        />
+      );
+    } else {
+      statusCell = (
+        <Popover
+          anchor={
+            <Icon
+              name={icons.CHECK_CIRCLE}
+              kind={kinds.SUCCESS}
+            />
           }
+          title="Import decision"
+          body={<InteractiveImportDecisionDetails {...this.props} />}
           position={tooltipPositions.LEFT}
           canFlip={false}
         />
@@ -494,6 +502,7 @@ InteractiveImportRow.propTypes = {
   additionalFile: PropTypes.bool.isRequired,
   isReprocessing: PropTypes.bool,
   isImporting: PropTypes.bool,
+  importStatus: PropTypes.string,
   importError: PropTypes.string,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired,

@@ -38,6 +38,7 @@ namespace Readarr.Api.V1.Author
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IAddAuthorService _addAuthorService;
+        private readonly IAuthorIdentityLinkService _authorIdentityLinkService;
         private readonly IAuthorStatisticsService _authorStatisticsService;
         private readonly IMapCoversToLocal _coverMapper;
         private readonly IManageCommandQueue _commandQueueManager;
@@ -47,6 +48,7 @@ namespace Readarr.Api.V1.Author
                             IAuthorService authorService,
                             IBookService bookService,
                             IAddAuthorService addAuthorService,
+                            IAuthorIdentityLinkService authorIdentityLinkService,
                             IAuthorStatisticsService authorStatisticsService,
                             IMapCoversToLocal coverMapper,
                             IManageCommandQueue commandQueueManager,
@@ -66,6 +68,7 @@ namespace Readarr.Api.V1.Author
             _authorService = authorService;
             _bookService = bookService;
             _addAuthorService = addAuthorService;
+            _authorIdentityLinkService = authorIdentityLinkService;
             _authorStatisticsService = authorStatisticsService;
 
             _coverMapper = coverMapper;
@@ -116,6 +119,7 @@ namespace Readarr.Api.V1.Author
             var resource = author.ToResource();
             MapCoversToLocal(resource);
             FetchAndLinkAuthorStatistics(resource);
+            LinkAuthorIdentityData(new List<AuthorResource> { resource }, _authorService.GetAllAuthors().ToResource(), _authorStatisticsService.AuthorStatistics().ToDictionary(x => x.AuthorId), _authorIdentityLinkService.All());
             LinkNextPreviousBooks(resource);
 
             LinkRootFolderPath(resource);
@@ -131,7 +135,9 @@ namespace Readarr.Api.V1.Author
 
             MapCoversToLocal(authorResources.ToArray());
             LinkNextPreviousBooks(authorResources.ToArray());
-            LinkAuthorStatistics(authorResources, authorStats.ToDictionary(x => x.AuthorId));
+            var authorStatsByAuthor = authorStats.ToDictionary(x => x.AuthorId);
+            LinkAuthorStatistics(authorResources, authorStatsByAuthor);
+            LinkAuthorIdentityData(authorResources, authorResources, authorStatsByAuthor, _authorIdentityLinkService.All());
             LinkRootFolderPath(authorResources.ToArray());
 
             return authorResources;
@@ -218,6 +224,90 @@ namespace Readarr.Api.V1.Author
         private void LinkAuthorStatistics(AuthorResource resource, AuthorStatistics authorStatistics)
         {
             resource.Statistics = authorStatistics.ToResource();
+        }
+
+        private static void LinkAuthorIdentityData(List<AuthorResource> resources, List<AuthorResource> allAuthors, Dictionary<int, AuthorStatistics> authorStatistics, List<AuthorIdentityLink> links)
+        {
+            var authorById = allAuthors.ToDictionary(x => x.Id);
+
+            foreach (var author in resources)
+            {
+                var identityIds = GetAuthorIdentityIds(author.Id, links);
+                var linkedAuthorIds = identityIds.Where(x => x != author.Id).ToHashSet();
+                var authorLinks = links.Where(x => identityIds.Contains(x.CanonicalAuthorId) || identityIds.Contains(x.AliasAuthorId)).ToList();
+
+                author.LinkedAuthors = linkedAuthorIds
+                    .Where(authorById.ContainsKey)
+                    .Select(x => MapLinkedAuthor(author.Id, authorById[x], authorLinks))
+                    .ToList();
+
+                author.IdentityStatistics = AggregateAuthorStatistics(identityIds, authorStatistics).ToResource();
+            }
+        }
+
+        private static List<int> GetAuthorIdentityIds(int authorId, List<AuthorIdentityLink> links)
+        {
+            var authorIds = new HashSet<int> { authorId };
+            var pending = new Queue<int>();
+            pending.Enqueue(authorId);
+
+            while (pending.Any())
+            {
+                var currentAuthorId = pending.Dequeue();
+                var connectedAuthorIds = links
+                    .Where(x => x.CanonicalAuthorId == currentAuthorId || x.AliasAuthorId == currentAuthorId)
+                    .Select(x => x.CanonicalAuthorId == currentAuthorId ? x.AliasAuthorId : x.CanonicalAuthorId);
+
+                foreach (var connectedAuthorId in connectedAuthorIds)
+                {
+                    if (authorIds.Add(connectedAuthorId))
+                    {
+                        pending.Enqueue(connectedAuthorId);
+                    }
+                }
+            }
+
+            return authorIds.ToList();
+        }
+
+        private static LinkedAuthorResource MapLinkedAuthor(int authorId, AuthorResource linkedAuthor, List<AuthorIdentityLink> links)
+        {
+            var link = links.FirstOrDefault(x => x.CanonicalAuthorId == authorId && x.AliasAuthorId == linkedAuthor.Id) ??
+                       links.FirstOrDefault(x => x.AliasAuthorId == authorId && x.CanonicalAuthorId == linkedAuthor.Id) ??
+                       links.FirstOrDefault(x => x.CanonicalAuthorId == linkedAuthor.Id || x.AliasAuthorId == linkedAuthor.Id);
+
+            return new LinkedAuthorResource
+            {
+                Id = linkedAuthor.Id,
+                AuthorName = linkedAuthor.AuthorName,
+                TitleSlug = linkedAuthor.TitleSlug,
+                RelationshipType = link?.RelationshipType,
+                DisplayPreference = link?.DisplayPreference,
+                IsCanonical = link?.CanonicalAuthorId == linkedAuthor.Id,
+                LinkId = link?.Id ?? 0
+            };
+        }
+
+        private static AuthorStatistics AggregateAuthorStatistics(List<int> authorIds, Dictionary<int, AuthorStatistics> authorStatistics)
+        {
+            var stats = authorIds
+                .Where(authorStatistics.ContainsKey)
+                .Select(x => authorStatistics[x])
+                .ToList();
+
+            if (!stats.Any())
+            {
+                return new AuthorStatistics();
+            }
+
+            return new AuthorStatistics
+            {
+                BookFileCount = stats.Sum(x => x.BookFileCount),
+                BookCount = stats.Sum(x => x.BookCount),
+                AvailableBookCount = stats.Sum(x => x.AvailableBookCount),
+                TotalBookCount = stats.Sum(x => x.TotalBookCount),
+                SizeOnDisk = stats.Sum(x => x.SizeOnDisk)
+            };
         }
 
         private void LinkRootFolderPath(params AuthorResource[] authors)

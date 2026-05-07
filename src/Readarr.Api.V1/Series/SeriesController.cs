@@ -12,21 +12,28 @@ namespace Readarr.Api.V1.Series
     {
         protected readonly ISeriesService _seriesService;
         protected readonly ISeriesBookLinkService _seriesBookLinkService;
+        protected readonly IAuthorIdentityLinkService _authorIdentityLinkService;
         protected readonly IMediaFileService _mediaFileService;
 
         public SeriesController(ISeriesService seriesService,
                                 ISeriesBookLinkService seriesBookLinkService,
+                                IAuthorIdentityLinkService authorIdentityLinkService,
                                 IMediaFileService mediaFileService)
         {
             _seriesService = seriesService;
             _seriesBookLinkService = seriesBookLinkService;
+            _authorIdentityLinkService = authorIdentityLinkService;
             _mediaFileService = mediaFileService;
         }
 
         [HttpGet]
-        public List<SeriesResource> GetSeries(int? authorId)
+        public List<SeriesResource> GetSeries(int? authorId, bool includeLinkedAuthors = false)
         {
-            var series = authorId.HasValue ? _seriesService.GetByAuthorId(authorId.Value) : _seriesService.All();
+            var series = authorId.HasValue ?
+                includeLinkedAuthors ?
+                    _seriesService.GetByAuthorIds(_authorIdentityLinkService.GetAuthorIdentityIds(authorId.Value)) :
+                    _seriesService.GetByAuthorId(authorId.Value) :
+                _seriesService.All();
             var links = series.ToDictionary(x => x.Id, x => _seriesBookLinkService.GetLinksBySeries(x.Id));
             var files = links.SelectMany(x => x.Value)
                 .Select(x => x.Book.Value.Id)

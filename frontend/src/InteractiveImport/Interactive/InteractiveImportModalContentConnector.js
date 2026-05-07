@@ -179,6 +179,7 @@ class InteractiveImportModalContentConnector extends Component {
     this.props.updateInteractiveImportItems({
       ids: selected,
       isImporting: true,
+      importStatus: 'Import command queued.',
       importError: null
     });
 
@@ -201,6 +202,7 @@ class InteractiveImportModalContentConnector extends Component {
         this.props.updateInteractiveImportItems({
           ids: selected,
           isImporting: false,
+          importStatus: null,
           importError: command.message || 'Import failed'
         });
       }
@@ -211,6 +213,7 @@ class InteractiveImportModalContentConnector extends Component {
         this.props.updateInteractiveImportItems({
           ids: selected,
           isImporting: false,
+          importStatus: null,
           importError: xhr.responseJSON?.message || 'Unable to start import command'
         });
       });

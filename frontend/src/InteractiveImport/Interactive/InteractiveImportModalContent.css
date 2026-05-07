@@ -34,6 +34,11 @@
   width: auto;
 }
 
+.leftButtons a,
+.leftButtons button {
+  margin-right: 8px;
+}
+
 .errorMessage {
   color: var(--dangerColor);
 }

@@ -11,6 +11,7 @@ namespace NzbDrone.Core.Books
         List<Series> All();
         List<Series> GetByAuthorMetadataId(int authorMetadataId);
         List<Series> GetByAuthorId(int authorId);
+        List<Series> GetByAuthorIds(IEnumerable<int> authorIds);
         void Delete(int seriesId);
         void InsertMany(IList<Series> series);
         void UpdateMany(IList<Series> series);
@@ -53,6 +54,11 @@ namespace NzbDrone.Core.Books
         public List<Series> GetByAuthorId(int authorId)
         {
             return _seriesRepository.GetByAuthorId(authorId);
+        }
+
+        public List<Series> GetByAuthorIds(IEnumerable<int> authorIds)
+        {
+            return _seriesRepository.GetByAuthorIds(authorIds);
         }
 
         public void Delete(int seriesId)

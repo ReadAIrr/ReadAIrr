@@ -251,7 +251,23 @@ class InteractiveImportModalContent extends Component {
   };
 
   onGetBookMappingPress = () => {
-    this.props.saveInteractiveImportItem({ id: this.getSelectedIds() });
+    this.props.saveInteractiveImportItem({ ids: this.getSelectedIds() });
+  };
+
+  onIgnoreSelectedPress = () => {
+    const selectedIds = this.getSelectedIds();
+
+    this.props.removeInteractiveImportItems({ ids: selectedIds });
+    this.setState(selectAll(this.state.selectedState, false));
+  };
+
+  onOpenManualMatchPress = () => {
+    const selectedIds = this.getSelectedIds();
+    const selectedItem = selectedIds.length ? _.find(this.props.items, { id: selectedIds[0] }) : null;
+
+    this.setState({
+      selectModalOpen: selectedItem?.author ? BOOK : AUTHOR
+    });
   };
 
   onSelectModalClose = () => {
@@ -489,6 +505,27 @@ class InteractiveImportModalContent extends Component {
               isDisabled={!selectedIds.length}
               onChange={this.onSelectModalSelect}
             />
+
+            <Button
+              isDisabled={isSaving || !selectedIds.length}
+              onPress={this.onIgnoreSelectedPress}
+            >
+              Ignore
+            </Button>
+
+            <Button
+              isDisabled={isSaving || !selectedIds.length}
+              onPress={this.onGetBookMappingPress}
+            >
+              Retry Identify
+            </Button>
+
+            <Button
+              isDisabled={isSaving || !selectedIds.length}
+              onPress={this.onOpenManualMatchPress}
+            >
+              Manual Match
+            </Button>
           </div>
 
           <div className={styles.rightButtons}>
@@ -591,6 +628,7 @@ InteractiveImportModalContent.propTypes = {
   onImportModeChange: PropTypes.func.isRequired,
   onImportSelectedPress: PropTypes.func.isRequired,
   saveInteractiveImportItem: PropTypes.func.isRequired,
+  removeInteractiveImportItems: PropTypes.func.isRequired,
   updateInteractiveImportItem: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };

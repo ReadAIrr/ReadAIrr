@@ -1,0 +1,33 @@
+.decisionSummary {
+  max-width: 360px;
+}
+
+.candidate {
+  margin-bottom: 8px;
+}
+
+.candidateTitle {
+  font-weight: 600;
+}
+
+.candidateMeta {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.reasonList {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.reason {
+  margin-bottom: 6px;
+}
+
+.reasonLabel {
+  font-weight: 600;
+}
+
+.reasonDetail {
+  color: var(--textSecondaryColor);
+}

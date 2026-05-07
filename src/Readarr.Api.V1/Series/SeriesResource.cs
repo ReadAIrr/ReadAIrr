@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles;
+using Readarr.Api.V1.Books;
 using Readarr.Http.REST;
 
 namespace Readarr.Api.V1.Series
@@ -120,33 +121,8 @@ namespace Readarr.Api.V1.Series
                 Monitored = book.Monitored,
                 AuthorMonitored = author.Monitored,
                 HasFile = hasFile,
-                MissingReason = GetMissingReason(book, author, hasFile)
+                MissingReason = BookMissingReason.Get(book, hasFile)
             };
-        }
-
-        private static string GetMissingReason(Book book, NzbDrone.Core.Books.Author author, bool hasFile)
-        {
-            if (hasFile)
-            {
-                return null;
-            }
-
-            if (!author.Monitored)
-            {
-                return "Missing because the author is not monitored.";
-            }
-
-            if (!book.Monitored)
-            {
-                return "Missing because the book is not monitored.";
-            }
-
-            if (book.Editions?.Value != null && !book.AnyEditionOk && !book.Editions.Value.Any(x => x.Monitored))
-            {
-                return "Missing because no edition is monitored.";
-            }
-
-            return "Missing because no imported file exists for the monitored book or edition.";
         }
     }
 }

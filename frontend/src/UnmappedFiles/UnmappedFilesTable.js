@@ -11,6 +11,7 @@ import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptions
 import VirtualTable from 'Components/Table/VirtualTable';
 import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import { align, icons, kinds, sortDirections } from 'Helpers/Props';
+import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import hasDifferentItemsOrOrder from 'Utilities/Object/hasDifferentItemsOrOrder';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -32,7 +33,10 @@ class UnmappedFilesTable extends Component {
       allSelected: false,
       allUnselected: false,
       lastToggled: null,
-      selectedState: {}
+      selectedState: {},
+      ignoredIds: [],
+      isManualMatchModalOpen: false,
+      manualMatchFolder: null
     };
   }
 
@@ -134,9 +138,81 @@ class UnmappedFilesTable extends Component {
     this.props.deleteUnmappedFiles(selectedIds);
   };
 
+  getSelectedItems = () => {
+    const selectedIds = this.getSelectedIds();
+
+    return this.props.items.filter((item) => {
+      return selectedIds.indexOf(item.id) > -1;
+    });
+  };
+
+  getVisibleItems = () => {
+    const {
+      ignoredIds
+    } = this.state;
+
+    return this.props.items.filter((item) => {
+      return ignoredIds.indexOf(item.id) === -1;
+    });
+  };
+
+  getSelectedFolder = () => {
+    const selectedItem = this.getSelectedItems()[0];
+
+    if (!selectedItem) {
+      return null;
+    }
+
+    const {
+      path
+    } = selectedItem;
+
+    return path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
+  };
+
+  getSelectedFolders = () => {
+    return [...new Set(this.getSelectedItems().map((item) => {
+      const {
+        path
+      } = item;
+
+      return path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
+    }))];
+  };
+
+  onIgnoreSelectedPress = () => {
+    const selectedIds = this.getSelectedIds();
+
+    this.setState((state) => {
+      return {
+        ignoredIds: [...new Set([...state.ignoredIds, ...selectedIds])],
+        ...selectAll(state.selectedState, false)
+      };
+    });
+  };
+
+  onOpenManualMatchPress = () => {
+    this.setState({
+      isManualMatchModalOpen: true,
+      manualMatchFolder: this.getSelectedFolder()
+    });
+  };
+
+  onManualMatchModalClose = () => {
+    this.setState({
+      isManualMatchModalOpen: false,
+      manualMatchFolder: null
+    });
+
+    this.props.fetchUnmappedFiles();
+  };
+
+  onRetryIdentifyPress = () => {
+    this.props.onRetryIdentifyPress(this.getSelectedFolders());
+  };
+
   rowRenderer = ({ key, rowIndex, style }) => {
     const {
-      items,
       columns,
       deleteUnmappedFile
     } = this.props;
@@ -145,7 +221,7 @@ class UnmappedFilesTable extends Component {
       selectedState
     } = this.state;
 
-    const item = items[rowIndex];
+    const item = this.getVisibleItems()[rowIndex];
 
     return (
       <VirtualTableRow
@@ -179,7 +255,6 @@ class UnmappedFilesTable extends Component {
       onSortPress,
       isScanningFolders,
       onAddMissingAuthorsPress,
-      deleteUnmappedFiles,
       ...otherProps
     } = this.props;
 
@@ -187,10 +262,13 @@ class UnmappedFilesTable extends Component {
       scroller,
       allSelected,
       allUnselected,
-      selectedState
+      selectedState,
+      isManualMatchModalOpen,
+      manualMatchFolder
     } = this.state;
 
     const selectedTrackFileIds = this.getSelectedIds();
+    const visibleItems = this.getVisibleItems();
 
     return (
       <PageContent title={translate('UnmappedFiles')}>
@@ -202,6 +280,24 @@ class UnmappedFilesTable extends Component {
               isDisabled={isPopulated && !error && !items.length}
               isSpinning={isScanningFolders}
               onPress={onAddMissingAuthorsPress}
+            />
+            <PageToolbarButton
+              label="Ignore Selected"
+              iconName={icons.IGNORE}
+              isDisabled={selectedTrackFileIds.length === 0}
+              onPress={this.onIgnoreSelectedPress}
+            />
+            <PageToolbarButton
+              label="Retry Identify"
+              iconName={icons.REFRESH}
+              isDisabled={selectedTrackFileIds.length === 0}
+              onPress={this.onRetryIdentifyPress}
+            />
+            <PageToolbarButton
+              label="Open Manual Match"
+              iconName={icons.INTERACTIVE}
+              isDisabled={selectedTrackFileIds.length === 0}
+              onPress={this.onOpenManualMatchPress}
             />
             <PageToolbarButton
               label={translate('DeleteSelected')}
@@ -236,16 +332,16 @@ class UnmappedFilesTable extends Component {
           }
 
           {
-            isPopulated && !error && !items.length &&
+            isPopulated && !error && !visibleItems.length &&
               <Alert kind={kinds.INFO}>
                 Success! My work is done, all files on disk are matched to known books.
               </Alert>
           }
 
           {
-            isPopulated && !error && !!items.length && scroller &&
+            isPopulated && !error && !!visibleItems.length && scroller &&
               <VirtualTable
-                items={items}
+                items={visibleItems}
                 columns={columns}
                 scroller={scroller}
                 isSmallScreen={false}
@@ -268,6 +364,17 @@ class UnmappedFilesTable extends Component {
                 sortDirection={sortDirection}
               />
           }
+
+          <InteractiveImportModal
+            isOpen={isManualMatchModalOpen}
+            folder={manualMatchFolder}
+            showFilterExistingFiles={true}
+            filterExistingFiles={false}
+            showImportMode={false}
+            showReplaceExistingFiles={false}
+            replaceExistingFiles={false}
+            onModalClose={this.onManualMatchModalClose}
+          />
         </PageContentBody>
       </PageContent>
     );
@@ -286,10 +393,12 @@ UnmappedFilesTable.propTypes = {
   sortDirection: PropTypes.oneOf(sortDirections.all),
   onTableOptionChange: PropTypes.func.isRequired,
   onSortPress: PropTypes.func.isRequired,
+  fetchUnmappedFiles: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
   deleteUnmappedFiles: PropTypes.func.isRequired,
   isScanningFolders: PropTypes.bool.isRequired,
-  onAddMissingAuthorsPress: PropTypes.func.isRequired
+  onAddMissingAuthorsPress: PropTypes.func.isRequired,
+  onRetryIdentifyPress: PropTypes.func.isRequired
 };
 
 export default UnmappedFilesTable;

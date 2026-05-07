@@ -145,30 +145,7 @@ namespace Readarr.Api.V1.Books
 
         private void LinkMissingReason(Book book, BookResource resource)
         {
-            if (resource.Statistics?.BookFileCount > 0)
-            {
-                return;
-            }
-
-            if (book.Author?.Value != null && !book.Author.Value.Monitored)
-            {
-                resource.MissingReason = "Missing because the author is not monitored.";
-                return;
-            }
-
-            if (!book.Monitored)
-            {
-                resource.MissingReason = "Missing because the book is not monitored.";
-                return;
-            }
-
-            if (book.Editions?.Value != null && !book.AnyEditionOk && !book.Editions.Value.Any(x => x.Monitored))
-            {
-                resource.MissingReason = "Missing because no edition is monitored.";
-                return;
-            }
-
-            resource.MissingReason = "Missing because no imported file exists for the monitored book or edition.";
+            resource.MissingReason = BookMissingReason.Get(book, resource.Statistics?.BookFileCount > 0);
         }
 
         private void MapCoversToLocal(params BookResource[] books)

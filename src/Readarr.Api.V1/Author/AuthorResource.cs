@@ -57,6 +57,8 @@ namespace Readarr.Api.V1.Author
         public Ratings Ratings { get; set; }
 
         public AuthorStatisticsResource Statistics { get; set; }
+        public AuthorStatisticsResource IdentityStatistics { get; set; }
+        public List<LinkedAuthorResource> LinkedAuthors { get; set; }
     }
 
     public static class AuthorResourceMapper
@@ -106,7 +108,9 @@ namespace Readarr.Api.V1.Author
                 AddOptions = model.AddOptions,
                 Ratings = model.Metadata.Value.Ratings,
 
-                Statistics = new AuthorStatisticsResource()
+                Statistics = new AuthorStatisticsResource(),
+                IdentityStatistics = new AuthorStatisticsResource(),
+                LinkedAuthors = new List<LinkedAuthorResource>()
             };
         }
 

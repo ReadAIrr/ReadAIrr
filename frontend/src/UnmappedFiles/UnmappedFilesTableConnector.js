@@ -69,6 +69,18 @@ function createMapDispatchToProps(dispatch, props) {
         addNewAuthors: true,
         filter: 'matched'
       }));
+    },
+
+    onRetryIdentifyPress(folders) {
+      dispatch(executeCommand({
+        name: commandNames.RESCAN_FOLDERS,
+        folders,
+        addNewAuthors: false,
+        filter: 'matched',
+        commandFinished: () => {
+          dispatch(fetchBookFiles({ unmapped: true }));
+        }
+      }));
     }
   };
 }
@@ -113,7 +125,8 @@ UnmappedFilesTableConnector.propTypes = {
   onTableOptionChange: PropTypes.func.isRequired,
   fetchUnmappedFiles: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
-  deleteUnmappedFiles: PropTypes.func.isRequired
+  deleteUnmappedFiles: PropTypes.func.isRequired,
+  onRetryIdentifyPress: PropTypes.func.isRequired
 };
 
 export default withCurrentPage(

@@ -7,6 +7,40 @@ import { executeCommand } from 'Store/Actions/commandActions';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import SeriesDetails from './SeriesDetails';
 
+const AUTHOR_NOT_MONITORED_REASON = 'Missing because the author is not monitored.';
+const BOOK_NOT_MONITORED_REASON = 'Missing because the book is not monitored.';
+const DEFAULT_MISSING_REASON = 'Missing because no imported file exists for the monitored book or edition.';
+
+function getMissingReason(book) {
+  if (book.hasFile) {
+    return null;
+  }
+
+  if (!book.authorMonitored) {
+    return AUTHOR_NOT_MONITORED_REASON;
+  }
+
+  if (!book.monitored) {
+    return BOOK_NOT_MONITORED_REASON;
+  }
+
+  if (book.missingReason === BOOK_NOT_MONITORED_REASON) {
+    return DEFAULT_MISSING_REASON;
+  }
+
+  return book.missingReason || DEFAULT_MISSING_REASON;
+}
+
+function getCompleteness(books) {
+  return {
+    totalBooks: books.length,
+    availableBooks: books.filter((book) => book.hasFile).length,
+    missingBooks: books.filter((book) => !book.hasFile).length,
+    unmonitoredBooks: books.filter((book) => !book.monitored).length,
+    unmonitoredAuthors: books.filter((book) => !book.authorMonitored).length
+  };
+}
+
 class SeriesDetailsConnector extends Component {
   constructor(props, context) {
     super(props, context);
@@ -56,7 +90,13 @@ class SeriesDetailsConnector extends Component {
   };
 
   onMonitorSeriesPress = (monitored) => {
-    const bookIds = this.state.item.books.map((book) => book.id);
+    const item = this.state.item;
+
+    if (!item) {
+      return;
+    }
+
+    const bookIds = item.books.map((book) => book.id);
 
     this.props.toggleBooksMonitored({
       bookIds,
@@ -64,15 +104,23 @@ class SeriesDetailsConnector extends Component {
     });
 
     this.setState((state) => {
+      const books = state.item.books.map((book) => {
+        const updatedBook = {
+          ...book,
+          monitored
+        };
+
+        return {
+          ...updatedBook,
+          missingReason: getMissingReason(updatedBook)
+        };
+      });
+
       return {
         item: {
           ...state.item,
-          books: state.item.books.map((book) => {
-            return {
-              ...book,
-              monitored
-            };
-          })
+          books,
+          completeness: getCompleteness(books)
         }
       };
     });
