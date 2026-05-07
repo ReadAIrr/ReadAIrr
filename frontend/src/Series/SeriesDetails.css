@@ -1,34 +1,69 @@
-.header {
+.bookType {
+  margin-bottom: 20px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.seriesTitle {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  align-items: center;
+  padding-left: 15px;
 }
 
-.title {
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
   font-size: 24px;
-  font-weight: 600;
 }
 
-.summary,
-.bookMeta,
-.reason {
+.left {
+  display: flex;
+  align-items: center;
+  flex: 1 1 300px;
+  min-width: 0;
+  padding: 15px 10px;
+}
+
+.bookTypeLabel {
+  margin-right: 5px;
+  margin-left: 5px;
+}
+
+.bookCount {
+  color: #8895aa;
+  font-style: italic;
+  font-size: 18px;
+}
+
+.summary {
+  flex: 0 0 auto;
+  padding: 15px 10px;
   color: var(--textSecondaryColor);
   font-size: 12px;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.actionButton {
+  composes: button from '~Components/Link/IconButton.css';
+
+  flex: 0 0 30px;
+  width: 30px;
+  margin-right: 15px;
+}
+
+.actionButtonIcon {
+  margin-bottom: -2px;
 }
 
 .completeness {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
-  margin-bottom: 18px;
+  padding: 0 15px 15px;
 }
 
 .completeness div {
@@ -41,52 +76,81 @@
 .completeness span {
   display: block;
   color: var(--textColor);
-  font-size: 20px;
   font-weight: 600;
+  font-size: 20px;
 }
 
-.bookList {
+.books {
+  padding-top: 15px;
   border-top: 1px solid var(--borderColor);
 }
 
-.bookRow {
-  display: grid;
-  grid-template-columns: 70px minmax(180px, 1fr) 100px minmax(220px, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--borderColor);
+.monitored {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  width: 42px;
 }
 
-.position {
+.position,
+.status {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  width: 100px;
+}
+
+.title {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 220px;
+}
+
+.author {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 180px;
+}
+
+.reason {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 260px;
   color: var(--textSecondaryColor);
+  font-size: 12px;
 }
 
-.bookMain {
-  min-width: 0;
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 15px;
+  width: 100%;
+  border-top: 1px solid var(--borderColor);
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+  color: var(--textSecondaryColor);
+  font-size: 12px;
 }
 
-.available {
-  color: var(--successColor);
-}
+@media only screen and (max-width: $breakpointSmall) {
+  .bookType {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
 
-.missing {
-  color: var(--dangerColor);
-}
+  .seriesTitle {
+    align-items: flex-start;
+    padding-top: 12px;
+  }
 
-@media only screen and (max-width: 700px) {
-  .header,
-  .actions {
+  .header {
     display: block;
   }
 
-  .bookRow {
-    grid-template-columns: 48px minmax(0, 1fr);
-  }
-
-  .available,
-  .missing,
-  .reason {
-    grid-column: 2;
+  .left,
+  .summary {
+    padding: 0 10px 8px;
   }
 }

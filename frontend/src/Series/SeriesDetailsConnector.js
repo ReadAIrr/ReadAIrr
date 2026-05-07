@@ -1,9 +1,12 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import { toggleBooksMonitored } from 'Store/Actions/bookActions';
 import { executeCommand } from 'Store/Actions/commandActions';
+import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
+import { isCommandExecuting } from 'Utilities/Command';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import SeriesDetails from './SeriesDetails';
 
@@ -98,6 +101,14 @@ class SeriesDetailsConnector extends Component {
 
     const bookIds = item.books.map((book) => book.id);
 
+    this.setBooksMonitored(bookIds, monitored);
+  };
+
+  onMonitorBookPress = (bookId, monitored) => {
+    this.setBooksMonitored([bookId], monitored);
+  };
+
+  setBooksMonitored = (bookIds, monitored) => {
     this.props.toggleBooksMonitored({
       bookIds,
       monitored
@@ -105,6 +116,10 @@ class SeriesDetailsConnector extends Component {
 
     this.setState((state) => {
       const books = state.item.books.map((book) => {
+        if (!bookIds.includes(book.id)) {
+          return book;
+        }
+
         const updatedBook = {
           ...book,
           monitored
@@ -141,7 +156,9 @@ class SeriesDetailsConnector extends Component {
     return (
       <SeriesDetails
         {...this.state}
+        isSearchingSeries={this.props.isSearchingSeries}
         onMonitorSeriesPress={this.onMonitorSeriesPress}
+        onMonitorBookPress={this.onMonitorBookPress}
         onSearchSeriesPress={this.onSearchSeriesPress}
       />
     );
@@ -150,13 +167,32 @@ class SeriesDetailsConnector extends Component {
 
 SeriesDetailsConnector.propTypes = {
   match: PropTypes.object.isRequired,
+  isSearchingSeries: PropTypes.bool.isRequired,
   toggleBooksMonitored: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired
 };
+
+function createMapStateToProps() {
+  return createSelector(
+    createCommandsSelector(),
+    (commands) => {
+      const isSearchingSeries = commands.some((command) => {
+        return (
+          command.name === commandNames.BOOK_SEARCH &&
+          isCommandExecuting(command)
+        );
+      });
+
+      return {
+        isSearchingSeries
+      };
+    }
+  );
+}
 
 const mapDispatchToProps = {
   toggleBooksMonitored,
   executeCommand
 };
 
-export default connect(null, mapDispatchToProps)(SeriesDetailsConnector);
+export default connect(createMapStateToProps, mapDispatchToProps)(SeriesDetailsConnector);

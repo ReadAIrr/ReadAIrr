@@ -27,7 +27,7 @@ function createMapStateToProps() {
       });
 
       return {
-        authorMonitored: author.monitored,
+        authorMonitored: !!author && author.monitored,
         isSearching
       };
     }
