@@ -1,23 +1,186 @@
-.seriesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+.emptyMessage {
+  padding: 30px;
+  text-align: center;
+  color: var(--textSecondaryColor);
 }
 
-.seriesItem {
+.overviewList {
+  display: flex;
+  flex-direction: column;
+}
+
+.overviewItem {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, auto) minmax(180px, 240px);
+  gap: 20px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--borderColor);
+  color: var(--defaultColor);
+}
+
+.overviewItem:hover {
+  background-color: var(--tableRowHoverBackgroundColor);
+  color: var(--defaultColor);
+  text-decoration: none;
+}
+
+.overviewMain {
+  min-width: 0;
+}
+
+.overviewStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  gap: 14px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+  text-align: right;
+}
+
+.overviewStats span {
   display: block;
-  padding: 12px;
+  color: var(--defaultColor);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.overviewStatus {
+  min-width: 0;
+}
+
+.posterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.posterItem {
+  display: block;
+  overflow: hidden;
   border: 1px solid var(--borderColor);
   border-radius: 4px;
   background-color: var(--cardBackgroundColor);
+  color: var(--defaultColor);
 }
 
+.posterItem:hover {
+  border-color: var(--linkColor);
+  color: var(--defaultColor);
+  text-decoration: none;
+}
+
+.posterArt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 256 / 160;
+  background:
+    linear-gradient(135deg, rgba(51, 122, 183, 0.22), rgba(91, 192, 222, 0.08)),
+    var(--cardAlternateBackgroundColor);
+  color: var(--defaultColor);
+  font-weight: 300;
+  font-size: 56px;
+}
+
+.posterBody {
+  padding: 12px;
+}
+
+.posterTitle,
 .seriesTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--defaultColor);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .seriesMeta {
+  overflow: hidden;
   margin-top: 4px;
   color: var(--textSecondaryColor);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
+}
+
+.posterFooter {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.progressTrack {
+  overflow: hidden;
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--progressBarBackgroundColor);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background-color: var(--successColor);
+}
+
+.progressText {
+  flex: 0 0 auto;
+  min-width: 36px;
+  color: var(--textSecondaryColor);
+  text-align: right;
+  font-size: 12px;
+}
+
+.titleCell {
+  min-width: 260px;
+}
+
+.actionsCell {
+  width: 50px;
+  text-align: right;
+}
+
+.availableText {
+  margin-top: 4px;
+  color: var(--successColor);
+  font-size: 12px;
+}
+
+.warningText {
+  margin-top: 4px;
+  color: var(--warningColor);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--textSecondaryColor);
+}
+
+@media only screen and (max-width: 768px) {
+  .overviewItem {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .overviewStats {
+    text-align: left;
+  }
+
+  .posterGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 12px;
+  }
 }

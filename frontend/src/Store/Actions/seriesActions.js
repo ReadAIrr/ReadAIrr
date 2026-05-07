@@ -1,8 +1,9 @@
 import { createAction } from 'redux-actions';
-import { sortDirections } from 'Helpers/Props';
+import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, filterTypes, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
+import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
 import createSetSettingValueReducer from './Creators/Reducers/createSetSettingValueReducer';
 import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptionReducer';
@@ -11,6 +12,157 @@ import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptio
 // Variables
 
 export const section = 'series';
+
+export const filters = [
+  {
+    key: 'all',
+    label: 'All',
+    filters: []
+  },
+  {
+    key: 'missing',
+    label: 'Missing',
+    filters: [
+      {
+        key: 'missingBooks',
+        value: 0,
+        type: filterTypes.GREATER_THAN
+      }
+    ]
+  },
+  {
+    key: 'complete',
+    label: 'Complete',
+    filters: [
+      {
+        key: 'missingBooks',
+        value: 0,
+        type: filterTypes.EQUAL
+      },
+      {
+        key: 'totalBooks',
+        value: 0,
+        type: filterTypes.GREATER_THAN
+      }
+    ]
+  },
+  {
+    key: 'monitored',
+    label: 'Monitored',
+    filters: [
+      {
+        key: 'monitored',
+        value: true,
+        type: filterTypes.EQUAL
+      }
+    ]
+  },
+  {
+    key: 'unmonitored',
+    label: 'Unmonitored',
+    filters: [
+      {
+        key: 'monitored',
+        value: false,
+        type: filterTypes.EQUAL
+      }
+    ]
+  },
+  {
+    key: 'crossAuthor',
+    label: 'Cross-Author',
+    filters: [
+      {
+        key: 'authorCount',
+        value: 1,
+        type: filterTypes.GREATER_THAN
+      }
+    ]
+  }
+];
+
+function getCompletenessValue(item, name) {
+  const completeness = item.completeness || {};
+
+  return completeness[name] || 0;
+}
+
+function getAuthorNames(item) {
+  const books = item.books || [];
+  const names = books.map((book) => book.authorName).filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function getAuthorCount(item) {
+  return getAuthorNames(item).length;
+}
+
+function isSeriesMonitored(item) {
+  const books = item.books || [];
+
+  return books.length > 0 && books.every((book) => book.monitored);
+}
+
+export const sortPredicates = {
+  authorCount: function(item) {
+    return getAuthorCount(item);
+  },
+
+  availableBooks: function(item) {
+    return getCompletenessValue(item, 'availableBooks');
+  },
+
+  missingBooks: function(item) {
+    return getCompletenessValue(item, 'missingBooks');
+  },
+
+  monitored: function(item) {
+    return isSeriesMonitored(item) ? 1 : 0;
+  },
+
+  totalBooks: function(item) {
+    return getCompletenessValue(item, 'totalBooks');
+  }
+};
+
+export const filterPredicates = {
+  author: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return getAuthorNames(item).some((authorName) => predicate(authorName, filterValue));
+  },
+
+  authorCount: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return predicate(getAuthorCount(item), filterValue);
+  },
+
+  availableBooks: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return predicate(getCompletenessValue(item, 'availableBooks'), filterValue);
+  },
+
+  missingBooks: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return predicate(getCompletenessValue(item, 'missingBooks'), filterValue);
+  },
+
+  monitored: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return predicate(isSeriesMonitored(item), filterValue);
+  },
+
+  totalBooks: function(item, filterValue, type) {
+    const predicate = filterTypePredicates[type];
+
+    return predicate(getCompletenessValue(item, 'totalBooks'), filterValue);
+  }
+};
 
 //
 // State
@@ -21,57 +173,63 @@ export const defaultState = {
   error: null,
   isSaving: false,
   saveError: null,
-  sortKey: 'position',
+  sortKey: 'title',
   sortDirection: sortDirections.ASCENDING,
+  secondarySortKey: 'title',
+  secondarySortDirection: sortDirections.ASCENDING,
+  selectedFilterKey: 'all',
+  view: 'overview',
   items: [],
 
   columns: [
     {
-      name: 'monitored',
-      columnLabel: 'Monitored',
+      name: 'title',
+      label: 'Title',
+      isSortable: true,
       isVisible: true,
       isModifiable: false
     },
     {
-      name: 'title',
-      label: 'Title',
+      name: 'authors',
+      label: 'Authors',
+      isSortable: false,
+      isVisible: true
+    },
+    {
+      name: 'totalBooks',
+      label: 'Books',
       isSortable: true,
       isVisible: true
     },
     {
-      name: 'series',
-      label: 'Series',
+      name: 'availableBooks',
+      label: 'Available',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'missingBooks',
+      label: 'Missing',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'monitored',
+      columnLabel: 'Monitored',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'authorCount',
+      label: 'Author Count',
       isSortable: true,
       isVisible: false
     },
     {
-      name: 'position',
-      label: 'Number',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'releaseDate',
-      label: 'Release Date',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'pageCount',
-      label: 'Pages',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'rating',
-      label: 'Rating',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'status',
-      label: 'Status',
-      isVisible: true
+      name: 'unmonitoredBooks',
+      label: 'Unmonitored Books',
+      isSortable: false,
+      isVisible: false
     },
     {
       name: 'actions',
@@ -79,23 +237,78 @@ export const defaultState = {
       isVisible: true,
       isModifiable: false
     }
-  ]
+  ],
+
+  filters,
+  filterPredicates,
+  filterBuilderProps: [
+    {
+      name: 'title',
+      label: 'Title',
+      type: filterBuilderTypes.STRING
+    },
+    {
+      name: 'author',
+      label: 'Author',
+      type: filterBuilderTypes.STRING
+    },
+    {
+      name: 'monitored',
+      label: 'Monitored',
+      type: filterBuilderTypes.EXACT,
+      valueType: filterBuilderValueTypes.BOOL
+    },
+    {
+      name: 'totalBooks',
+      label: 'Books',
+      type: filterBuilderTypes.NUMBER
+    },
+    {
+      name: 'availableBooks',
+      label: 'Available',
+      type: filterBuilderTypes.NUMBER
+    },
+    {
+      name: 'missingBooks',
+      label: 'Missing',
+      type: filterBuilderTypes.NUMBER
+    },
+    {
+      name: 'authorCount',
+      label: 'Author Count',
+      type: filterBuilderTypes.NUMBER
+    }
+  ],
+  sortPredicates
 };
+
+export const persistState = [
+  'series.sortKey',
+  'series.sortDirection',
+  'series.selectedFilterKey',
+  'series.customFilters',
+  'series.view',
+  'series.columns'
+];
 
 //
 // Actions Types
 
 export const FETCH_SERIES = 'series/fetchSeries';
-export const SET_SERIES_SORT = 'books/setSeriesSort';
-export const SET_SERIES_TABLE_OPTION = 'books/setSeriesTableOption';
+export const SET_SERIES_SORT = 'series/setSeriesSort';
+export const SET_SERIES_FILTER = 'series/setSeriesFilter';
+export const SET_SERIES_VIEW = 'series/setSeriesView';
+export const SET_SERIES_TABLE_OPTION = 'series/setSeriesTableOption';
 export const CLEAR_SERIES = 'series/clearSeries';
-export const SET_SERIES_VALUE = 'books/setBookValue';
+export const SET_SERIES_VALUE = 'series/setSeriesValue';
 
 //
 // Action Creators
 
 export const fetchSeries = createThunk(FETCH_SERIES);
 export const setSeriesSort = createAction(SET_SERIES_SORT);
+export const setSeriesFilter = createAction(SET_SERIES_FILTER);
+export const setSeriesView = createAction(SET_SERIES_VIEW);
 export const setSeriesTableOption = createAction(SET_SERIES_TABLE_OPTION);
 export const clearSeries = createAction(CLEAR_SERIES);
 
@@ -112,6 +325,12 @@ export const actionHandlers = handleThunks({
 export const reducers = createHandleActions({
 
   [SET_SERIES_SORT]: createSetClientSideCollectionSortReducer(section),
+
+  [SET_SERIES_FILTER]: createSetClientSideCollectionFilterReducer(section),
+
+  [SET_SERIES_VIEW]: function(state, { payload }) {
+    return Object.assign({}, state, { view: payload.view });
+  },
 
   [SET_SERIES_TABLE_OPTION]: createSetTableOptionReducer(section),
 
