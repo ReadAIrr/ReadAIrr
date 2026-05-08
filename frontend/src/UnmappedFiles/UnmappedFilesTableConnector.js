@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withCurrentPage from 'Components/withCurrentPage';
-import { aiReviewUnmappedFiles, clearUnmappedSuggestions, deepIdentifyUnmappedFiles, deleteBookFile, deleteBookFiles, fetchBookFiles, retryUnmappedFiles, setBookFilesSort, setBookFilesTableOption, setUnmappedFilesReviewed } from 'Store/Actions/bookFileActions';
+import { aiReviewUnmappedFiles, clearUnmappedSuggestions, deepIdentifyUnmappedFiles, deleteBookFile, deleteBookFiles, fetchBookFiles, retryUnmappedFiles, setBookFilesSort, setBookFilesTableOption, setUnmappedContributorEvidence, setUnmappedFilesReviewed } from 'Store/Actions/bookFileActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
@@ -88,6 +88,10 @@ function createMapDispatchToProps(dispatch, props) {
 
     onClearSuggestionsPress(bookFileIds) {
       dispatch(clearUnmappedSuggestions({ bookFileIds }));
+    },
+
+    onSetContributorEvidencePress(bookFileId, displayName) {
+      dispatch(setUnmappedContributorEvidence({ bookFileId, role: 'narrator', displayName }));
     },
 
     setUnmappedFilesReviewed(bookFileIds, reviewed) {
@@ -181,6 +185,7 @@ UnmappedFilesTableConnector.propTypes = {
   onAiReviewPress: PropTypes.func.isRequired,
   onDeepIdentifyPress: PropTypes.func.isRequired,
   onClearSuggestionsPress: PropTypes.func.isRequired,
+  onSetContributorEvidencePress: PropTypes.func.isRequired,
   setUnmappedFilesReviewed: PropTypes.func.isRequired
 };
 

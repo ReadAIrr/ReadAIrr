@@ -11,6 +11,7 @@ namespace NzbDrone.Core.MediaFiles
         List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
         List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
         void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources);
+        void DeleteByBookFileIdSourceAndRole(int bookFileId, string source, string role);
     }
 
     public class ContributorEvidenceRepository : BasicRepository<ContributorEvidence>, IContributorEvidenceRepository
@@ -61,6 +62,16 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             Delete(x => x.BookFileId.HasValue && ids.Contains(x.BookFileId.Value) && sourceList.Contains(x.Source));
+        }
+
+        public void DeleteByBookFileIdSourceAndRole(int bookFileId, string source, string role)
+        {
+            if (source.IsNullOrWhiteSpace() || role.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            Delete(x => x.BookFileId.HasValue && x.BookFileId.Value == bookFileId && x.Source == source && x.Role == role);
         }
     }
 }

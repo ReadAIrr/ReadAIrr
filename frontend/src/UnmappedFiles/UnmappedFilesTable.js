@@ -419,6 +419,7 @@ class UnmappedFilesTable extends Component {
       onAiReviewPress,
       onDeepIdentifyPress,
       onClearSuggestionsPress,
+      onSetContributorEvidencePress,
       setUnmappedFilesReviewed
     } = this.props;
 
@@ -443,6 +444,7 @@ class UnmappedFilesTable extends Component {
           aiReviewUnmappedFile={onAiReviewPress}
           deepIdentifyUnmappedFile={onDeepIdentifyPress}
           clearUnmappedSuggestions={onClearSuggestionsPress}
+          setContributorEvidence={onSetContributorEvidencePress}
           setUnmappedFileReviewed={setUnmappedFilesReviewed}
           {...item}
         />
@@ -471,6 +473,7 @@ class UnmappedFilesTable extends Component {
       onAiReviewPress,
       onDeepIdentifyPress,
       onClearSuggestionsPress,
+      onSetContributorEvidencePress,
       ...otherProps
     } = this.props;
 
@@ -709,7 +712,8 @@ UnmappedFilesTable.propTypes = {
   onRetryIdentifyPress: PropTypes.func.isRequired,
   onAiReviewPress: PropTypes.func.isRequired,
   onDeepIdentifyPress: PropTypes.func.isRequired,
-  onClearSuggestionsPress: PropTypes.func.isRequired
+  onClearSuggestionsPress: PropTypes.func.isRequired,
+  onSetContributorEvidencePress: PropTypes.func.isRequired
 };
 
 export default UnmappedFilesTable;

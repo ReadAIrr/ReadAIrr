@@ -130,6 +130,7 @@ export const RETRY_UNMAPPED_FILES = 'bookFiles/retryUnmappedFiles';
 export const AI_REVIEW_UNMAPPED_FILES = 'bookFiles/aiReviewUnmappedFiles';
 export const DEEP_IDENTIFY_UNMAPPED_FILES = 'bookFiles/deepIdentifyUnmappedFiles';
 export const CLEAR_UNMAPPED_SUGGESTIONS = 'bookFiles/clearUnmappedSuggestions';
+export const SET_UNMAPPED_CONTRIBUTOR_EVIDENCE = 'bookFiles/setUnmappedContributorEvidence';
 export const SET_UNMAPPED_FILES_REVIEWED = 'bookFiles/setUnmappedFilesReviewed';
 export const UPDATE_BOOK_FILES = 'bookFiles/updateBookFiles';
 export const SET_BOOK_FILES_SORT = 'bookFiles/setBookFilesSort';
@@ -146,6 +147,7 @@ export const retryUnmappedFiles = createThunk(RETRY_UNMAPPED_FILES);
 export const aiReviewUnmappedFiles = createThunk(AI_REVIEW_UNMAPPED_FILES);
 export const deepIdentifyUnmappedFiles = createThunk(DEEP_IDENTIFY_UNMAPPED_FILES);
 export const clearUnmappedSuggestions = createThunk(CLEAR_UNMAPPED_SUGGESTIONS);
+export const setUnmappedContributorEvidence = createThunk(SET_UNMAPPED_CONTRIBUTOR_EVIDENCE);
 export const setUnmappedFilesReviewed = createThunk(SET_UNMAPPED_FILES_REVIEWED);
 export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
 export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
@@ -436,6 +438,65 @@ export const actionHandlers = handleThunks({
 
   [CLEAR_UNMAPPED_SUGGESTIONS]: function(getState, payload, dispatch) {
     handleUnmappedSuggestionRequest('/bookFile/unmapped/suggestions/clear', payload, dispatch);
+  },
+
+  [SET_UNMAPPED_CONTRIBUTOR_EVIDENCE]: function(getState, payload, dispatch) {
+    const {
+      bookFileId,
+      role = 'narrator',
+      displayName
+    } = payload;
+
+    dispatch(batchActions([
+      updateItem({
+        section,
+        id: bookFileId,
+        isReprocessing: true,
+        updateOnly: true
+      }),
+      set({ section, isSaving: true, saveError: null })
+    ]));
+
+    const promise = createAjaxRequest({
+      url: '/bookFile/unmapped/contributor-evidence',
+      method: 'PUT',
+      dataType: 'json',
+      data: JSON.stringify({ bookFileId, role, displayName })
+    }).request;
+
+    promise.done((data) => {
+      dispatch(batchActions([
+        ...data.map((item) => updateItem({
+          section,
+          ...item,
+          isReprocessing: false,
+          updateOnly: true
+        })),
+
+        set({
+          section,
+          isSaving: false,
+          saveError: null
+        })
+      ]));
+    });
+
+    promise.fail((xhr) => {
+      dispatch(batchActions([
+        updateItem({
+          section,
+          id: bookFileId,
+          isReprocessing: false,
+          updateOnly: true
+        }),
+
+        set({
+          section,
+          isSaving: false,
+          saveError: xhr
+        })
+      ]));
+    });
   },
 
   [SET_UNMAPPED_FILES_REVIEWED]: function(getState, payload, dispatch) {

@@ -227,6 +227,52 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(MapUnmappedToResources(bookFiles));
         }
 
+        [HttpPut("unmapped/contributor-evidence")]
+        public ActionResult<List<BookFileResource>> SetUnmappedContributorEvidence([FromBody] ContributorEvidenceUpdateResource resource)
+        {
+            if (resource == null || resource.BookFileId <= 0)
+            {
+                throw new BadRequestException("bookFileId must be provided");
+            }
+
+            if (string.IsNullOrWhiteSpace(resource.Role))
+            {
+                throw new BadRequestException("role must be provided");
+            }
+
+            if (string.IsNullOrWhiteSpace(resource.DisplayName))
+            {
+                throw new BadRequestException("displayName must be provided");
+            }
+
+            var bookFile = _mediaFileService.Get(resource.BookFileId);
+
+            if (bookFile == null || bookFile.EditionId > 0)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unmapped book file not found");
+            }
+
+            var now = global::System.DateTime.UtcNow;
+            var role = resource.Role.Trim();
+            var displayName = resource.DisplayName.Trim();
+
+            _contributorEvidenceRepository.DeleteByBookFileIdSourceAndRole(bookFile.Id, "manual", role);
+            _contributorEvidenceRepository.Insert(new ContributorEvidence
+            {
+                BookFileId = bookFile.Id,
+                Role = role,
+                DisplayName = displayName,
+                NormalizedName = ContributorEvidence.NormalizeName(displayName),
+                Source = "manual",
+                Confidence = resource.Confidence,
+                RawValue = string.IsNullOrWhiteSpace(resource.RawValue) ? displayName : resource.RawValue,
+                Created = now,
+                Updated = now
+            });
+
+            return Accepted(MapUnmappedToResources(new List<BookFile> { bookFile }));
+        }
+
         [HttpGet("unmapped/{id:int}/intro-preview")]
         public IActionResult GetUnmappedIntroPreview(int id)
         {

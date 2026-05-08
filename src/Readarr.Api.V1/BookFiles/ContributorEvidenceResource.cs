@@ -19,6 +19,15 @@ namespace Readarr.Api.V1.BookFiles
         public DateTime Updated { get; set; }
     }
 
+    public class ContributorEvidenceUpdateResource
+    {
+        public int BookFileId { get; set; }
+        public string Role { get; set; }
+        public string DisplayName { get; set; }
+        public int? Confidence { get; set; }
+        public string RawValue { get; set; }
+    }
+
     public static class ContributorEvidenceResourceMapper
     {
         public static ContributorEvidenceResource ToResource(this ContributorEvidence model)

@@ -2,14 +2,24 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import BookQuality from 'Book/BookQuality';
 import FileDetailsModal from 'BookFile/FileDetailsModal';
+import Form from 'Components/Form/Form';
+import FormGroup from 'Components/Form/FormGroup';
+import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormLabel from 'Components/Form/FormLabel';
 import Label from 'Components/Label';
+import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellConnector';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
 import Popover from 'Components/Tooltip/Popover';
-import { icons, kinds, tooltipPositions } from 'Helpers/Props';
+import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
@@ -196,7 +206,7 @@ function getSuggestionDetails(suggestion) {
 }
 
 function getContributorEvidenceDetails(contributorEvidence) {
-  return (contributorEvidence || []).map((item) => {
+  const details = (contributorEvidence || []).map((item) => {
     const confidence = item.confidence == null ? '' : ` (${item.confidence}%)`;
 
     return {
@@ -204,6 +214,35 @@ function getContributorEvidenceDetails(contributorEvidence) {
       detail: `${item.displayName} from ${item.source}${confidence}`
     };
   });
+
+  const narratorNames = (contributorEvidence || [])
+    .filter((item) => item.role === 'narrator' && item.normalizedName)
+    .reduce((acc, item) => {
+      if (!acc[item.normalizedName]) {
+        acc[item.normalizedName] = [];
+      }
+
+      acc[item.normalizedName].push(`${item.displayName} from ${item.source}`);
+
+      return acc;
+    }, {});
+
+  const narratorNameKeys = Object.keys(narratorNames);
+
+  if (narratorNameKeys.length > 1) {
+    details.push({
+      label: 'Narrator evidence conflict',
+      detail: narratorNameKeys.map((key) => narratorNames[key][0]).join(' vs ')
+    });
+  }
+
+  return details;
+}
+
+function getManualNarratorValue(contributorEvidence) {
+  return (contributorEvidence || []).find((item) => item.role === 'narrator' && item.source === 'manual')?.displayName ||
+    (contributorEvidence || []).find((item) => item.role === 'narrator')?.displayName ||
+    '';
 }
 
 function getAudioPreviewUrl(audioPreviewUrl) {
@@ -227,7 +266,9 @@ class UnmappedFilesTableRow extends Component {
     this.state = {
       isDetailsModalOpen: false,
       isInteractiveImportModalOpen: false,
-      isConfirmDeleteModalOpen: false
+      isConfirmDeleteModalOpen: false,
+      isContributorEvidenceModalOpen: false,
+      contributorDisplayName: ''
     };
   }
 
@@ -264,6 +305,40 @@ class UnmappedFilesTableRow extends Component {
 
   onClearSuggestionsPress = () => {
     this.props.clearUnmappedSuggestions([this.props.id]);
+  };
+
+  onContributorEvidencePress = () => {
+    const {
+      contributorEvidence,
+      review
+    } = this.props;
+
+    this.setState({
+      isContributorEvidenceModalOpen: true,
+      contributorDisplayName: getManualNarratorValue(review?.contributorEvidence || contributorEvidence)
+    });
+  };
+
+  onContributorEvidenceModalClose = () => {
+    this.setState({
+      isContributorEvidenceModalOpen: false,
+      contributorDisplayName: ''
+    });
+  };
+
+  onContributorEvidenceInputChange = ({ value }) => {
+    this.setState({ contributorDisplayName: value });
+  };
+
+  onContributorEvidenceSavePress = () => {
+    const displayName = this.state.contributorDisplayName.trim();
+
+    if (!displayName) {
+      return;
+    }
+
+    this.props.setContributorEvidence(this.props.id, displayName);
+    this.onContributorEvidenceModalClose();
   };
 
   onMarkReviewedPress = () => {
@@ -307,7 +382,9 @@ class UnmappedFilesTableRow extends Component {
     const {
       isInteractiveImportModalOpen,
       isDetailsModalOpen,
-      isConfirmDeleteModalOpen
+      isConfirmDeleteModalOpen,
+      isContributorEvidenceModalOpen,
+      contributorDisplayName
     } = this.state;
 
     return (
@@ -615,6 +692,13 @@ class UnmappedFilesTableRow extends Component {
                   />
 
                   <IconButton
+                    name={icons.EDIT}
+                    title="Edit narrator evidence"
+                    isSpinning={isReprocessing}
+                    onPress={this.onContributorEvidencePress}
+                  />
+
+                  <IconButton
                     name={icons.DELETE}
                     onPress={this.onDeleteFilePress}
                   />
@@ -654,6 +738,50 @@ class UnmappedFilesTableRow extends Component {
           onCancel={this.onConfirmDeleteModalClose}
         />
 
+        <Modal
+          isOpen={isContributorEvidenceModalOpen}
+          onModalClose={this.onContributorEvidenceModalClose}
+        >
+          <ModalContent onModalClose={this.onContributorEvidenceModalClose}>
+            <ModalHeader>
+              Edit Narrator Evidence
+            </ModalHeader>
+
+            <ModalBody>
+              <Form>
+                <FormGroup>
+                  <FormLabel>
+                    Narrator
+                  </FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.TEXT}
+                    name="contributorDisplayName"
+                    value={contributorDisplayName}
+                    helpText="Stores a manual narrator evidence row for review. Existing AI and transcript evidence is kept for comparison."
+                    onChange={this.onContributorEvidenceInputChange}
+                  />
+                </FormGroup>
+              </Form>
+            </ModalBody>
+
+            <ModalFooter>
+              <Button
+                onPress={this.onContributorEvidenceModalClose}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                isDisabled={!contributorDisplayName.trim()}
+                onPress={this.onContributorEvidenceSavePress}
+              >
+                Save
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
       </>
     );
   }
@@ -678,6 +806,7 @@ UnmappedFilesTableRow.propTypes = {
   aiReviewUnmappedFile: PropTypes.func.isRequired,
   deepIdentifyUnmappedFile: PropTypes.func.isRequired,
   clearUnmappedSuggestions: PropTypes.func.isRequired,
+  setContributorEvidence: PropTypes.func.isRequired,
   setUnmappedFileReviewed: PropTypes.func.isRequired
 };
 
