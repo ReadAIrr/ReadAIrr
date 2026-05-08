@@ -7,6 +7,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Table from 'Components/Table/Table';
@@ -151,10 +152,12 @@ class Queue extends Component {
       isAuthorPopulated,
       columns,
       totalRecords,
+      searchTerm,
       isGrabbing,
       isRemoving,
       isRefreshMonitoredDownloadsExecuting,
       onRefreshPress,
+      onSearchTermChange,
       ...otherProps
     } = this.props;
 
@@ -207,6 +210,15 @@ class Queue extends Component {
           <PageToolbarSection
             alignContent={align.RIGHT}
           >
+            <PageToolbarSearchInput
+              name="queueSearch"
+              value={searchTerm}
+              placeholder="Filter queue"
+              onChange={onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             <TableOptionsModalWrapper
               columns={columns}
               {...otherProps}
@@ -238,7 +250,11 @@ class Queue extends Component {
           {
             isAllPopulated && !hasError && !items.length ?
               <Alert kind={kinds.INFO}>
-                {translate('QueueIsEmpty')}
+                {
+                  searchTerm ?
+                    'No queue items match this page search.' :
+                    translate('QueueIsEmpty')
+                }
               </Alert> :
               null
           }
@@ -329,10 +345,12 @@ Queue.propTypes = {
   isAuthorPopulated: PropTypes.bool.isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   totalRecords: PropTypes.number,
+  searchTerm: PropTypes.string,
   isGrabbing: PropTypes.bool.isRequired,
   isRemoving: PropTypes.bool.isRequired,
   isRefreshMonitoredDownloadsExecuting: PropTypes.bool.isRequired,
   onRefreshPress: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onGrabSelectedPress: PropTypes.func.isRequired,
   onRemoveSelectedPress: PropTypes.func.isRequired
 };

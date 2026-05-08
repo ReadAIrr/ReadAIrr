@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Blocklisting;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore;
@@ -23,10 +24,23 @@ namespace Readarr.Api.V1.Blocklist
 
         [HttpGet]
         [Produces("application/json")]
-        public PagingResource<BlocklistResource> GetBlocklist([FromQuery] PagingRequestResource paging)
+        public PagingResource<BlocklistResource> GetBlocklist([FromQuery] PagingRequestResource paging, string term)
         {
             var pagingResource = new PagingResource<BlocklistResource>(paging);
             var pagingSpec = pagingResource.MapToPagingSpec<BlocklistResource, NzbDrone.Core.Blocklisting.Blocklist>("date", SortDirection.Descending);
+
+            if (term.IsNotNullOrWhiteSpace())
+            {
+                term = term.Trim();
+                pagingSpec.FilterExpressions.Add(b =>
+                    b.SourceTitle.Contains(term) ||
+                    b.Indexer.Contains(term) ||
+                    b.Message.Contains(term) ||
+                    b.TorrentInfoHash.Contains(term) ||
+                    b.Author.Metadata.Value.Name.Contains(term) ||
+                    b.Author.Metadata.Value.SortName.Contains(term) ||
+                    b.Author.Metadata.Value.SortNameLastFirst.Contains(term));
+            }
 
             return pagingSpec.ApplyToPage(_blocklistService.Paged, model => BlocklistResourceMapper.MapToResource(model, _formatCalculator));
         }

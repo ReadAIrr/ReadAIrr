@@ -104,6 +104,10 @@ class QueueConnector extends Component {
     this.props.setQueueSort({ sortKey });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.props.setQueueSearchTerm({ searchTerm });
+  };
+
   onTableOptionChange = (payload) => {
     this.props.setQueueTableOption(payload);
 
@@ -138,6 +142,7 @@ class QueueConnector extends Component {
         onLastPagePress={this.onLastPagePress}
         onPageSelect={this.onPageSelect}
         onSortPress={this.onSortPress}
+        onSearchTermChange={this.onSearchTermChange}
         onTableOptionChange={this.onTableOptionChange}
         onRefreshPress={this.onRefreshPress}
         onGrabSelectedPress={this.onGrabSelectedPress}
@@ -160,6 +165,7 @@ QueueConnector.propTypes = {
   gotoQueueLastPage: PropTypes.func.isRequired,
   gotoQueuePage: PropTypes.func.isRequired,
   setQueueSort: PropTypes.func.isRequired,
+  setQueueSearchTerm: PropTypes.func.isRequired,
   setQueueTableOption: PropTypes.func.isRequired,
   clearQueue: PropTypes.func.isRequired,
   grabQueueItems: PropTypes.func.isRequired,

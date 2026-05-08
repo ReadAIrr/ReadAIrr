@@ -62,7 +62,7 @@ namespace Readarr.Api.V1.History
 
         [HttpGet]
         [Produces("application/json")]
-        public PagingResource<HistoryResource> GetHistory([FromQuery] PagingRequestResource paging, bool includeAuthor, bool includeBook, [FromQuery(Name = "eventType")] int[] eventTypes, int? bookId, string downloadId)
+        public PagingResource<HistoryResource> GetHistory([FromQuery] PagingRequestResource paging, bool includeAuthor, bool includeBook, [FromQuery(Name = "eventType")] int[] eventTypes, int? bookId, string downloadId, string term)
         {
             var pagingResource = new PagingResource<HistoryResource>(paging);
             var pagingSpec = pagingResource.MapToPagingSpec<HistoryResource, EntityHistory>("date", SortDirection.Descending);
@@ -80,6 +80,18 @@ namespace Readarr.Api.V1.History
             if (downloadId.IsNotNullOrWhiteSpace())
             {
                 pagingSpec.FilterExpressions.Add(h => h.DownloadId == downloadId);
+            }
+
+            if (term.IsNotNullOrWhiteSpace())
+            {
+                term = term.Trim();
+                pagingSpec.FilterExpressions.Add(h =>
+                    h.SourceTitle.Contains(term) ||
+                    h.DownloadId.Contains(term) ||
+                    h.Author.Metadata.Value.Name.Contains(term) ||
+                    h.Author.Metadata.Value.SortName.Contains(term) ||
+                    h.Author.Metadata.Value.SortNameLastFirst.Contains(term) ||
+                    h.Book.Title.Contains(term));
             }
 
             return pagingSpec.ApplyToPage(_historyService.Paged, h => MapToResource(h, includeAuthor, includeBook));

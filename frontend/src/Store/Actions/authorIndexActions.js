@@ -28,6 +28,7 @@ export const defaultState = {
   sortDirection: sortDirections.ASCENDING,
   secondarySortKey: 'sortNameLastFirst',
   secondarySortDirection: sortDirections.ASCENDING,
+  searchTerm: '',
   view: 'posters',
 
   posterOptions: {
@@ -224,6 +225,28 @@ export const defaultState = {
     }
   },
 
+  searchPredicates: [
+    function(item, term) {
+      const linkedAuthors = item.linkedAuthors || [];
+      const linkedNames = linkedAuthors.flatMap((author) => [
+        author.authorName,
+        author.sortName,
+        author.sortNameLastFirst
+      ]);
+
+      return [
+        item.authorName,
+        item.authorNameLastFirst,
+        item.sortName,
+        item.sortNameLastFirst,
+        item.cleanName,
+        item.path,
+        item.titleSlug,
+        ...linkedNames
+      ].some((value) => `${value || ''}`.toLowerCase().includes(term));
+    }
+  ],
+
   filterBuilderProps: [
     {
       name: 'monitored',
@@ -339,6 +362,7 @@ export const persistState = [
 
 export const SET_AUTHOR_SORT = 'authorIndex/setAuthorSort';
 export const SET_AUTHOR_FILTER = 'authorIndex/setAuthorFilter';
+export const SET_AUTHOR_SEARCH_TERM = 'authorIndex/setAuthorSearchTerm';
 export const SET_AUTHOR_VIEW = 'authorIndex/setAuthorView';
 export const SET_AUTHOR_TABLE_OPTION = 'authorIndex/setAuthorTableOption';
 export const SET_AUTHOR_POSTER_OPTION = 'authorIndex/setAuthorPosterOption';
@@ -352,6 +376,7 @@ export const BULK_DELETE_AUTHOR = 'authorIndex/bulkDeleteAuthor';
 
 export const setAuthorSort = createAction(SET_AUTHOR_SORT);
 export const setAuthorFilter = createAction(SET_AUTHOR_FILTER);
+export const setAuthorSearchTerm = createAction(SET_AUTHOR_SEARCH_TERM);
 export const setAuthorView = createAction(SET_AUTHOR_VIEW);
 export const setAuthorTableOption = createAction(SET_AUTHOR_TABLE_OPTION);
 export const setAuthorPosterOption = createAction(SET_AUTHOR_POSTER_OPTION);
@@ -444,6 +469,13 @@ export const reducers = createHandleActions({
 
   [SET_AUTHOR_SORT]: createSetClientSideCollectionSortReducer(section),
   [SET_AUTHOR_FILTER]: createSetClientSideCollectionFilterReducer(section),
+
+  [SET_AUTHOR_SEARCH_TERM]: function(state, { payload }) {
+    return {
+      ...state,
+      searchTerm: payload.searchTerm || ''
+    };
+  },
 
   [SET_AUTHOR_VIEW]: function(state, { payload }) {
     return Object.assign({}, state, { view: payload.view });

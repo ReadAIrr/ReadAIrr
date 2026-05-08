@@ -7,7 +7,9 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
+import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
@@ -103,8 +105,10 @@ class Blocklist extends Component {
       items,
       columns,
       totalRecords,
+      searchTerm,
       isRemoving,
       isClearingBlocklistExecuting,
+      onSearchTermChange,
       onClearBlocklistPress,
       ...otherProps
     } = this.props;
@@ -142,6 +146,15 @@ class Blocklist extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <PageToolbarSearchInput
+              name="blocklistSearch"
+              value={searchTerm}
+              placeholder="Filter blocklist"
+              onChange={onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             <TableOptionsModalWrapper
               {...otherProps}
               columns={columns}
@@ -170,7 +183,11 @@ class Blocklist extends Component {
           {
             isAllPopulated && !error && !items.length &&
               <Alert kind={kinds.INFO}>
-                {translate('NoHistoryBlocklist')}
+                {
+                  searchTerm ?
+                    'No blocklist items match this page search.' :
+                    translate('NoHistoryBlocklist')
+                }
               </Alert>
           }
 
@@ -234,9 +251,11 @@ Blocklist.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   totalRecords: PropTypes.number,
+  searchTerm: PropTypes.string,
   isRemoving: PropTypes.bool.isRequired,
   isClearingBlocklistExecuting: PropTypes.bool.isRequired,
   onRemoveSelected: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onClearBlocklistPress: PropTypes.func.isRequired
 };
 

@@ -150,7 +150,7 @@ namespace Readarr.Api.V1.Books
         }
 
         [HttpGet("paged")]
-        public PagingResource<BookResource> GetBooksPaged([FromQuery] PagingRequestResource paging, [FromQuery] bool? monitored)
+        public PagingResource<BookResource> GetBooksPaged([FromQuery] PagingRequestResource paging, [FromQuery] bool? monitored, [FromQuery] string term)
         {
             var pagingResource = new PagingResource<BookResource>(paging);
             var pagingSpec = pagingResource.MapToPagingSpec<BookResource, Book>("title", SortDirection.Ascending);
@@ -159,6 +159,8 @@ namespace Readarr.Api.V1.Books
             {
                 pagingSpec.FilterExpressions.Add(v => v.Monitored == monitored.Value);
             }
+
+            AddBookSearchFilter(pagingSpec, term);
 
             var page = _bookService.Paged(pagingSpec);
 

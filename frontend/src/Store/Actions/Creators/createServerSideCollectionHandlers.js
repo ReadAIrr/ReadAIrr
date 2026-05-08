@@ -3,6 +3,7 @@ import serverSideCollectionHandlers from 'Utilities/serverSideCollectionHandlers
 import createFetchServerSideCollectionHandler from './createFetchServerSideCollectionHandler';
 import createSetServerSideCollectionFilterHandler from './createSetServerSideCollectionFilterHandler';
 import createSetServerSideCollectionPageHandler from './createSetServerSideCollectionPageHandler';
+import createSetServerSideCollectionSearchHandler from './createSetServerSideCollectionSearchHandler';
 import createSetServerSideCollectionSortHandler from './createSetServerSideCollectionSortHandler';
 
 function createServerSideCollectionHandlers(section, url, fetchThunk, handlers, fetchDataAugmenter) {
@@ -44,6 +45,11 @@ function createServerSideCollectionHandlers(section, url, fetchThunk, handlers, 
   if (handlers.hasOwnProperty(serverSideCollectionHandlers.FILTER)) {
     const handlerType = handlers[serverSideCollectionHandlers.FILTER];
     actionHandlers[handlerType] = createSetServerSideCollectionFilterHandler(section, fetchThunk);
+  }
+
+  if (handlers.hasOwnProperty(serverSideCollectionHandlers.SEARCH)) {
+    const handlerType = handlers[serverSideCollectionHandlers.SEARCH];
+    actionHandlers[handlerType] = createSetServerSideCollectionSearchHandler(section, fetchThunk);
   }
 
   return actionHandlers;

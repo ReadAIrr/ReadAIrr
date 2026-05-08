@@ -11,6 +11,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageJumpBar from 'Components/Page/PageJumpBar';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
@@ -283,6 +284,7 @@ class AuthorIndex extends Component {
       totalItems,
       items,
       columns,
+      searchTerm,
       selectedFilterKey,
       filters,
       customFilters,
@@ -300,6 +302,7 @@ class AuthorIndex extends Component {
       onScroll,
       onSortSelect,
       onFilterSelect,
+      onSearchTermChange,
       onViewSelect,
       onRssSyncPress,
       ...otherProps
@@ -380,6 +383,16 @@ class AuthorIndex extends Component {
             alignContent={align.RIGHT}
             collapseButtons={false}
           >
+            <PageToolbarSearchInput
+              name="authorIndexSearch"
+              value={searchTerm}
+              placeholder="Filter authors"
+              isDisabled={hasNoAuthor}
+              onChange={onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             {
               view === 'table' ?
                 <TableOptionsModalWrapper
@@ -551,6 +564,7 @@ AuthorIndex.propTypes = {
   totalItems: PropTypes.number.isRequired,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  searchTerm: PropTypes.string,
   selectedFilterKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   filters: PropTypes.arrayOf(PropTypes.object).isRequired,
   customFilters: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -568,6 +582,7 @@ AuthorIndex.propTypes = {
   deleteError: PropTypes.object,
   onSortSelect: PropTypes.func.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onViewSelect: PropTypes.func.isRequired,
   onRefreshAuthorPress: PropTypes.func.isRequired,
   onRssSyncPress: PropTypes.func.isRequired,

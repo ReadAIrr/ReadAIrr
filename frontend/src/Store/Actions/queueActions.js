@@ -50,6 +50,7 @@ export const defaultState = {
     isFetching: false,
     isPopulated: false,
     pageSize: 20,
+    searchTerm: '',
     sortKey: 'timeleft',
     sortDirection: sortDirections.ASCENDING,
     error: null,
@@ -194,6 +195,7 @@ export const GOTO_NEXT_QUEUE_PAGE = 'queue/gotoQueueNextPage';
 export const GOTO_LAST_QUEUE_PAGE = 'queue/gotoQueueLastPage';
 export const GOTO_QUEUE_PAGE = 'queue/gotoQueuePage';
 export const SET_QUEUE_SORT = 'queue/setQueueSort';
+export const SET_QUEUE_SEARCH_TERM = 'queue/setQueueSearchTerm';
 export const SET_QUEUE_TABLE_OPTION = 'queue/setQueueTableOption';
 export const SET_QUEUE_OPTION = 'queue/setQueueOption';
 export const CLEAR_QUEUE = 'queue/clearQueue';
@@ -218,6 +220,7 @@ export const gotoQueueNextPage = createThunk(GOTO_NEXT_QUEUE_PAGE);
 export const gotoQueueLastPage = createThunk(GOTO_LAST_QUEUE_PAGE);
 export const gotoQueuePage = createThunk(GOTO_QUEUE_PAGE);
 export const setQueueSort = createThunk(SET_QUEUE_SORT);
+export const setQueueSearchTerm = createThunk(SET_QUEUE_SEARCH_TERM);
 export const setQueueTableOption = createAction(SET_QUEUE_TABLE_OPTION);
 export const setQueueOption = createAction(SET_QUEUE_OPTION);
 export const clearQueue = createAction(CLEAR_QUEUE);
@@ -269,7 +272,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.NEXT_PAGE]: GOTO_NEXT_QUEUE_PAGE,
       [serverSideCollectionHandlers.LAST_PAGE]: GOTO_LAST_QUEUE_PAGE,
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_QUEUE_PAGE,
-      [serverSideCollectionHandlers.SORT]: SET_QUEUE_SORT
+      [serverSideCollectionHandlers.SORT]: SET_QUEUE_SORT,
+      [serverSideCollectionHandlers.SEARCH]: SET_QUEUE_SEARCH_TERM
     },
     fetchDataAugmenter
   ),

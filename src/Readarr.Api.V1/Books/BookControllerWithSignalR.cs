@@ -1,9 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.AuthorStats;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.MediaCover;
+using NzbDrone.Core.Parser;
 using NzbDrone.SignalR;
 using Readarr.Api.V1.Author;
 using Readarr.Http.REST;
@@ -113,6 +116,31 @@ namespace Readarr.Api.V1.Books
             MapCoversToLocal(result.ToArray());
 
             return result;
+        }
+
+        protected static void AddBookSearchFilter(PagingSpec<Book> pagingSpec, string term)
+        {
+            if (term.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            term = term.Trim();
+            var cleanTerm = Parser.CleanAuthorName(term);
+
+            if (cleanTerm.IsNullOrWhiteSpace())
+            {
+                cleanTerm = term;
+            }
+
+            pagingSpec.FilterExpressions.Add(v =>
+                v.Title.Contains(term) ||
+                v.CleanTitle.Contains(cleanTerm) ||
+                v.ForeignBookId.Contains(term) ||
+                v.ForeignEditionId.Contains(term) ||
+                v.AuthorMetadata.Value.Name.Contains(term) ||
+                v.AuthorMetadata.Value.SortName.Contains(term) ||
+                v.AuthorMetadata.Value.SortNameLastFirst.Contains(term));
         }
 
         private void FetchAndLinkBookStatistics(BookResource resource)

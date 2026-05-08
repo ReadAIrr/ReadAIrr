@@ -15,9 +15,17 @@ function createFetchServerSideCollectionHandler(section, url, fetchDataAugmenter
     const data = Object.assign({ page },
       _.pick(sectionState, [
         'pageSize',
+        'searchTerm',
         'sortDirection',
         'sortKey'
       ]));
+
+    if (data.searchTerm) {
+      data.term = data.searchTerm;
+      delete data.searchTerm;
+    } else {
+      delete data.searchTerm;
+    }
 
     if (fetchDataAugmenter) {
       fetchDataAugmenter(getState, payload, data);

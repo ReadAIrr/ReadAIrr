@@ -120,6 +120,10 @@ class CutoffUnmetConnector extends Component {
     this.props.setCutoffUnmetFilter({ selectedFilterKey });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.props.setCutoffUnmetSearchTerm({ searchTerm });
+  };
+
   onTableOptionChange = (payload) => {
     this.props.setCutoffUnmetTableOption(payload);
 
@@ -156,6 +160,7 @@ class CutoffUnmetConnector extends Component {
         onPageSelect={this.onPageSelect}
         onSortPress={this.onSortPress}
         onFilterSelect={this.onFilterSelect}
+        onSearchTermChange={this.onSearchTermChange}
         onTableOptionChange={this.onTableOptionChange}
         onSearchSelectedPress={this.onSearchSelectedPress}
         onToggleSelectedPress={this.onToggleSelectedPress}
@@ -177,6 +182,7 @@ CutoffUnmetConnector.propTypes = {
   gotoCutoffUnmetPage: PropTypes.func.isRequired,
   setCutoffUnmetSort: PropTypes.func.isRequired,
   setCutoffUnmetFilter: PropTypes.func.isRequired,
+  setCutoffUnmetSearchTerm: PropTypes.func.isRequired,
   setCutoffUnmetTableOption: PropTypes.func.isRequired,
   clearCutoffUnmet: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired,

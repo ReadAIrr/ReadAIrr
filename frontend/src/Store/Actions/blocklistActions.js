@@ -23,6 +23,7 @@ export const defaultState = {
   isFetching: false,
   isPopulated: false,
   pageSize: 20,
+  searchTerm: '',
   sortKey: 'date',
   sortDirection: sortDirections.DESCENDING,
   error: null,
@@ -91,6 +92,7 @@ export const GOTO_NEXT_BLOCKLIST_PAGE = 'blocklist/gotoBlocklistNextPage';
 export const GOTO_LAST_BLOCKLIST_PAGE = 'blocklist/gotoBlocklistLastPage';
 export const GOTO_BLOCKLIST_PAGE = 'blocklist/gotoBlocklistPage';
 export const SET_BLOCKLIST_SORT = 'blocklist/setBlocklistSort';
+export const SET_BLOCKLIST_SEARCH_TERM = 'blocklist/setBlocklistSearchTerm';
 export const SET_BLOCKLIST_TABLE_OPTION = 'blocklist/setBlocklistTableOption';
 export const REMOVE_BLOCKLIST_ITEM = 'blocklist/removeBlocklistItem';
 export const REMOVE_BLOCKLIST_ITEMS = 'blocklist/removeBlocklistItems';
@@ -106,6 +108,7 @@ export const gotoBlocklistNextPage = createThunk(GOTO_NEXT_BLOCKLIST_PAGE);
 export const gotoBlocklistLastPage = createThunk(GOTO_LAST_BLOCKLIST_PAGE);
 export const gotoBlocklistPage = createThunk(GOTO_BLOCKLIST_PAGE);
 export const setBlocklistSort = createThunk(SET_BLOCKLIST_SORT);
+export const setBlocklistSearchTerm = createThunk(SET_BLOCKLIST_SEARCH_TERM);
 export const setBlocklistTableOption = createAction(SET_BLOCKLIST_TABLE_OPTION);
 export const removeBlocklistItem = createThunk(REMOVE_BLOCKLIST_ITEM);
 export const removeBlocklistItems = createThunk(REMOVE_BLOCKLIST_ITEMS);
@@ -126,7 +129,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.NEXT_PAGE]: GOTO_NEXT_BLOCKLIST_PAGE,
       [serverSideCollectionHandlers.LAST_PAGE]: GOTO_LAST_BLOCKLIST_PAGE,
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_BLOCKLIST_PAGE,
-      [serverSideCollectionHandlers.SORT]: SET_BLOCKLIST_SORT
+      [serverSideCollectionHandlers.SORT]: SET_BLOCKLIST_SORT,
+      [serverSideCollectionHandlers.SEARCH]: SET_BLOCKLIST_SEARCH_TERM
     }),
 
   [REMOVE_BLOCKLIST_ITEM]: createRemoveItemHandler(section, '/blocklist'),

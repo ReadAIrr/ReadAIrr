@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import { createSelector } from 'reselect';
 import filterCollection from 'Utilities/Array/filterCollection';
+import searchCollection from 'Utilities/Array/searchCollection';
 import sortCollection from 'Utilities/Array/sortCollection';
 import createCustomFiltersSelector from './createCustomFiltersSelector';
 
@@ -19,7 +20,8 @@ function createBooksClientSideCollectionSelector(uiSection) {
       }
 
       const filtered = filterCollection(books, state);
-      const sorted = sortCollection(filtered, state);
+      const searched = searchCollection(filtered, state);
+      const sorted = sortCollection(searched, state);
 
       return {
         ...bookState,

@@ -7,7 +7,9 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
+import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
@@ -31,9 +33,11 @@ class History extends Component {
       selectedFilterKey,
       filters,
       totalRecords,
+      searchTerm,
       isAuthorFetching,
       isAuthorPopulated,
       onFilterSelect,
+      onSearchTermChange,
       onFirstPagePress,
       ...otherProps
     } = this.props;
@@ -55,6 +59,15 @@ class History extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <PageToolbarSearchInput
+              name="historySearch"
+              value={searchTerm}
+              placeholder="Filter history"
+              onChange={onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             <TableOptionsModalWrapper
               {...otherProps}
               columns={columns}
@@ -94,7 +107,11 @@ class History extends Component {
 
             isPopulated && !hasError && !items.length &&
               <Alert kind={kinds.INFO}>
-                {translate('NoHistory')}
+                {
+                  searchTerm ?
+                    'No history items match this page search.' :
+                    translate('NoHistory')
+                }
               </Alert>
           }
 
@@ -143,9 +160,11 @@ History.propTypes = {
   selectedFilterKey: PropTypes.string.isRequired,
   filters: PropTypes.arrayOf(PropTypes.object).isRequired,
   totalRecords: PropTypes.number,
+  searchTerm: PropTypes.string,
   isAuthorFetching: PropTypes.bool.isRequired,
   isAuthorPopulated: PropTypes.bool.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onFirstPagePress: PropTypes.func.isRequired
 };
 

@@ -21,6 +21,7 @@ export const defaultState = {
     isFetching: false,
     isPopulated: false,
     pageSize: 20,
+    searchTerm: '',
     sortKey: 'releaseDate',
     sortDirection: sortDirections.DESCENDING,
     error: null,
@@ -91,6 +92,7 @@ export const defaultState = {
     isFetching: false,
     isPopulated: false,
     pageSize: 20,
+    searchTerm: '',
     sortKey: 'releaseDate',
     sortDirection: sortDirections.DESCENDING,
     items: [],
@@ -181,6 +183,7 @@ export const GOTO_LAST_MISSING_PAGE = 'wanted/missing/gotoMissingLastPage';
 export const GOTO_MISSING_PAGE = 'wanted/missing/gotoMissingPage';
 export const SET_MISSING_SORT = 'wanted/missing/setMissingSort';
 export const SET_MISSING_FILTER = 'wanted/missing/setMissingFilter';
+export const SET_MISSING_SEARCH_TERM = 'wanted/missing/setMissingSearchTerm';
 export const SET_MISSING_TABLE_OPTION = 'wanted/missing/setMissingTableOption';
 export const CLEAR_MISSING = 'wanted/missing/clearMissing';
 
@@ -194,6 +197,7 @@ export const GOTO_LAST_CUTOFF_UNMET_PAGE = 'wanted/cutoffUnmet/gotoCutoffUnmetFa
 export const GOTO_CUTOFF_UNMET_PAGE = 'wanted/cutoffUnmet/gotoCutoffUnmetPage';
 export const SET_CUTOFF_UNMET_SORT = 'wanted/cutoffUnmet/setCutoffUnmetSort';
 export const SET_CUTOFF_UNMET_FILTER = 'wanted/cutoffUnmet/setCutoffUnmetFilter';
+export const SET_CUTOFF_UNMET_SEARCH_TERM = 'wanted/cutoffUnmet/setCutoffUnmetSearchTerm';
 export const SET_CUTOFF_UNMET_TABLE_OPTION = 'wanted/cutoffUnmet/setCutoffUnmetTableOption';
 export const CLEAR_CUTOFF_UNMET = 'wanted/cutoffUnmet/clearCutoffUnmet';
 
@@ -210,6 +214,7 @@ export const gotoMissingLastPage = createThunk(GOTO_LAST_MISSING_PAGE);
 export const gotoMissingPage = createThunk(GOTO_MISSING_PAGE);
 export const setMissingSort = createThunk(SET_MISSING_SORT);
 export const setMissingFilter = createThunk(SET_MISSING_FILTER);
+export const setMissingSearchTerm = createThunk(SET_MISSING_SEARCH_TERM);
 export const setMissingTableOption = createAction(SET_MISSING_TABLE_OPTION);
 export const clearMissing = createAction(CLEAR_MISSING);
 
@@ -223,6 +228,7 @@ export const gotoCutoffUnmetLastPage = createThunk(GOTO_LAST_CUTOFF_UNMET_PAGE);
 export const gotoCutoffUnmetPage = createThunk(GOTO_CUTOFF_UNMET_PAGE);
 export const setCutoffUnmetSort = createThunk(SET_CUTOFF_UNMET_SORT);
 export const setCutoffUnmetFilter = createThunk(SET_CUTOFF_UNMET_FILTER);
+export const setCutoffUnmetSearchTerm = createThunk(SET_CUTOFF_UNMET_SEARCH_TERM);
 export const setCutoffUnmetTableOption = createAction(SET_CUTOFF_UNMET_TABLE_OPTION);
 export const clearCutoffUnmet = createAction(CLEAR_CUTOFF_UNMET);
 
@@ -245,7 +251,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.LAST_PAGE]: GOTO_LAST_MISSING_PAGE,
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_MISSING_PAGE,
       [serverSideCollectionHandlers.SORT]: SET_MISSING_SORT,
-      [serverSideCollectionHandlers.FILTER]: SET_MISSING_FILTER
+      [serverSideCollectionHandlers.FILTER]: SET_MISSING_FILTER,
+      [serverSideCollectionHandlers.SEARCH]: SET_MISSING_SEARCH_TERM
     }
   ),
 
@@ -263,7 +270,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.LAST_PAGE]: GOTO_LAST_CUTOFF_UNMET_PAGE,
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_CUTOFF_UNMET_PAGE,
       [serverSideCollectionHandlers.SORT]: SET_CUTOFF_UNMET_SORT,
-      [serverSideCollectionHandlers.FILTER]: SET_CUTOFF_UNMET_FILTER
+      [serverSideCollectionHandlers.FILTER]: SET_CUTOFF_UNMET_FILTER,
+      [serverSideCollectionHandlers.SEARCH]: SET_CUTOFF_UNMET_SEARCH_TERM
     }
   ),
 

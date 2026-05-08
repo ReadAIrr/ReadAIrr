@@ -8,6 +8,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Table from 'Components/Table/Table';
@@ -119,12 +120,14 @@ class CutoffUnmet extends Component {
       isAuthorFetching,
       isAuthorPopulated,
       selectedFilterKey,
+      searchTerm,
       filters,
       columns,
       totalRecords,
       isSearchingForCutoffUnmetBooks,
       isSaving,
       onFilterSelect,
+      onSearchTermChange,
       ...otherProps
     } = this.props;
 
@@ -174,6 +177,15 @@ class CutoffUnmet extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <PageToolbarSearchInput
+              name="cutoffUnmetSearch"
+              value={searchTerm}
+              placeholder="Filter cutoff unmet"
+              onChange={onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             <TableOptionsModalWrapper
               {...otherProps}
               columns={columns}
@@ -210,7 +222,11 @@ class CutoffUnmet extends Component {
           {
             isAllPopulated && !error && !items.length &&
               <Alert kind={kinds.INFO}>
-                {translate('NoCutoffUnmetItems')}
+                {
+                  searchTerm ?
+                    'No cutoff unmet books match this page search.' :
+                    translate('NoCutoffUnmetItems')
+                }
               </Alert>
           }
 
@@ -282,12 +298,14 @@ CutoffUnmet.propTypes = {
   isAuthorFetching: PropTypes.bool.isRequired,
   isAuthorPopulated: PropTypes.bool.isRequired,
   selectedFilterKey: PropTypes.string.isRequired,
+  searchTerm: PropTypes.string,
   filters: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   totalRecords: PropTypes.number,
   isSearchingForCutoffUnmetBooks: PropTypes.bool.isRequired,
   isSaving: PropTypes.bool.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onSearchSelectedPress: PropTypes.func.isRequired,
   batchToggleCutoffUnmetBooks: PropTypes.func.isRequired,
   onSearchAllCutoffUnmetPress: PropTypes.func.isRequired

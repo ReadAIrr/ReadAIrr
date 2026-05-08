@@ -134,15 +134,15 @@ namespace Readarr.Api.V1.Queue
 
         [HttpGet]
         [Produces("application/json")]
-        public PagingResource<QueueResource> GetQueue([FromQuery] PagingRequestResource paging, bool includeUnknownAuthorItems = false, bool includeAuthor = false, bool includeBook = false)
+        public PagingResource<QueueResource> GetQueue([FromQuery] PagingRequestResource paging, bool includeUnknownAuthorItems = false, bool includeAuthor = false, bool includeBook = false, string term = null)
         {
             var pagingResource = new PagingResource<QueueResource>(paging);
             var pagingSpec = pagingResource.MapToPagingSpec<QueueResource, NzbDrone.Core.Queue.Queue>("timeleft", SortDirection.Ascending);
 
-            return pagingSpec.ApplyToPage((spec) => GetQueue(spec, includeUnknownAuthorItems), (q) => MapToResource(q, includeAuthor, includeBook));
+            return pagingSpec.ApplyToPage((spec) => GetQueue(spec, includeUnknownAuthorItems, term), (q) => MapToResource(q, includeAuthor, includeBook));
         }
 
-        private PagingSpec<NzbDrone.Core.Queue.Queue> GetQueue(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec, bool includeUnknownAuthorItems)
+        private PagingSpec<NzbDrone.Core.Queue.Queue> GetQueue(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec, bool includeUnknownAuthorItems, string term)
         {
             var ascending = pagingSpec.SortDirection == SortDirection.Ascending;
             var orderByFunc = GetOrderByFunc(pagingSpec);
@@ -150,55 +150,63 @@ namespace Readarr.Api.V1.Queue
             var queue = _queueService.GetQueue();
             var filteredQueue = includeUnknownAuthorItems ? queue : queue.Where(q => q.Author != null);
             var pending = _pendingReleaseService.GetPendingQueue();
-            var fullQueue = filteredQueue.Concat(pending).ToList();
+            var fullQueue = filteredQueue.Concat(pending);
+
+            if (term.IsNotNullOrWhiteSpace())
+            {
+                var searchTerm = term.Trim();
+                fullQueue = fullQueue.Where(q => QueueMatchesSearch(q, searchTerm));
+            }
+
+            var fullQueueList = fullQueue.ToList();
             IOrderedEnumerable<NzbDrone.Core.Queue.Queue> ordered;
 
             if (pagingSpec.SortKey == "timeleft")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.Timeleft, new TimeleftComparer())
-                    : fullQueue.OrderByDescending(q => q.Timeleft, new TimeleftComparer());
+                    ? fullQueueList.OrderBy(q => q.Timeleft, new TimeleftComparer())
+                    : fullQueueList.OrderByDescending(q => q.Timeleft, new TimeleftComparer());
             }
             else if (pagingSpec.SortKey == "estimatedCompletionTime")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.EstimatedCompletionTime, new EstimatedCompletionTimeComparer())
-                    : fullQueue.OrderByDescending(q => q.EstimatedCompletionTime,
+                    ? fullQueueList.OrderBy(q => q.EstimatedCompletionTime, new EstimatedCompletionTimeComparer())
+                    : fullQueueList.OrderByDescending(q => q.EstimatedCompletionTime,
                         new EstimatedCompletionTimeComparer());
             }
             else if (pagingSpec.SortKey == "protocol")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.Protocol)
-                    : fullQueue.OrderByDescending(q => q.Protocol);
+                    ? fullQueueList.OrderBy(q => q.Protocol)
+                    : fullQueueList.OrderByDescending(q => q.Protocol);
             }
             else if (pagingSpec.SortKey == "indexer")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.Indexer, StringComparer.InvariantCultureIgnoreCase)
-                    : fullQueue.OrderByDescending(q => q.Indexer, StringComparer.InvariantCultureIgnoreCase);
+                    ? fullQueueList.OrderBy(q => q.Indexer, StringComparer.InvariantCultureIgnoreCase)
+                    : fullQueueList.OrderByDescending(q => q.Indexer, StringComparer.InvariantCultureIgnoreCase);
             }
             else if (pagingSpec.SortKey == "downloadClient")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase)
-                    : fullQueue.OrderByDescending(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase);
+                    ? fullQueueList.OrderBy(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase)
+                    : fullQueueList.OrderByDescending(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase);
             }
             else if (pagingSpec.SortKey == "quality")
             {
                 ordered = ascending
-                    ? fullQueue.OrderBy(q => q.Quality, _qualityComparer)
-                    : fullQueue.OrderByDescending(q => q.Quality, _qualityComparer);
+                    ? fullQueueList.OrderBy(q => q.Quality, _qualityComparer)
+                    : fullQueueList.OrderByDescending(q => q.Quality, _qualityComparer);
             }
             else
             {
-                ordered = ascending ? fullQueue.OrderBy(orderByFunc) : fullQueue.OrderByDescending(orderByFunc);
+                ordered = ascending ? fullQueueList.OrderBy(orderByFunc) : fullQueueList.OrderByDescending(orderByFunc);
             }
 
             ordered = ordered.ThenByDescending(q => q.Size == 0 ? 0 : 100 - (q.Sizeleft / q.Size * 100));
 
             pagingSpec.Records = ordered.Skip((pagingSpec.Page - 1) * pagingSpec.PageSize).Take(pagingSpec.PageSize).ToList();
-            pagingSpec.TotalRecords = fullQueue.Count;
+            pagingSpec.TotalRecords = fullQueueList.Count;
 
             if (pagingSpec.Records.Empty() && pagingSpec.Page > 1)
             {
@@ -207,6 +215,36 @@ namespace Readarr.Api.V1.Queue
             }
 
             return pagingSpec;
+        }
+
+        private static bool QueueMatchesSearch(NzbDrone.Core.Queue.Queue queue, string term)
+        {
+            return ContainsTerm(queue.Title, term) ||
+                   ContainsTerm(queue.Author?.Name, term) ||
+                   ContainsTerm(queue.Author?.Metadata?.Value?.SortName, term) ||
+                   ContainsTerm(queue.Author?.Metadata?.Value?.SortNameLastFirst, term) ||
+                   ContainsTerm(queue.Book?.Title, term) ||
+                   ContainsTerm(queue.DownloadClient, term) ||
+                   ContainsTerm(queue.Indexer, term) ||
+                   ContainsTerm(queue.OutputPath, term) ||
+                   ContainsTerm(queue.Status, term) ||
+                   ContainsTerm(queue.ErrorMessage, term) ||
+                   (queue.StatusMessages?.Any(m => ContainsTerm(m.Title, term) || ContainsTerm(m.Messages, term)) ?? false);
+        }
+
+        private static bool ContainsTerm(object value, string term)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            if (value is IEnumerable<string> values)
+            {
+                return values.Any(v => ContainsTerm(v, term));
+            }
+
+            return value.ToString().Contains(term, StringComparison.InvariantCultureIgnoreCase);
         }
 
         private Func<NzbDrone.Core.Queue.Queue, object> GetOrderByFunc(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec)

@@ -6,7 +6,7 @@ import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withScrollPosition from 'Components/withScrollPosition';
 import { fetchBooks } from 'Store/Actions/bookActions';
-import { saveBookEditor, setBookFilter, setBookSort, setBookTableOption, setBookView } from 'Store/Actions/bookIndexActions';
+import { saveBookEditor, setBookFilter, setBookSearchTerm, setBookSort, setBookTableOption, setBookView } from 'Store/Actions/bookIndexActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import scrollPositions from 'Store/scrollPositions';
 import createBookClientSideCollectionItemsSelector from 'Store/Selectors/createBookClientSideCollectionItemsSelector';
@@ -61,6 +61,11 @@ function createMapDispatchToProps(dispatch, props) {
 
     onFilterSelect(selectedFilterKey) {
       dispatch(setBookFilter({ selectedFilterKey }));
+      dispatch(fetchBooks({ paged: true, page: 1 }));
+    },
+
+    onSearchTermChange(searchTerm) {
+      dispatch(setBookSearchTerm({ searchTerm }));
       dispatch(fetchBooks({ paged: true, page: 1 }));
     },
 

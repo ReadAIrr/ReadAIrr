@@ -100,6 +100,10 @@ class BlocklistConnector extends Component {
     this.props.setBlocklistSort({ sortKey });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.props.setBlocklistSearchTerm({ searchTerm });
+  };
+
   onTableOptionChange = (payload) => {
     this.props.setBlocklistTableOption(payload);
 
@@ -125,6 +129,7 @@ class BlocklistConnector extends Component {
         onPageSelect={this.onPageSelect}
         onRemoveSelected={this.onRemoveSelected}
         onSortPress={this.onSortPress}
+        onSearchTermChange={this.onSearchTermChange}
         onTableOptionChange={this.onTableOptionChange}
         onClearBlocklistPress={this.onClearBlocklistPress}
         {...this.props}
@@ -145,6 +150,7 @@ BlocklistConnector.propTypes = {
   gotoBlocklistPage: PropTypes.func.isRequired,
   removeBlocklistItems: PropTypes.func.isRequired,
   setBlocklistSort: PropTypes.func.isRequired,
+  setBlocklistSearchTerm: PropTypes.func.isRequired,
   setBlocklistTableOption: PropTypes.func.isRequired,
   clearBlocklist: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired

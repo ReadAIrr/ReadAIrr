@@ -25,7 +25,7 @@ namespace Readarr.Api.V1.Wanted
         }
 
         [HttpGet]
-        public PagingResource<BookResource> GetMissingBooks([FromQuery] PagingRequestResource paging, bool includeAuthor = false, bool monitored = true)
+        public PagingResource<BookResource> GetMissingBooks([FromQuery] PagingRequestResource paging, bool includeAuthor = false, bool monitored = true, string term = null)
         {
             var pagingResource = new PagingResource<BookResource>(paging);
             var pagingSpec = new PagingSpec<Book>
@@ -44,6 +44,8 @@ namespace Readarr.Api.V1.Wanted
             {
                 pagingSpec.FilterExpressions.Add(v => v.Monitored == false || v.Author.Value.Monitored == false);
             }
+
+            AddBookSearchFilter(pagingSpec, term);
 
             return pagingSpec.ApplyToPage(_bookService.BooksWithoutFiles, v => MapToResource(v, includeAuthor));
         }

@@ -6,7 +6,8 @@ const serverSideCollectionHandlers = {
   LAST_PAGE: 'lastPage',
   EXACT_PAGE: 'exactPage',
   SORT: 'sort',
-  FILTER: 'filter'
+  FILTER: 'filter',
+  SEARCH: 'search'
 };
 
 export default serverSideCollectionHandlers;

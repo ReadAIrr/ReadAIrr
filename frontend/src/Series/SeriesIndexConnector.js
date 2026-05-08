@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { clearSeries, fetchSeries, setSeriesFilter, setSeriesSort, setSeriesTableOption, setSeriesView } from 'Store/Actions/seriesActions';
+import { clearSeries, fetchSeries, setSeriesFilter, setSeriesSearchTerm, setSeriesSort, setSeriesTableOption, setSeriesView } from 'Store/Actions/seriesActions';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import SeriesIndex from './SeriesIndex';
@@ -40,6 +40,10 @@ function createMapDispatchToProps(dispatch) {
 
     onFilterSelect(selectedFilterKey) {
       dispatch(setSeriesFilter({ selectedFilterKey }));
+    },
+
+    onSearchTermChange(searchTerm) {
+      dispatch(setSeriesSearchTerm({ searchTerm }));
     },
 
     onViewSelect(view) {

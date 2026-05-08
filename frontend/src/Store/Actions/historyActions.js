@@ -24,6 +24,7 @@ export const defaultState = {
   isPopulated: false,
   error: null,
   pageSize: 20,
+  searchTerm: '',
   sortKey: 'date',
   sortDirection: sortDirections.DESCENDING,
   items: [],
@@ -220,6 +221,7 @@ export const GOTO_LAST_HISTORY_PAGE = 'history/gotoHistoryLastPage';
 export const GOTO_HISTORY_PAGE = 'history/gotoHistoryPage';
 export const SET_HISTORY_SORT = 'history/setHistorySort';
 export const SET_HISTORY_FILTER = 'history/setHistoryFilter';
+export const SET_HISTORY_SEARCH_TERM = 'history/setHistorySearchTerm';
 export const SET_HISTORY_TABLE_OPTION = 'history/setHistoryTableOption';
 export const CLEAR_HISTORY = 'history/clearHistory';
 export const MARK_AS_FAILED = 'history/markAsFailed';
@@ -235,6 +237,7 @@ export const gotoHistoryLastPage = createThunk(GOTO_LAST_HISTORY_PAGE);
 export const gotoHistoryPage = createThunk(GOTO_HISTORY_PAGE);
 export const setHistorySort = createThunk(SET_HISTORY_SORT);
 export const setHistoryFilter = createThunk(SET_HISTORY_FILTER);
+export const setHistorySearchTerm = createThunk(SET_HISTORY_SEARCH_TERM);
 export const setHistoryTableOption = createAction(SET_HISTORY_TABLE_OPTION);
 export const clearHistory = createAction(CLEAR_HISTORY);
 export const markAsFailed = createThunk(MARK_AS_FAILED);
@@ -263,7 +266,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.LAST_PAGE]: GOTO_LAST_HISTORY_PAGE,
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_HISTORY_PAGE,
       [serverSideCollectionHandlers.SORT]: SET_HISTORY_SORT,
-      [serverSideCollectionHandlers.FILTER]: SET_HISTORY_FILTER
+      [serverSideCollectionHandlers.FILTER]: SET_HISTORY_FILTER,
+      [serverSideCollectionHandlers.SEARCH]: SET_HISTORY_SEARCH_TERM
     },
     fetchDataAugmenter),
 

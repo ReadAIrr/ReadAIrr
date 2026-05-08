@@ -364,6 +364,10 @@ function getPagedBookIndexRequestData(state, payload = {}) {
     sortDirection: bookIndex.sortDirection || sortDirections.ASCENDING
   };
 
+  if (bookIndex.searchTerm) {
+    data.term = bookIndex.searchTerm;
+  }
+
   if (selectedFilterKey === 'monitored') {
     data.monitored = true;
   } else if (selectedFilterKey === 'unmonitored') {

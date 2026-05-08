@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withScrollPosition from 'Components/withScrollPosition';
-import { saveAuthorEditor, setAuthorFilter, setAuthorSort, setAuthorTableOption, setAuthorView } from 'Store/Actions/authorIndexActions';
+import { saveAuthorEditor, setAuthorFilter, setAuthorSearchTerm, setAuthorSort, setAuthorTableOption, setAuthorView } from 'Store/Actions/authorIndexActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import scrollPositions from 'Store/scrollPositions';
 import createAuthorClientSideCollectionItemsSelector from 'Store/Selectors/createAuthorClientSideCollectionItemsSelector';
@@ -53,6 +53,10 @@ function createMapDispatchToProps(dispatch, props) {
 
     onFilterSelect(selectedFilterKey) {
       dispatch(setAuthorFilter({ selectedFilterKey }));
+    },
+
+    onSearchTermChange(searchTerm) {
+      dispatch(setAuthorSearchTerm({ searchTerm }));
     },
 
     dispatchSetAuthorView(view) {

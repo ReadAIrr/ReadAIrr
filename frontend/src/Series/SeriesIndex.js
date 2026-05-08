@@ -9,6 +9,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -373,6 +374,7 @@ function SeriesIndex(props) {
     totalItems,
     items,
     columns,
+    searchTerm,
     selectedFilterKey,
     filters,
     customFilters,
@@ -381,6 +383,7 @@ function SeriesIndex(props) {
     view,
     onSortSelect,
     onFilterSelect,
+    onSearchTermChange,
     onViewSelect,
     onTableOptionChange
   } = props;
@@ -398,6 +401,16 @@ function SeriesIndex(props) {
           alignContent={align.RIGHT}
           collapseButtons={false}
         >
+          <PageToolbarSearchInput
+            name="seriesIndexSearch"
+            value={searchTerm}
+            placeholder="Filter series"
+            isDisabled={hasNoSeries}
+            onChange={onSearchTermChange}
+          />
+
+          <PageToolbarSeparator />
+
           {
             view === 'table' ?
               <TableOptionsModalWrapper
@@ -472,7 +485,7 @@ function SeriesIndex(props) {
               {
                 hasNoSeries ?
                   'No series have been added yet.' :
-                  'No series match the current filter.'
+                  'No series match the current search or filter.'
               }
             </div>
         }
@@ -488,6 +501,7 @@ SeriesIndex.propTypes = {
   totalItems: PropTypes.number.isRequired,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  searchTerm: PropTypes.string,
   selectedFilterKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   filters: PropTypes.arrayOf(PropTypes.object).isRequired,
   customFilters: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -496,6 +510,7 @@ SeriesIndex.propTypes = {
   view: PropTypes.string.isRequired,
   onSortSelect: PropTypes.func.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
+  onSearchTermChange: PropTypes.func.isRequired,
   onViewSelect: PropTypes.func.isRequired,
   onTableOptionChange: PropTypes.func.isRequired
 };

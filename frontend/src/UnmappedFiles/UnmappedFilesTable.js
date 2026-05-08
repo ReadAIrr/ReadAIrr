@@ -11,7 +11,9 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
+import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
+import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
 import VirtualTable from 'Components/Table/VirtualTable';
 import VirtualTableRow from 'Components/Table/VirtualTableRow';
@@ -43,6 +45,57 @@ const triageFilterLabels = {
   [triageFilterOptions.REVIEWED]: 'Reviewed'
 };
 
+function valueContainsSearchTerm(value, term) {
+  if (value == null) {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => valueContainsSearchTerm(item, term));
+  }
+
+  if (typeof value === 'object') {
+    return Object.keys(value).some((key) => valueContainsSearchTerm(value[key], term));
+  }
+
+  return value.toString().toLowerCase().includes(term);
+}
+
+function getFileName(path) {
+  if (!path) {
+    return '';
+  }
+
+  return path.substring(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1);
+}
+
+function matchesSearchTerm(item, searchTerm) {
+  const term = searchTerm.trim().toLowerCase();
+
+  if (!term) {
+    return true;
+  }
+
+  const path = item.path || item.relativePath;
+  const review = item.review || {};
+
+  return [
+    path,
+    getFileName(path),
+    item.relativePath,
+    item.fileName,
+    item.parsedBookInfo,
+    item.quality,
+    item.language,
+    review.status,
+    review.reason,
+    review.reasons,
+    review.rejectionReasons,
+    review.candidate,
+    review.candidates
+  ].some((value) => valueContainsSearchTerm(value, term));
+}
+
 class UnmappedFilesTable extends Component {
 
   //
@@ -51,12 +104,15 @@ class UnmappedFilesTable extends Component {
   constructor(props, context) {
     super(props, context);
 
+    this._visibleItems = [];
+
     this.state = {
       scroller: null,
       allSelected: false,
       allUnselected: false,
       lastToggled: null,
       selectedState: {},
+      searchTerm: '',
       triageFilter: triageFilterOptions.NEEDS_REVIEW,
       isManualMatchModalOpen: false,
       manualMatchFolder: null
@@ -171,10 +227,15 @@ class UnmappedFilesTable extends Component {
 
   getVisibleItems = () => {
     const {
+      searchTerm,
       triageFilter
     } = this.state;
 
     return this.props.items.filter((item) => {
+      if (!matchesSearchTerm(item, searchTerm)) {
+        return false;
+      }
+
       const status = item.review?.status;
       const isReviewed = item.reviewed || status === 'reviewed';
 
@@ -246,6 +307,10 @@ class UnmappedFilesTable extends Component {
     this.setState({ triageFilter });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.setState({ searchTerm });
+  };
+
   rowRenderer = ({ key, rowIndex, style }) => {
     const {
       columns,
@@ -258,7 +323,7 @@ class UnmappedFilesTable extends Component {
       selectedState
     } = this.state;
 
-    const item = this.getVisibleItems()[rowIndex];
+    const item = this._visibleItems[rowIndex];
 
     return (
       <VirtualTableRow
@@ -306,11 +371,13 @@ class UnmappedFilesTable extends Component {
       selectedState,
       isManualMatchModalOpen,
       manualMatchFolder,
+      searchTerm,
       triageFilter
     } = this.state;
 
     const selectedTrackFileIds = this.getSelectedIds();
     const visibleItems = this.getVisibleItems();
+    this._visibleItems = visibleItems;
 
     return (
       <PageContent title={translate('UnmappedFiles')}>
@@ -358,6 +425,15 @@ class UnmappedFilesTable extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <PageToolbarSearchInput
+              name="unmappedFilesSearch"
+              value={searchTerm}
+              placeholder="Filter unmapped files"
+              onChange={this.onSearchTermChange}
+            />
+
+            <PageToolbarSeparator />
+
             <Menu alignMenu={align.RIGHT}>
               <MenuButton>
                 <Icon
@@ -422,7 +498,7 @@ class UnmappedFilesTable extends Component {
               <Alert kind={kinds.INFO}>
                 {
                   items.length ?
-                    'No unmapped files match the current filter.' :
+                    'No unmapped files match the current search or filter.' :
                     'Success! My work is done, all files on disk are matched to known books.'
                 }
               </Alert>

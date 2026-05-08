@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import { createSelector } from 'reselect';
 import filterCollection from 'Utilities/Array/filterCollection';
+import searchCollection from 'Utilities/Array/searchCollection';
 import sortCollection from 'Utilities/Array/sortCollection';
 import createCustomFiltersSelector from './createCustomFiltersSelector';
 
@@ -13,7 +14,8 @@ function createClientSideCollectionSelector(section, uiSection) {
       const state = Object.assign({}, sectionState, uiSectionState, { customFilters });
 
       const filtered = filterCollection(state.items, state);
-      const sorted = sortCollection(filtered, state);
+      const searched = searchCollection(filtered, state);
+      const sorted = sortCollection(searched, state);
 
       return {
         ...sectionState,

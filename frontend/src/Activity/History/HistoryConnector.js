@@ -89,6 +89,10 @@ class HistoryConnector extends Component {
     this.props.setHistoryFilter({ selectedFilterKey });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.props.setHistorySearchTerm({ searchTerm });
+  };
+
   onTableOptionChange = (payload) => {
     this.props.setHistoryTableOption(payload);
 
@@ -110,6 +114,7 @@ class HistoryConnector extends Component {
         onPageSelect={this.onPageSelect}
         onSortPress={this.onSortPress}
         onFilterSelect={this.onFilterSelect}
+        onSearchTermChange={this.onSearchTermChange}
         onTableOptionChange={this.onTableOptionChange}
         {...this.props}
       />
@@ -128,6 +133,7 @@ HistoryConnector.propTypes = {
   gotoHistoryPage: PropTypes.func.isRequired,
   setHistorySort: PropTypes.func.isRequired,
   setHistoryFilter: PropTypes.func.isRequired,
+  setHistorySearchTerm: PropTypes.func.isRequired,
   setHistoryTableOption: PropTypes.func.isRequired,
   clearHistory: PropTypes.func.isRequired
 };

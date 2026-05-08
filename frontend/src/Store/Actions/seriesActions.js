@@ -178,6 +178,7 @@ export const defaultState = {
   secondarySortKey: 'title',
   secondarySortDirection: sortDirections.ASCENDING,
   selectedFilterKey: 'all',
+  searchTerm: '',
   view: 'overview',
   items: [],
 
@@ -241,6 +242,25 @@ export const defaultState = {
 
   filters,
   filterPredicates,
+  searchPredicates: [
+    function(item, term) {
+      const completeness = item.completeness || {};
+      const books = item.books || [];
+      const values = [
+        item.title,
+        item.description,
+        completeness.missingBooks ? `${completeness.missingBooks} missing` : 'complete',
+        ...books.flatMap((book) => [
+          book.title,
+          book.authorName,
+          book.missingReason,
+          book.hasFile ? 'available' : 'missing'
+        ])
+      ];
+
+      return values.some((value) => `${value || ''}`.toLowerCase().includes(term));
+    }
+  ],
   filterBuilderProps: [
     {
       name: 'title',
@@ -297,6 +317,7 @@ export const persistState = [
 export const FETCH_SERIES = 'series/fetchSeries';
 export const SET_SERIES_SORT = 'series/setSeriesSort';
 export const SET_SERIES_FILTER = 'series/setSeriesFilter';
+export const SET_SERIES_SEARCH_TERM = 'series/setSeriesSearchTerm';
 export const SET_SERIES_VIEW = 'series/setSeriesView';
 export const SET_SERIES_TABLE_OPTION = 'series/setSeriesTableOption';
 export const CLEAR_SERIES = 'series/clearSeries';
@@ -308,6 +329,7 @@ export const SET_SERIES_VALUE = 'series/setSeriesValue';
 export const fetchSeries = createThunk(FETCH_SERIES);
 export const setSeriesSort = createAction(SET_SERIES_SORT);
 export const setSeriesFilter = createAction(SET_SERIES_FILTER);
+export const setSeriesSearchTerm = createAction(SET_SERIES_SEARCH_TERM);
 export const setSeriesView = createAction(SET_SERIES_VIEW);
 export const setSeriesTableOption = createAction(SET_SERIES_TABLE_OPTION);
 export const clearSeries = createAction(CLEAR_SERIES);
@@ -327,6 +349,13 @@ export const reducers = createHandleActions({
   [SET_SERIES_SORT]: createSetClientSideCollectionSortReducer(section),
 
   [SET_SERIES_FILTER]: createSetClientSideCollectionFilterReducer(section),
+
+  [SET_SERIES_SEARCH_TERM]: function(state, { payload }) {
+    return {
+      ...state,
+      searchTerm: payload.searchTerm || ''
+    };
+  },
 
   [SET_SERIES_VIEW]: function(state, { payload }) {
     return Object.assign({}, state, { view: payload.view });

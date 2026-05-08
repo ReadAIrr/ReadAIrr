@@ -110,6 +110,10 @@ class MissingConnector extends Component {
     this.props.setMissingFilter({ selectedFilterKey });
   };
 
+  onSearchTermChange = (searchTerm) => {
+    this.props.setMissingSearchTerm({ searchTerm });
+  };
+
   onTableOptionChange = (payload) => {
     this.props.setMissingTableOption(payload);
 
@@ -146,6 +150,7 @@ class MissingConnector extends Component {
         onPageSelect={this.onPageSelect}
         onSortPress={this.onSortPress}
         onFilterSelect={this.onFilterSelect}
+        onSearchTermChange={this.onSearchTermChange}
         onTableOptionChange={this.onTableOptionChange}
         onSearchSelectedPress={this.onSearchSelectedPress}
         onToggleSelectedPress={this.onToggleSelectedPress}
@@ -167,6 +172,7 @@ MissingConnector.propTypes = {
   gotoMissingPage: PropTypes.func.isRequired,
   setMissingSort: PropTypes.func.isRequired,
   setMissingFilter: PropTypes.func.isRequired,
+  setMissingSearchTerm: PropTypes.func.isRequired,
   setMissingTableOption: PropTypes.func.isRequired,
   clearMissing: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired,
