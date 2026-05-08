@@ -71,6 +71,8 @@ namespace Readarr.Api.V1.ManualImport
         public bool RequiresManualConfirmation { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
+        public List<ManualImportReviewReasonResource> Evidence { get; set; }
+        public List<ManualImportReviewReasonResource> Warnings { get; set; }
         public bool IsStale { get; set; }
         public DateTime? Created { get; set; }
         public DateTime? Updated { get; set; }
@@ -184,6 +186,36 @@ namespace Readarr.Api.V1.ManualImport
             };
         }
 
+        public static void ApplySuggestionEvidence(ManualImportReviewResource review)
+        {
+            if (review?.Suggestions == null)
+            {
+                return;
+            }
+
+            foreach (var suggestion in review.Suggestions)
+            {
+                suggestion.Evidence = new List<ManualImportReviewReasonResource>();
+                suggestion.Warnings = new List<ManualImportReviewReasonResource>();
+
+                AddCandidateEvidence(suggestion, "book", "Title evidence", suggestion.LikelyBook, review.Candidate?.BookTitle);
+                AddCandidateEvidence(suggestion, "author", "Author evidence", suggestion.LikelyAuthor, review.Candidate?.AuthorName);
+                AddCandidateEvidence(suggestion, "edition", "Edition evidence", suggestion.LikelyEdition, review.Candidate?.EditionTitle);
+
+                if (suggestion.Narrator.IsNotNullOrWhiteSpace())
+                {
+                    suggestion.Evidence.Add(new ManualImportReviewReasonResource
+                    {
+                        Kind = "narratorEvidence",
+                        Label = "Narrator evidence",
+                        Detail = $"{GetSuggestionSource(suggestion)} found narrator: {suggestion.Narrator}"
+                    });
+                }
+            }
+
+            AddNarratorConflictWarnings(review.Suggestions);
+        }
+
         private static ManualImportParsedResource BuildParsed(ManualImportItem model)
         {
             var tags = model.Tags ?? new ParsedTrackInfo();
@@ -201,6 +233,102 @@ namespace Readarr.Api.V1.ManualImport
                 SeriesTitle = tags.SeriesTitle,
                 SeriesIndex = tags.SeriesIndex
             };
+        }
+
+        private static void AddCandidateEvidence(ManualImportIdentificationSuggestionResource suggestion, string kind, string label, string suggestionValue, string candidateValue)
+        {
+            if (suggestionValue.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            if (candidateValue.IsNullOrWhiteSpace())
+            {
+                suggestion.Evidence.Add(new ManualImportReviewReasonResource
+                {
+                    Kind = $"{kind}Evidence",
+                    Label = label,
+                    Detail = $"{GetSuggestionSource(suggestion)} found {kind}: {suggestionValue}"
+                });
+
+                return;
+            }
+
+            if (IsLikelySameText(suggestionValue, candidateValue))
+            {
+                suggestion.Evidence.Add(new ManualImportReviewReasonResource
+                {
+                    Kind = $"{kind}Match",
+                    Label = label,
+                    Detail = $"{GetSuggestionSource(suggestion)} agrees with the current candidate: {suggestionValue}"
+                });
+
+                return;
+            }
+
+            suggestion.Warnings.Add(new ManualImportReviewReasonResource
+            {
+                Kind = $"{kind}Mismatch",
+                Label = $"{label} mismatch",
+                Detail = $"{GetSuggestionSource(suggestion)} found {kind} '{suggestionValue}', but the current candidate is '{candidateValue}'."
+            });
+        }
+
+        private static void AddNarratorConflictWarnings(List<ManualImportIdentificationSuggestionResource> suggestions)
+        {
+            var narratorSuggestions = suggestions
+                .Where(x => x.Narrator.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            foreach (var suggestion in narratorSuggestions)
+            {
+                var conflict = narratorSuggestions.FirstOrDefault(x => !ReferenceEquals(x, suggestion) && !IsLikelySameText(x.Narrator, suggestion.Narrator));
+
+                if (conflict == null)
+                {
+                    continue;
+                }
+
+                suggestion.Warnings.Add(new ManualImportReviewReasonResource
+                {
+                    Kind = "narratorMismatch",
+                    Label = "Narrator evidence mismatch",
+                    Detail = $"{GetSuggestionSource(suggestion)} found narrator '{suggestion.Narrator}', but {GetSuggestionSource(conflict)} found '{conflict.Narrator}'."
+                });
+            }
+        }
+
+        private static string GetSuggestionSource(ManualImportIdentificationSuggestionResource suggestion)
+        {
+            if (suggestion.Type == "deepAudio")
+            {
+                return suggestion.Provider.IsNotNullOrWhiteSpace() && suggestion.Provider.Contains("stt") ? "Transcript" : "Deep identify";
+            }
+
+            return "AI review";
+        }
+
+        private static bool IsLikelySameText(string left, string right)
+        {
+            var normalizedLeft = NormalizeEvidenceText(left);
+            var normalizedRight = NormalizeEvidenceText(right);
+
+            if (normalizedLeft.IsNullOrWhiteSpace() || normalizedRight.IsNullOrWhiteSpace())
+            {
+                return false;
+            }
+
+            return normalizedLeft == normalizedRight ||
+                   (normalizedLeft.Length > 6 && normalizedRight.Contains(normalizedLeft)) ||
+                   (normalizedRight.Length > 6 && normalizedLeft.Contains(normalizedRight));
+        }
+
+        private static string NormalizeEvidenceText(string value)
+        {
+            return new string((value ?? string.Empty)
+                .ToLowerInvariant()
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
         }
 
         private static ManualImportCandidateResource BuildCandidate(ManualImportItem model)

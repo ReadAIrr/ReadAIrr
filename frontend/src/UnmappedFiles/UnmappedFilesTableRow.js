@@ -102,6 +102,24 @@ function getSuggestionDetails(suggestion) {
     });
   }
 
+  if (suggestion.evidence?.length) {
+    suggestion.evidence.forEach((item) => {
+      details.push({
+        label: item.label,
+        detail: item.detail
+      });
+    });
+  }
+
+  if (suggestion.warnings?.length) {
+    suggestion.warnings.forEach((item) => {
+      details.push({
+        label: item.label,
+        detail: item.detail
+      });
+    });
+  }
+
   if (suggestion.transcriptExcerpt) {
     details.push({
       label: 'Transcript excerpt',

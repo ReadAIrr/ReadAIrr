@@ -10,6 +10,7 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Test.Common;
 using Prowlarr.Api.V1.Config;
 using Readarr.Api.V1.BookFiles;
+using Readarr.Api.V1.ManualImport;
 
 namespace NzbDrone.Api.Test.BookFiles
 {
@@ -213,6 +214,78 @@ namespace NzbDrone.Api.Test.BookFiles
             result.Publisher.Should().Be("Example Audio");
             result.Series.Should().Be("The Hidden Series");
             result.Confidence.Should().Be(100);
+        }
+
+        [Test]
+        public void suggestion_evidence_should_warn_on_transcript_candidate_mismatch_without_warning_on_missing_narrator_metadata()
+        {
+            var review = new ManualImportReviewResource
+            {
+                Candidate = new ManualImportCandidateResource
+                {
+                    AuthorName = "Alice Writer",
+                    BookTitle = "The Correct Book",
+                    EditionTitle = "Audio Edition"
+                },
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>
+                {
+                    new ManualImportIdentificationSuggestionResource
+                    {
+                        Type = "deepAudio",
+                        Provider = "openrouter-stt",
+                        Status = "transcriptCaptured",
+                        LikelyAuthor = "Alice Writer",
+                        LikelyBook = "The Wrong Book",
+                        Narrator = "Jane Reader"
+                    }
+                }
+            };
+
+            ManualImportReviewResourceMapper.ApplySuggestionEvidence(review);
+
+            review.Suggestions[0].Evidence.Should().Contain(x => x.Kind == "authorMatch");
+            review.Suggestions[0].Evidence.Should().Contain(x => x.Kind == "narratorEvidence" && x.Detail.Contains("Jane Reader"));
+            review.Suggestions[0].Warnings.Should().Contain(x => x.Kind == "bookMismatch");
+            review.Suggestions[0].Warnings.Should().NotContain(x => x.Kind == "narratorMismatch");
+        }
+
+        [Test]
+        public void suggestion_evidence_should_warn_when_narrator_sources_conflict()
+        {
+            var review = new ManualImportReviewResource
+            {
+                Candidate = new ManualImportCandidateResource
+                {
+                    AuthorName = "Alice Writer",
+                    BookTitle = "The Hidden Book"
+                },
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>
+                {
+                    new ManualImportIdentificationSuggestionResource
+                    {
+                        Type = "deepAudio",
+                        Provider = "openrouter-stt",
+                        Status = "transcriptCaptured",
+                        LikelyAuthor = "Alice Writer",
+                        LikelyBook = "The Hidden Book",
+                        Narrator = "Jane Reader"
+                    },
+                    new ManualImportIdentificationSuggestionResource
+                    {
+                        Type = "aiReview",
+                        Provider = "openrouter",
+                        Status = "suggested",
+                        LikelyAuthor = "Alice Writer",
+                        LikelyBook = "The Hidden Book",
+                        Narrator = "Different Narrator"
+                    }
+                }
+            };
+
+            ManualImportReviewResourceMapper.ApplySuggestionEvidence(review);
+
+            review.Suggestions[0].Warnings.Should().Contain(x => x.Kind == "narratorMismatch");
+            review.Suggestions[1].Warnings.Should().Contain(x => x.Kind == "narratorMismatch");
         }
 
         [Test]

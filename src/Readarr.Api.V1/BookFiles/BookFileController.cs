@@ -284,6 +284,7 @@ namespace Readarr.Api.V1.BookFiles
 
                 resource.Review.Suggestions ??= new List<ManualImportIdentificationSuggestionResource>();
                 resource.Review.Suggestions.AddRange(suggestions.Where(x => string.Equals(x.Path, resource.Path, global::System.StringComparison.OrdinalIgnoreCase)));
+                ManualImportReviewResourceMapper.ApplySuggestionEvidence(resource.Review);
             }
         }
 
