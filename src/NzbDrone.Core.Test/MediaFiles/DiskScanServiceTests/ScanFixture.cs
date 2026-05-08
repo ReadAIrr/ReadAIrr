@@ -8,6 +8,7 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
@@ -58,6 +59,10 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
 
             Mocker.GetMock<IMediaFileService>()
                 .Setup(v => v.GetFilesWithBasePath(It.IsAny<string>()))
+                .Returns(new List<BookFile>());
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(v => v.GetFileWithPath(It.IsAny<List<string>>()))
                 .Returns(new List<BookFile>());
 
             Mocker.GetMock<IMediaFileService>()
@@ -129,6 +134,18 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
                     Path = x,
                     Modified = lastWrite.Value.UtcDateTime
                 }).ToList());
+
+            var knownFiles = files.Select(x => new BookFile
+            {
+                Path = x,
+                Modified = lastWrite.Value.UtcDateTime
+            }).ToList();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(x => x.GetFileWithPath(It.IsAny<List<string>>()))
+                .Returns((List<string> paths) => knownFiles
+                    .Where(x => paths.Contains(x.Path, PathEqualityComparer.Instance))
+                    .ToList());
         }
 
         [Test]
@@ -465,11 +482,7 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _author.Path });
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<BookFile>>(l => l.Count == 0)),
-                        Times.Once());
-
-            Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<BookFile>>(l => l.Count > 0)),
+                .Verify(x => x.AddMany(It.IsAny<List<BookFile>>()),
                         Times.Never());
         }
 
@@ -491,12 +504,33 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _author.Path });
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.Update(It.Is<List<BookFile>>(l => l.Count == 0)),
-                        Times.Once());
-
-            Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.Update(It.Is<List<BookFile>>(l => l.Count > 0)),
+                .Verify(x => x.Update(It.IsAny<List<BookFile>>()),
                         Times.Never());
+        }
+
+        [Test]
+        public void should_process_import_decisions_in_batches()
+        {
+            GivenAuthorFolder();
+
+            var files = Enumerable.Range(1, 101)
+                .Select(x => Path.Combine(_author.Path, "Season 1", $"file{x}.mobi"))
+                .ToList();
+
+            GivenFiles(files);
+            GivenKnownFiles(new List<string>());
+            GivenRejections();
+
+            Subject.Scan(new List<string> { _author.Path });
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Verify(v => v.GetImportDecisions(It.Is<List<IFileInfo>>(l => l.Count == 100), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Verify(v => v.GetImportDecisions(It.Is<List<IFileInfo>>(l => l.Count == 1), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Verify(v => v.GetImportDecisions(It.Is<List<IFileInfo>>(l => l.Count == 101), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Never());
         }
 
         [Test]

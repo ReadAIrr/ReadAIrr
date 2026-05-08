@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -33,6 +34,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
     public class ManualImportService : IExecute<ManualImportCommand>, IManualImportService
     {
+        internal const int ImportDecisionBatchSize = 100;
+
         private readonly IDiskProvider _diskProvider;
         private readonly IParsingService _parsingService;
         private readonly IRootFolderService _rootFolderService;
@@ -137,6 +140,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
         public List<ManualImportItem> GetMediaFiles(List<string> paths, string downloadId, bool replaceExistingFiles)
         {
+            var stopwatch = Stopwatch.StartNew();
             var files = paths.Where(_diskProvider.FileExists)
                              .Select(_diskProvider.GetFileInfo)
                              .ToList();
@@ -145,6 +149,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             {
                 return new List<ManualImportItem>();
             }
+
+            _logger.Debug("Making manual import decisions for {0} selected files in batches of {1}", files.Count, ImportDecisionBatchSize);
 
             var config = new ImportDecisionMakerConfig
             {
@@ -156,9 +162,35 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 KeepAllEditions = true
             };
 
-            var decisions = _importDecisionMaker.GetImportDecisions(files, null, null, config);
+            var items = new List<ManualImportItem>();
+            var batchNumber = 0;
+            var batchCount = (int)Math.Ceiling((double)files.Count / ImportDecisionBatchSize);
 
-            return decisions.Select(x => MapItem(x, downloadId, replaceExistingFiles, false)).ToList();
+            // Future deeper suggestion providers should enrich these parser/matcher results without changing file enumeration.
+            foreach (var batch in files.Chunk(ImportDecisionBatchSize))
+            {
+                batchNumber++;
+                var batchFiles = batch.ToList();
+                var batchStopwatch = Stopwatch.StartNew();
+                var decisions = _importDecisionMaker.GetImportDecisions(batchFiles, null, null, config);
+
+                items.AddRange(decisions.Select(x => MapItem(x, downloadId, replaceExistingFiles, false)));
+
+                batchStopwatch.Stop();
+                _logger.Debug("Completed manual import decision batch {0}/{1}: {2} files, {3} decisions, {4} accepted, {5} rejected [{6}]",
+                    batchNumber,
+                    batchCount,
+                    batchFiles.Count,
+                    decisions.Count,
+                    decisions.Count(x => x.Approved),
+                    decisions.Count(x => !x.Approved),
+                    batchStopwatch.Elapsed);
+            }
+
+            stopwatch.Stop();
+            _logger.Debug("Completed manual import decisions for {0} selected files [{1}]", files.Count, stopwatch.Elapsed);
+
+            return items;
         }
 
         private List<ManualImportItem> ProcessFolder(string folder, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles)

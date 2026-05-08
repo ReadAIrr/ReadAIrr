@@ -38,6 +38,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         public static readonly Regex ExcludedSubFoldersRegex = new Regex(@"(?:\\|\/|^)(?:extras|@eadir|extrafanart|plex versions|\.[^\\/]+)(?:\\|\/)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly Regex ExcludedFilesRegex = new Regex(@"^\._|^Thumbs\.db$|^\.DS_store$|\.partial~$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        internal const int ImportDecisionBatchSize = 100;
 
         private readonly IConfigService _configService;
         private readonly IDiskProvider _diskProvider;
@@ -89,12 +90,25 @@ namespace NzbDrone.Core.MediaFiles
                 authorIds = new List<int>();
             }
 
-            var mediaFileList = new List<IFileInfo>();
-
             var musicFilesStopwatch = Stopwatch.StartNew();
+            var config = new ImportDecisionMakerConfig
+            {
+                Filter = filter,
+                IncludeExisting = true,
+                AddNewAuthors = addNewAuthors
+            };
+
+            var totalFilesFound = 0;
+            var totalDecisions = 0;
+            var totalApproved = 0;
+            var totalRejected = 0;
+            var totalInserted = 0;
+            var totalUpdated = 0;
 
             foreach (var folder in folders)
             {
+                var folderStopwatch = Stopwatch.StartNew();
+
                 // We could be scanning a root folder or a subset of a root folder.  If it's a subset,
                 // check if the root folder exists before cleaning.
                 var rootFolder = _rootFolderService.GetBestRootFolder(folder);
@@ -137,6 +151,7 @@ namespace NzbDrone.Core.MediaFiles
                 _logger.ProgressInfo("Scanning {0}", folder);
 
                 var files = FilterFiles(folder, GetBookFiles(folder));
+                totalFilesFound += files.Count;
 
                 if (!files.Any())
                 {
@@ -145,81 +160,37 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 CleanMediaFiles(folder, files.Select(x => x.FullName).ToList());
-                mediaFileList.AddRange(files);
+
+                var folderStats = ProcessFolderFileBatches(folder, files, config);
+
+                totalDecisions += folderStats.DecisionCount;
+                totalApproved += folderStats.ApprovedCount;
+                totalRejected += folderStats.RejectedCount;
+                totalInserted += folderStats.InsertedCount;
+                totalUpdated += folderStats.UpdatedCount;
+
+                folderStopwatch.Stop();
+                _logger.ProgressInfo("Completed scan of {0}: {1} files, {2} decisions, {3} accepted, {4} rejected, {5} inserted, {6} updated [{7}]",
+                    folder,
+                    files.Count,
+                    folderStats.DecisionCount,
+                    folderStats.ApprovedCount,
+                    folderStats.RejectedCount,
+                    folderStats.InsertedCount,
+                    folderStats.UpdatedCount,
+                    folderStopwatch.Elapsed);
             }
 
             musicFilesStopwatch.Stop();
-            _logger.Trace("Finished getting track files for:\n{0} [{1}]", folders.ConcatToString("\n"), musicFilesStopwatch.Elapsed);
-
-            var decisionsStopwatch = Stopwatch.StartNew();
-
-            var config = new ImportDecisionMakerConfig
-            {
-                Filter = filter,
-                IncludeExisting = true,
-                AddNewAuthors = addNewAuthors
-            };
-
-            var decisions = _importDecisionMaker.GetImportDecisions(mediaFileList, null, null, config);
-
-            decisionsStopwatch.Stop();
-            _logger.Debug("Import decisions complete [{0}]", decisionsStopwatch.Elapsed);
-
-            var importStopwatch = Stopwatch.StartNew();
-            _importApprovedTracks.Import(decisions, false);
-
-            // decisions may have been filtered to just new files.  Anything new and approved will have been inserted.
-            // Now we need to make sure anything new but not approved gets inserted
-            // Note that knownFiles will include anything imported just now
-            var knownFiles = new List<BookFile>();
-            folders.ForEach(x => knownFiles.AddRange(_mediaFileService.GetFilesWithBasePath(x)));
-
-            var newFiles = decisions
-                .ExceptBy(x => x.Item.Path, knownFiles, x => x.Path, PathEqualityComparer.Instance)
-                .Select(decision => new BookFile
-                {
-                    Path = decision.Item.Path,
-                    CalibreId = decision.Item.CalibreId,
-                    Part = decision.Item.Part,
-                    PartCount = decision.Item.PartCount,
-                    Size = decision.Item.Size,
-                    Modified = decision.Item.Modified,
-                    DateAdded = DateTime.UtcNow,
-                    Quality = decision.Item.Quality,
-                    MediaInfo = decision.Item.FileTrackInfo.MediaInfo,
-                    Edition = decision.Item.Edition
-                })
-                .ToList();
-            _mediaFileService.AddMany(newFiles);
-
-            _logger.Debug($"Inserted {newFiles.Count} new unmatched trackfiles");
-
-            // finally update info on size/modified for existing files
-            var updatedFiles = knownFiles
-                .Join(decisions,
-                      x => x.Path,
-                      x => x.Item.Path,
-                      (file, decision) => new
-                      {
-                          File = file,
-                          Item = decision.Item
-                      },
-                      PathEqualityComparer.Instance)
-                .Where(x => x.File.Size != x.Item.Size ||
-                       Math.Abs((x.File.Modified - x.Item.Modified).TotalSeconds) > 1)
-                .Select(x =>
-                {
-                    x.File.Size = x.Item.Size;
-                    x.File.Modified = x.Item.Modified;
-                    x.File.MediaInfo = x.Item.FileTrackInfo.MediaInfo;
-                    x.File.Quality = x.Item.Quality;
-                    return x.File;
-                })
-                .ToList();
-
-            _mediaFileService.Update(updatedFiles);
-
-            _logger.Debug($"Updated info for {updatedFiles.Count} known files");
+            _logger.Debug("Scan/import complete for {0} folders: {1} files, {2} decisions, {3} accepted, {4} rejected, {5} inserted, {6} updated [{7}]",
+                folders.Count,
+                totalFilesFound,
+                totalDecisions,
+                totalApproved,
+                totalRejected,
+                totalInserted,
+                totalUpdated,
+                musicFilesStopwatch.Elapsed);
 
             var authors = _authorService.GetAuthors(authorIds);
             foreach (var author in authors)
@@ -227,8 +198,104 @@ namespace NzbDrone.Core.MediaFiles
                 CompletedScanning(author);
             }
 
-            importStopwatch.Stop();
-            _logger.Debug("Book import complete for:\n{0} [{1}]", folders.ConcatToString("\n"), importStopwatch.Elapsed);
+            _logger.Debug("Book scan complete for:\n{0} [{1}]", folders.ConcatToString("\n"), musicFilesStopwatch.Elapsed);
+        }
+
+        private ScanBatchStats ProcessFolderFileBatches(string folder, List<IFileInfo> files, ImportDecisionMakerConfig config)
+        {
+            var stats = new ScanBatchStats();
+            var batchNumber = 0;
+            var batchCount = (int)Math.Ceiling((double)files.Count / ImportDecisionBatchSize);
+
+            foreach (var batch in files.Chunk(ImportDecisionBatchSize))
+            {
+                batchNumber++;
+                var batchFiles = batch.ToList();
+                var batchStopwatch = Stopwatch.StartNew();
+
+                _logger.ProgressInfo("Making import decisions for {0} batch {1}/{2} ({3} files)", folder, batchNumber, batchCount, batchFiles.Count);
+
+                var decisions = _importDecisionMaker.GetImportDecisions(batchFiles, null, null, config);
+                var approved = decisions.Count(x => x.Approved);
+                var rejected = decisions.Count - approved;
+
+                _importApprovedTracks.Import(decisions, false);
+
+                // Decisions may have been filtered to just new files. Anything new and approved will have been inserted.
+                // Now make sure anything new but not approved gets inserted.
+                var decisionPaths = decisions.Select(x => x.Item.Path).ToList();
+                var knownFiles = decisionPaths.Any() ? _mediaFileService.GetFileWithPath(decisionPaths) : new List<BookFile>();
+
+                var newFiles = decisions
+                    .ExceptBy(x => x.Item.Path, knownFiles, x => x.Path, PathEqualityComparer.Instance)
+                    .Select(decision => new BookFile
+                    {
+                        Path = decision.Item.Path,
+                        CalibreId = decision.Item.CalibreId,
+                        Part = decision.Item.Part,
+                        PartCount = decision.Item.PartCount,
+                        Size = decision.Item.Size,
+                        Modified = decision.Item.Modified,
+                        DateAdded = DateTime.UtcNow,
+                        Quality = decision.Item.Quality,
+                        MediaInfo = decision.Item.FileTrackInfo.MediaInfo,
+                        Edition = decision.Item.Edition
+                    })
+                    .ToList();
+
+                if (newFiles.Any())
+                {
+                    _mediaFileService.AddMany(newFiles);
+                }
+
+                var updatedFiles = knownFiles
+                    .Join(decisions,
+                          x => x.Path,
+                          x => x.Item.Path,
+                          (file, decision) => new
+                          {
+                              File = file,
+                              Item = decision.Item
+                          },
+                          PathEqualityComparer.Instance)
+                    .Where(x => x.File.Size != x.Item.Size ||
+                           Math.Abs((x.File.Modified - x.Item.Modified).TotalSeconds) > 1)
+                    .Select(x =>
+                    {
+                        x.File.Size = x.Item.Size;
+                        x.File.Modified = x.Item.Modified;
+                        x.File.MediaInfo = x.Item.FileTrackInfo.MediaInfo;
+                        x.File.Quality = x.Item.Quality;
+                        return x.File;
+                    })
+                    .ToList();
+
+                if (updatedFiles.Any())
+                {
+                    _mediaFileService.Update(updatedFiles);
+                }
+
+                batchStopwatch.Stop();
+
+                stats.DecisionCount += decisions.Count;
+                stats.ApprovedCount += approved;
+                stats.RejectedCount += rejected;
+                stats.InsertedCount += newFiles.Count;
+                stats.UpdatedCount += updatedFiles.Count;
+
+                _logger.Debug("Completed scan batch {0}/{1} for {2}: {3} decisions, {4} accepted, {5} rejected, {6} inserted, {7} updated [{8}]",
+                    batchNumber,
+                    batchCount,
+                    folder,
+                    decisions.Count,
+                    approved,
+                    rejected,
+                    newFiles.Count,
+                    updatedFiles.Count,
+                    batchStopwatch.Elapsed);
+            }
+
+            return stats;
         }
 
         private void CleanMediaFiles(string folder, List<string> mediaFileList)
@@ -308,6 +375,15 @@ namespace NzbDrone.Core.MediaFiles
         public void Execute(RescanFoldersCommand message)
         {
             Scan(message.Folders, message.Filter, message.AddNewAuthors, message.AuthorIds);
+        }
+
+        private sealed class ScanBatchStats
+        {
+            public int DecisionCount { get; set; }
+            public int ApprovedCount { get; set; }
+            public int RejectedCount { get; set; }
+            public int InsertedCount { get; set; }
+            public int UpdatedCount { get; set; }
         }
     }
 }
