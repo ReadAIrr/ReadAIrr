@@ -3,6 +3,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
 using Readarr.Api.V1.BookFiles;
@@ -127,6 +128,67 @@ namespace NzbDrone.Api.Test.ManualImport
 
             resource.Hints.Should().Contain(x => x.Kind == "narratorEvidenceConflict");
             resource.Suggestions[0].Warnings.Should().Contain(x => x.Kind == "narratorEvidenceMismatch");
+        }
+
+        [Test]
+        public void should_allow_manual_evidence_editing_when_manual_import_row_has_durable_unmapped_book_file()
+        {
+            var resource = new ManualImportReviewResource
+            {
+                Hints = new List<ManualImportReviewReasonResource>(),
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>()
+            };
+
+            ManualImportReviewResourceMapper.ApplyContributorEvidenceContext(resource,
+                new BookFile { Id = 12, EditionId = 0 },
+                new List<ContributorEvidenceResource>
+                {
+                    new ContributorEvidenceResource
+                    {
+                        BookFileId = 12,
+                        Role = "narrator",
+                        DisplayName = "Jane Reader",
+                        NormalizedName = "janereader",
+                        Source = "manual"
+                    }
+                });
+
+            resource.BookFileId.Should().Be(12);
+            resource.CanEditContributorEvidence.Should().BeTrue();
+            resource.ContributorEvidenceEditReason.Should().Contain("persisted unmapped file");
+            resource.ContributorEvidence.Should().ContainSingle(x => x.DisplayName == "Jane Reader");
+        }
+
+        [Test]
+        public void should_keep_manual_import_path_hash_rows_read_only_without_durable_unmapped_book_file()
+        {
+            var resource = new ManualImportReviewResource
+            {
+                Hints = new List<ManualImportReviewReasonResource>(),
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>()
+            };
+
+            ManualImportReviewResourceMapper.ApplyContributorEvidenceContext(resource, null, new List<ContributorEvidenceResource>());
+
+            resource.BookFileId.Should().BeNull();
+            resource.CanEditContributorEvidence.Should().BeFalse();
+            resource.ContributorEvidenceEditReason.Should().Contain("path-only");
+        }
+
+        [Test]
+        public void should_not_allow_manual_evidence_editing_for_already_matched_book_file()
+        {
+            var resource = new ManualImportReviewResource
+            {
+                Hints = new List<ManualImportReviewReasonResource>(),
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>()
+            };
+
+            ManualImportReviewResourceMapper.ApplyContributorEvidenceContext(resource, new BookFile { Id = 12, EditionId = 33 }, new List<ContributorEvidenceResource>());
+
+            resource.BookFileId.Should().BeNull();
+            resource.CanEditContributorEvidence.Should().BeFalse();
+            resource.ContributorEvidenceEditReason.Should().Contain("unmapped files");
         }
     }
 }

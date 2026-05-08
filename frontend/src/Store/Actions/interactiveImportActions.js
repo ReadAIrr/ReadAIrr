@@ -97,6 +97,7 @@ export const CLEAR_INTERACTIVE_IMPORT = 'interactiveImport/clearInteractiveImpor
 export const ADD_RECENT_FOLDER = 'interactiveImport/addRecentFolder';
 export const REMOVE_RECENT_FOLDER = 'interactiveImport/removeRecentFolder';
 export const SET_INTERACTIVE_IMPORT_MODE = 'interactiveImport/setInteractiveImportMode';
+export const SET_INTERACTIVE_IMPORT_CONTRIBUTOR_EVIDENCE = 'interactiveImport/setInteractiveImportContributorEvidence';
 
 export const FETCH_INTERACTIVE_IMPORT_BOOKS = 'interactiveImport/fetchInteractiveImportBooks';
 export const SET_INTERACTIVE_IMPORT_BOOKS_SORT = 'interactiveImport/clearInteractiveImportBooksSort';
@@ -118,6 +119,7 @@ export const clearInteractiveImport = createAction(CLEAR_INTERACTIVE_IMPORT);
 export const addRecentFolder = createAction(ADD_RECENT_FOLDER);
 export const removeRecentFolder = createAction(REMOVE_RECENT_FOLDER);
 export const setInteractiveImportMode = createAction(SET_INTERACTIVE_IMPORT_MODE);
+export const setInteractiveImportContributorEvidence = createThunk(SET_INTERACTIVE_IMPORT_CONTRIBUTOR_EVIDENCE);
 
 export const fetchInteractiveImportBooks = createThunk(FETCH_INTERACTIVE_IMPORT_BOOKS);
 export const setInteractiveImportBooksSort = createAction(SET_INTERACTIVE_IMPORT_BOOKS_SORT);
@@ -253,6 +255,62 @@ export const actionHandlers = handleThunks({
           updateOnly: true
         }))
       ));
+    });
+  },
+
+  [SET_INTERACTIVE_IMPORT_CONTRIBUTOR_EVIDENCE]: function(getState, payload, dispatch) {
+    const {
+      id,
+      bookFileId,
+      role = 'narrator',
+      displayName
+    } = payload;
+
+    dispatch(updateItem({
+      section,
+      id,
+      isReprocessing: true,
+      updateOnly: true
+    }));
+
+    const promise = createAjaxRequest({
+      url: '/bookFile/unmapped/contributor-evidence',
+      method: 'PUT',
+      dataType: 'json',
+      data: JSON.stringify({ bookFileId, role, displayName })
+    }).request;
+
+    promise.done((data) => {
+      const updated = data[0] || {};
+      const currentItem = getState()[section].items.find((item) => item.id === id) || {};
+      const currentReview = currentItem.review || {};
+      const updatedReview = updated.review || {};
+
+      dispatch(updateItem({
+        section,
+        id,
+        review: {
+          ...currentReview,
+          ...updatedReview,
+          bookFileId,
+          canEditContributorEvidence: true,
+          contributorEvidenceEditReason: updatedReview.contributorEvidenceEditReason || currentReview.contributorEvidenceEditReason,
+          contributorEvidence: updated.contributorEvidence || updatedReview.contributorEvidence || []
+        },
+        isReprocessing: false,
+        importError: null,
+        updateOnly: true
+      }));
+    });
+
+    promise.fail((xhr) => {
+      dispatch(updateItem({
+        section,
+        id,
+        isReprocessing: false,
+        importError: xhr.responseJSON?.message || 'Unable to save narrator evidence',
+        updateOnly: true
+      }));
     });
   },
 

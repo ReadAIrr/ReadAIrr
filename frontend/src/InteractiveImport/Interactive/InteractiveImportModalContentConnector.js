@@ -10,6 +10,7 @@ import {
   fetchInteractiveImportItems,
   removeInteractiveImportItems,
   saveInteractiveImportItem,
+  setInteractiveImportContributorEvidence,
   setInteractiveImportMode,
   setInteractiveImportSort,
   updateInteractiveImportItem,
@@ -35,6 +36,7 @@ const mapDispatchToProps = {
   updateInteractiveImportItems,
   removeInteractiveImportItems,
   saveInteractiveImportItem,
+  setInteractiveImportContributorEvidence,
   executeCommand
 };
 
@@ -220,6 +222,10 @@ class InteractiveImportModalContentConnector extends Component {
     }
   };
 
+  onSetContributorEvidencePress = (payload) => {
+    this.props.setInteractiveImportContributorEvidence(payload);
+  };
+
   //
   // Render
 
@@ -241,6 +247,7 @@ class InteractiveImportModalContentConnector extends Component {
         onReplaceExistingFilesChange={this.onReplaceExistingFilesChange}
         onImportModeChange={this.onImportModeChange}
         onImportSelectedPress={this.onImportSelectedPress}
+        onSetContributorEvidencePress={this.onSetContributorEvidencePress}
       />
     );
   }
@@ -260,6 +267,7 @@ InteractiveImportModalContentConnector.propTypes = {
   updateInteractiveImportItem: PropTypes.func.isRequired,
   updateInteractiveImportItems: PropTypes.func.isRequired,
   removeInteractiveImportItems: PropTypes.func.isRequired,
+  setInteractiveImportContributorEvidence: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };

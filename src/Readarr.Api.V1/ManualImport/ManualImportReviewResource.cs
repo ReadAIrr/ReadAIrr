@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
 using Readarr.Api.V1.BookFiles;
@@ -22,6 +23,9 @@ namespace Readarr.Api.V1.ManualImport
         public List<ManualImportReviewReasonResource> Hints { get; set; }
         public List<ManualImportIdentificationSuggestionResource> Suggestions { get; set; }
         public List<ContributorEvidenceResource> ContributorEvidence { get; set; }
+        public int? BookFileId { get; set; }
+        public bool CanEditContributorEvidence { get; set; }
+        public string ContributorEvidenceEditReason { get; set; }
     }
 
     public class ManualImportParsedResource
@@ -191,8 +195,44 @@ namespace Readarr.Api.V1.ManualImport
                 Candidate = candidate,
                 Reasons = reasons.Take(5).ToList(),
                 Hints = hints.Take(5).ToList(),
-                Suggestions = new List<ManualImportIdentificationSuggestionResource>()
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>(),
+                ContributorEvidence = new List<ContributorEvidenceResource>(),
+                CanEditContributorEvidence = false,
+                ContributorEvidenceEditReason = "Manual evidence editing is unavailable until this row is backed by a persisted unmapped file."
             };
+        }
+
+        public static void ApplyContributorEvidenceContext(ManualImportReviewResource review, BookFile bookFile, List<ContributorEvidenceResource> contributorEvidence)
+        {
+            if (review == null)
+            {
+                return;
+            }
+
+            if (bookFile == null)
+            {
+                review.BookFileId = null;
+                review.CanEditContributorEvidence = false;
+                review.ContributorEvidenceEditReason = "Manual evidence editing is unavailable for transient path-only rows.";
+                ApplySuggestionEvidence(review);
+                return;
+            }
+
+            if (bookFile.EditionId > 0)
+            {
+                review.BookFileId = null;
+                review.CanEditContributorEvidence = false;
+                review.ContributorEvidenceEditReason = "Manual evidence editing is only available for persisted unmapped files.";
+                ApplySuggestionEvidence(review);
+                return;
+            }
+
+            review.BookFileId = bookFile.Id;
+            review.CanEditContributorEvidence = true;
+            review.ContributorEvidenceEditReason = "Manual narrator evidence can be edited for this persisted unmapped file.";
+            review.ContributorEvidence = contributorEvidence ?? new List<ContributorEvidenceResource>();
+
+            ApplySuggestionEvidence(review);
         }
 
         public static void ApplySuggestionEvidence(ManualImportReviewResource review)

@@ -302,7 +302,8 @@ class InteractiveImportModalContent extends Component {
       importMode,
       interactiveImportErrorMessage,
       onSortPress,
-      onModalClose
+      onModalClose,
+      onSetContributorEvidencePress
     } = this.props;
 
     const {
@@ -469,6 +470,7 @@ class InteractiveImportModalContent extends Component {
                           columns={columns}
                           onSelectedChange={this.onSelectedChange}
                           onValidRowChange={this.onValidRowChange}
+                          onSetContributorEvidencePress={onSetContributorEvidencePress}
                         />
                       );
                     })
@@ -630,6 +632,7 @@ InteractiveImportModalContent.propTypes = {
   saveInteractiveImportItem: PropTypes.func.isRequired,
   removeInteractiveImportItems: PropTypes.func.isRequired,
   updateInteractiveImportItem: PropTypes.func.isRequired,
+  onSetContributorEvidencePress: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };
 

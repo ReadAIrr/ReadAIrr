@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Qualities;
+using Readarr.Api.V1.BookFiles;
 using Readarr.Http;
 
 namespace Readarr.Api.V1.ManualImport
@@ -17,18 +19,24 @@ namespace Readarr.Api.V1.ManualImport
         private readonly IBookService _bookService;
         private readonly IEditionService _editionService;
         private readonly IManualImportService _manualImportService;
+        private readonly IMediaFileService _mediaFileService;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly Logger _logger;
 
         public ManualImportController(IManualImportService manualImportService,
                                   IAuthorService authorService,
                                   IEditionService editionService,
                                   IBookService bookService,
+                                  IMediaFileService mediaFileService,
+                                  IContributorEvidenceRepository contributorEvidenceRepository,
                                   Logger logger)
         {
             _authorService = authorService;
             _bookService = bookService;
             _editionService = editionService;
             _manualImportService = manualImportService;
+            _mediaFileService = mediaFileService;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
             _logger = logger;
         }
 
@@ -50,7 +58,7 @@ namespace Readarr.Api.V1.ManualImport
 
             var filter = filterExistingFiles ? FilterFilesType.Matched : FilterFilesType.None;
 
-            return _manualImportService.GetMediaFiles(folder, downloadId, author, filter, replaceExistingFiles).ToResource().Select(AddQualityWeight).ToList();
+            return AddManualImportEvidenceContext(_manualImportService.GetMediaFiles(folder, downloadId, author, filter, replaceExistingFiles).ToResource().Select(AddQualityWeight).ToList());
         }
 
         private ManualImportResource AddQualityWeight(ManualImportResource item)
@@ -88,7 +96,31 @@ namespace Readarr.Api.V1.ManualImport
                 });
             }
 
-            return _manualImportService.UpdateItems(items).Select(x => x.ToResource()).ToList();
+            return AddManualImportEvidenceContext(_manualImportService.UpdateItems(items).Select(x => x.ToResource()).ToList());
+        }
+
+        private List<ManualImportResource> AddManualImportEvidenceContext(List<ManualImportResource> resources)
+        {
+            var paths = resources.Select(x => x.Path).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(PathEqualityComparer.Instance).ToList();
+            var bookFiles = paths.Any() ? _mediaFileService.GetFileWithPath(paths) : new List<BookFile>();
+            var bookFilesByPath = bookFiles
+                .GroupBy(x => x.Path, PathEqualityComparer.Instance)
+                .ToDictionary(x => x.Key, x => x.First(), PathEqualityComparer.Instance);
+            var contributorEvidence = _contributorEvidenceRepository.GetByBookFileIds(bookFiles.Where(x => x.EditionId == 0).Select(x => x.Id))
+                .GroupBy(x => x.BookFileId ?? 0)
+                .ToDictionary(x => x.Key, x => x.Select(ContributorEvidenceResourceMapper.ToResource).ToList());
+
+            foreach (var resource in resources)
+            {
+                resource.Review ??= new ManualImportReviewResource();
+
+                bookFilesByPath.TryGetValue(resource.Path, out var bookFile);
+                var evidence = bookFile != null && contributorEvidence.TryGetValue(bookFile.Id, out var fileEvidence) ? fileEvidence : new List<ContributorEvidenceResource>();
+
+                ManualImportReviewResourceMapper.ApplyContributorEvidenceContext(resource.Review, bookFile, evidence);
+            }
+
+            return resources;
         }
     }
 }

@@ -5,15 +5,26 @@ import BookFormats from 'Book/BookFormats';
 import BookQuality from 'Book/BookQuality';
 import IndexerFlags from 'Book/IndexerFlags';
 import FileDetails from 'BookFile/FileDetails';
+import Form from 'Components/Form/Form';
+import FormGroup from 'Components/Form/FormGroup';
+import FormInputGroup from 'Components/Form/FormInputGroup';
+import FormLabel from 'Components/Form/FormLabel';
 import Icon from 'Components/Icon';
+import Button from 'Components/Link/Button';
+import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRowCellButton from 'Components/Table/Cells/TableRowCellButton';
 import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
 import TableRow from 'Components/Table/TableRow';
 import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
-import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
+import { icons, inputTypes, kinds, sizes, tooltipPositions } from 'Helpers/Props';
 import SelectAuthorModal from 'InteractiveImport/Author/SelectAuthorModal';
 import SelectBookModal from 'InteractiveImport/Book/SelectBookModal';
 import SelectIndexerFlagsModal from 'InteractiveImport/IndexerFlags/SelectIndexerFlagsModal';
@@ -25,6 +36,10 @@ import InteractiveImportDecisionDetails from './InteractiveImportDecisionDetails
 import InteractiveImportRowCellPlaceholder from './InteractiveImportRowCellPlaceholder';
 import { getManualImportDecision } from './manualImportReviewContext';
 import styles from './InteractiveImportRow.css';
+
+function getManualNarratorEvidence(contributorEvidence) {
+  return (contributorEvidence || []).find((item) => item.role === 'narrator' && item.source === 'manual');
+}
 
 class InteractiveImportRow extends Component {
 
@@ -40,7 +55,9 @@ class InteractiveImportRow extends Component {
       isSelectBookModalOpen: false,
       isSelectReleaseGroupModalOpen: false,
       isSelectQualityModalOpen: false,
-      isSelectIndexerFlagsModalOpen: false
+      isSelectIndexerFlagsModalOpen: false,
+      isContributorEvidenceModalOpen: false,
+      contributorDisplayName: ''
     };
   }
 
@@ -170,6 +187,40 @@ class InteractiveImportRow extends Component {
     this.selectRowAfterChange(changed);
   };
 
+  onContributorEvidencePress = () => {
+    const manualEvidence = getManualNarratorEvidence(this.props.review?.contributorEvidence);
+
+    this.setState({
+      isContributorEvidenceModalOpen: true,
+      contributorDisplayName: manualEvidence?.displayName || ''
+    });
+  };
+
+  onContributorEvidenceModalClose = () => {
+    this.setState({ isContributorEvidenceModalOpen: false });
+  };
+
+  onContributorEvidenceInputChange = ({ value }) => {
+    this.setState({ contributorDisplayName: value });
+  };
+
+  onContributorEvidenceSavePress = () => {
+    const displayName = this.state.contributorDisplayName.trim();
+    const bookFileId = this.props.review?.bookFileId;
+
+    if (!displayName || !bookFileId) {
+      return;
+    }
+
+    this.props.onSetContributorEvidencePress({
+      id: this.props.id,
+      bookFileId,
+      role: 'narrator',
+      displayName
+    });
+    this.onContributorEvidenceModalClose();
+  };
+
   //
   // Render
 
@@ -193,7 +244,8 @@ class InteractiveImportRow extends Component {
       importStatus,
       importError,
       onSelectedChange,
-      audioTags
+      audioTags,
+      review
     } = this.props;
 
     const {
@@ -202,7 +254,9 @@ class InteractiveImportRow extends Component {
       isSelectBookModalOpen,
       isSelectReleaseGroupModalOpen,
       isSelectQualityModalOpen,
-      isSelectIndexerFlagsModalOpen
+      isSelectIndexerFlagsModalOpen,
+      isContributorEvidenceModalOpen,
+      contributorDisplayName
     } = this.state;
 
     const authorName = author ? author.authorName : '';
@@ -429,6 +483,15 @@ class InteractiveImportRow extends Component {
 
         <TableRowCell>
           {statusCell}
+          {
+            review?.canEditContributorEvidence &&
+              <IconButton
+                name={icons.EDIT}
+                title="Edit narrator evidence"
+                isSpinning={isReprocessing}
+                onPress={this.onContributorEvidencePress}
+              />
+          }
         </TableRowCell>
 
         <ConfirmModal
@@ -478,6 +541,48 @@ class InteractiveImportRow extends Component {
           indexerFlags={indexerFlags ?? 0}
           onModalClose={this.onSelectIndexerFlagsModalClose}
         />
+
+        <Modal
+          isOpen={isContributorEvidenceModalOpen}
+          onModalClose={this.onContributorEvidenceModalClose}
+        >
+          <ModalContent onModalClose={this.onContributorEvidenceModalClose}>
+            <ModalHeader>
+              Edit Narrator Evidence
+            </ModalHeader>
+
+            <ModalBody>
+              <Form>
+                <FormGroup>
+                  <FormLabel>
+                    Narrator
+                  </FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.TEXT}
+                    name="contributorDisplayName"
+                    value={contributorDisplayName}
+                    helpText="Stores manual narrator evidence for this persisted unmapped file. AI and transcript evidence is kept for comparison."
+                    onChange={this.onContributorEvidenceInputChange}
+                  />
+                </FormGroup>
+              </Form>
+            </ModalBody>
+
+            <ModalFooter>
+              <Button onPress={this.onContributorEvidenceModalClose}>
+                Cancel
+              </Button>
+
+              <Button
+                isDisabled={!contributorDisplayName.trim()}
+                onPress={this.onContributorEvidenceSavePress}
+              >
+                Save
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </TableRow>
     );
   }
@@ -504,9 +609,11 @@ InteractiveImportRow.propTypes = {
   isImporting: PropTypes.bool,
   importStatus: PropTypes.string,
   importError: PropTypes.string,
+  review: PropTypes.object,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired,
-  onValidRowChange: PropTypes.func.isRequired
+  onValidRowChange: PropTypes.func.isRequired,
+  onSetContributorEvidencePress: PropTypes.func.isRequired
 };
 
 export default InteractiveImportRow;

@@ -86,8 +86,13 @@ function InteractiveImportDecisionDetails(props) {
   const reviewDetails = [
     ...hints,
     ...contributorEvidenceDetails,
-    ...suggestionDetails
+    ...suggestionDetails,
+    review.contributorEvidenceEditReason ? {
+      label: review.canEditContributorEvidence ? 'Manual evidence editing' : 'Manual evidence editing unavailable',
+      detail: review.contributorEvidenceEditReason
+    } : null
   ];
+  const filteredReviewDetails = reviewDetails.filter(Boolean);
 
   return (
     <div className={styles.decisionSummary}>
@@ -133,7 +138,7 @@ function InteractiveImportDecisionDetails(props) {
       }
 
       {
-        reviewDetails.length > 0 &&
+        filteredReviewDetails.length > 0 &&
           <div className={styles.reviewDetails}>
             <div className={styles.reviewDetailsTitle}>
               Review evidence
@@ -141,7 +146,7 @@ function InteractiveImportDecisionDetails(props) {
 
             <ul className={styles.reasonList}>
               {
-                reviewDetails.map((item, index) => {
+                filteredReviewDetails.map((item, index) => {
                   return (
                     <li
                       key={index}
