@@ -12,6 +12,7 @@ namespace NzbDrone.Core.AuthorStats
     {
         List<AuthorStatistics> AuthorStatistics();
         AuthorStatistics AuthorStatistics(int authorId);
+        List<AuthorStatistics> AuthorStatistics(IEnumerable<int> authorIds);
     }
 
     public class AuthorStatisticsService : IAuthorStatisticsService,
@@ -52,6 +53,21 @@ namespace NzbDrone.Core.AuthorStats
             }
 
             return MapAuthorStatistics(stats);
+        }
+
+        public List<AuthorStatistics> AuthorStatistics(IEnumerable<int> authorIds)
+        {
+            var ids = authorIds.Distinct().ToList();
+
+            if (!ids.Any())
+            {
+                return new List<AuthorStatistics>();
+            }
+
+            return _authorStatisticsRepository.AuthorStatistics(ids)
+                .GroupBy(s => s.AuthorId)
+                .Select(s => MapAuthorStatistics(s.ToList()))
+                .ToList();
         }
 
         private AuthorStatistics MapAuthorStatistics(List<BookStatistics> bookStatistics)

@@ -164,6 +164,31 @@ namespace NzbDrone.Core.Test.MusicTests.BookRepositoryTests
             result.Should().BeEquivalentTo(_books.Skip(2).Take(1), BookComparerOptions);
         }
 
+        [Test]
+        public void get_paged_should_return_requested_page()
+        {
+            GivenMultipleBooks();
+
+            var result = _bookRepo.GetPaged(new PagingSpec<Book>
+            {
+                Page = 2,
+                PageSize = 2,
+                SortKey = "Title",
+                SortDirection = SortDirection.Ascending
+            });
+
+            var expectedIds = _bookRepo.All()
+                .OrderBy(x => x.Title)
+                .Skip(2)
+                .Take(2)
+                .Select(x => x.Id);
+
+            result.Page.Should().Be(2);
+            result.PageSize.Should().Be(2);
+            result.TotalRecords.Should().Be(6);
+            result.Records.Select(x => x.Id).Should().Equal(expectedIds);
+        }
+
         private EquivalencyAssertionOptions<Book> BookComparerOptions(EquivalencyAssertionOptions<Book> opts) => opts.ComparingByMembers<Book>()
                 .Excluding(ctx => ctx.SelectedMemberInfo.MemberType.IsGenericType && ctx.SelectedMemberInfo.MemberType.GetGenericTypeDefinition() == typeof(LazyLoaded<>))
                 .Excluding(x => x.AuthorId)

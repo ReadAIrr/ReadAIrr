@@ -8,13 +8,21 @@ namespace NzbDrone.Core.Datastore.Migration
     {
         protected override void MainDbUpgrade()
         {
-            Alter.Table("MetadataProfiles").AddColumn("RequireReadable").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("RequireAudio").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("SkipAnthologies").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("SkipCollections").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("SkipSerializedParts").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("SkipEssays").AsBoolean().WithDefaultValue(false);
-            Alter.Table("MetadataProfiles").AddColumn("SkipShortStories").AsBoolean().WithDefaultValue(false);
+            AddBooleanColumnIfMissing("RequireReadable");
+            AddBooleanColumnIfMissing("RequireAudio");
+            AddBooleanColumnIfMissing("SkipAnthologies");
+            AddBooleanColumnIfMissing("SkipCollections");
+            AddBooleanColumnIfMissing("SkipSerializedParts");
+            AddBooleanColumnIfMissing("SkipEssays");
+            AddBooleanColumnIfMissing("SkipShortStories");
+        }
+
+        private void AddBooleanColumnIfMissing(string column)
+        {
+            if (!Schema.Table("MetadataProfiles").Column(column).Exists())
+            {
+                Alter.Table("MetadataProfiles").AddColumn(column).AsBoolean().WithDefaultValue(false);
+            }
         }
     }
 }

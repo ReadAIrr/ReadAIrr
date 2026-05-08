@@ -26,7 +26,7 @@ function createBooksClientSideCollectionSelector(uiSection) {
         ...uiSectionState,
         customFilters,
         items: sorted,
-        totalItems: state.items.length
+        totalItems: bookState.totalRecords || state.items.length
       };
     }
   );

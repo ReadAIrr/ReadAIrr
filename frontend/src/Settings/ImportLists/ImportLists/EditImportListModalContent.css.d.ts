@@ -5,6 +5,15 @@ interface CssExports {
   'hideMetadataProfile': string;
   'labelIcon': string;
   'message': string;
+  'preview': string;
+  'previewBucket': string;
+  'previewBuckets': string;
+  'previewLoading': string;
+  'previewSample': string;
+  'previewSampleReason': string;
+  'previewSampleTitle': string;
+  'previewSamples': string;
+  'previewSummary': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

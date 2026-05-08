@@ -33,17 +33,14 @@ class History extends Component {
       totalRecords,
       isAuthorFetching,
       isAuthorPopulated,
-      isBooksFetching,
-      isBooksPopulated,
-      booksError,
       onFilterSelect,
       onFirstPagePress,
       ...otherProps
     } = this.props;
 
-    const isFetchingAny = isFetching || isAuthorFetching || isBooksFetching;
-    const isAllPopulated = isPopulated && ((isAuthorPopulated && isBooksPopulated) || !items.length);
-    const hasError = error || booksError;
+    const isFetchingAny = isFetching || isAuthorFetching;
+    const isAllPopulated = isPopulated && (isAuthorPopulated || !items.length);
+    const hasError = error;
 
     return (
       <PageContent title={translate('History')}>
@@ -148,9 +145,6 @@ History.propTypes = {
   totalRecords: PropTypes.number,
   isAuthorFetching: PropTypes.bool.isRequired,
   isAuthorPopulated: PropTypes.bool.isRequired,
-  isBooksFetching: PropTypes.bool.isRequired,
-  isBooksPopulated: PropTypes.bool.isRequired,
-  booksError: PropTypes.object,
   onFilterSelect: PropTypes.func.isRequired,
   onFirstPagePress: PropTypes.func.isRequired
 };

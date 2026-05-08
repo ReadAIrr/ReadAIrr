@@ -12,6 +12,7 @@ namespace NzbDrone.Core.AuthorStats
     {
         List<BookStatistics> AuthorStatistics();
         List<BookStatistics> AuthorStatistics(int authorId);
+        List<BookStatistics> AuthorStatistics(IEnumerable<int> authorIds);
     }
 
     public class AuthorStatisticsRepository : IAuthorStatisticsRepository
@@ -33,6 +34,11 @@ namespace NzbDrone.Core.AuthorStats
         public List<BookStatistics> AuthorStatistics(int authorId)
         {
             return Query(Builder().Where<Author>(x => x.Id == authorId));
+        }
+
+        public List<BookStatistics> AuthorStatistics(IEnumerable<int> authorIds)
+        {
+            return Query(Builder().Where<Author>(x => authorIds.Contains(x.Id)));
         }
 
         private List<BookStatistics> Query(SqlBuilder builder)

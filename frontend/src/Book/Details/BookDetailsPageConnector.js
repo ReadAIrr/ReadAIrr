@@ -8,6 +8,7 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import NotFound from 'Components/NotFound';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
+import { fetchBooks } from 'Store/Actions/bookActions';
 import translate from 'Utilities/String/translate';
 import BookDetailsConnector from './BookDetailsConnector';
 
@@ -43,6 +44,7 @@ function createMapStateToProps() {
 }
 
 const mapDispatchToProps = {
+  fetchBooks,
   push
 };
 
@@ -63,6 +65,13 @@ class BookDetailsPageConnector extends Component {
   // Control
 
   populate = () => {
+    const { titleSlug } = this.props.match.params;
+
+    this.props.fetchBooks({
+      titleSlug,
+      includeAllAuthorBooks: true
+    });
+
     this.setState({ hasMounted: true });
   };
 
@@ -76,14 +85,6 @@ class BookDetailsPageConnector extends Component {
       isPopulated
     } = this.props;
 
-    if (!titleSlug) {
-      return (
-        <NotFound
-          message={translate('SorryThatBookCannotBeFound')}
-        />
-      );
-    }
-
     if ((isFetching || !this.state.hasMounted) ||
         (!isFetching && !isPopulated)) {
       return (
@@ -92,6 +93,14 @@ class BookDetailsPageConnector extends Component {
             <LoadingIndicator />
           </PageContentBody>
         </PageContent>
+      );
+    }
+
+    if (!titleSlug) {
+      return (
+        <NotFound
+          message={translate('SorryThatBookCannotBeFound')}
+        />
       );
     }
 
@@ -109,6 +118,7 @@ BookDetailsPageConnector.propTypes = {
   titleSlug: PropTypes.string,
   match: PropTypes.shape({ params: PropTypes.shape({ titleSlug: PropTypes.string.isRequired }).isRequired }).isRequired,
   push: PropTypes.func.isRequired,
+  fetchBooks: PropTypes.func.isRequired,
   isFetching: PropTypes.bool.isRequired,
   isPopulated: PropTypes.bool.isRequired
 };

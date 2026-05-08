@@ -36,6 +36,10 @@ namespace NzbDrone.Core.Books
         {
         }
 
+        protected override SqlBuilder PagedBuilder() => Builder()
+            .LeftJoin<Book, Author>((book, author) => book.AuthorMetadataId == author.AuthorMetadataId)
+            .LeftJoin<Author, AuthorMetadata>((author, metadata) => author.AuthorMetadataId == metadata.Id);
+
         public List<Book> GetBooks(int authorId)
         {
             return Query(Builder().Join<Book, Author>((l, r) => l.AuthorMetadataId == r.AuthorMetadataId).Where<Author>(a => a.Id == authorId));

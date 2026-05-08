@@ -13,6 +13,7 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
+import TablePager from 'Components/Table/TablePager';
 import { align, icons, kinds, sortDirections } from 'Helpers/Props';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import hasDifferentItemsOrOrder from 'Utilities/Object/hasDifferentItemsOrOrder';
@@ -272,6 +273,7 @@ class BookIndex extends Component {
       isPopulated,
       error,
       totalItems,
+      totalRecords = 0,
       items,
       columns,
       selectedFilterKey,
@@ -290,6 +292,11 @@ class BookIndex extends Component {
       onScroll,
       onSortSelect,
       onFilterSelect,
+      onFirstPagePress,
+      onPreviousPagePress,
+      onNextPagePress,
+      onLastPagePress,
+      onPageSelect,
       onViewSelect,
       onRssSyncPress,
       ...otherProps
@@ -313,6 +320,7 @@ class BookIndex extends Component {
     const ViewComponent = getViewComponent(view);
     const isLoaded = !!(!error && isPopulated && items.length && scroller);
     const hasNoAuthor = !totalItems;
+    const isPaged = totalRecords > items.length;
 
     const refreshLabel = isEditorActive && selectedBookIds.length > 0 ? translate('UpdateSelected') : translate('UpdateAll');
     const searchIndexLabel = selectedFilterKey === 'all' ? translate('SearchAll') : translate('SearchFiltered');
@@ -483,7 +491,26 @@ class BookIndex extends Component {
                     {...otherProps}
                   />
 
-                  <BookIndexFooterConnector />
+                  {
+                    isPaged ?
+                      null :
+                      <BookIndexFooterConnector />
+                  }
+
+                  {
+                    isPaged ?
+                      <TablePager
+                        totalRecords={totalRecords}
+                        isFetching={isFetching}
+                        onFirstPagePress={onFirstPagePress}
+                        onPreviousPagePress={onPreviousPagePress}
+                        onNextPagePress={onNextPagePress}
+                        onLastPagePress={onLastPagePress}
+                        onPageSelect={onPageSelect}
+                        {...otherProps}
+                      /> :
+                      null
+                  }
                 </div>
             }
 
@@ -497,7 +524,7 @@ class BookIndex extends Component {
           </PageContentBody>
 
           {
-            isLoaded && !!jumpBarItems.order.length &&
+            isLoaded && !isPaged && !!jumpBarItems.order.length &&
               <PageJumpBar
                 items={jumpBarItems}
                 onItemPress={this.onJumpBarItemPress}
@@ -557,6 +584,7 @@ BookIndex.propTypes = {
   isPopulated: PropTypes.bool.isRequired,
   error: PropTypes.object,
   totalItems: PropTypes.number.isRequired,
+  totalRecords: PropTypes.number,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   selectedFilterKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
@@ -575,6 +603,11 @@ BookIndex.propTypes = {
   deleteError: PropTypes.object,
   onSortSelect: PropTypes.func.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
+  onFirstPagePress: PropTypes.func.isRequired,
+  onPreviousPagePress: PropTypes.func.isRequired,
+  onNextPagePress: PropTypes.func.isRequired,
+  onLastPagePress: PropTypes.func.isRequired,
+  onPageSelect: PropTypes.func.isRequired,
   onViewSelect: PropTypes.func.isRequired,
   onRefreshBookPress: PropTypes.func.isRequired,
   onRssSyncPress: PropTypes.func.isRequired,

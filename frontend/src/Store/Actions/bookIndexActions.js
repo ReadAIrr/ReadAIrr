@@ -28,6 +28,7 @@ export const defaultState = {
   sortDirection: sortDirections.ASCENDING,
   secondarySortKey: 'title',
   secondarySortDirection: sortDirections.ASCENDING,
+  pageSize: 100,
   view: 'posters',
 
   posterOptions: {
@@ -281,6 +282,7 @@ export const defaultState = {
 export const persistState = [
   'bookIndex.sortKey',
   'bookIndex.sortDirection',
+  'bookIndex.pageSize',
   'bookIndex.selectedFilterKey',
   'bookIndex.customFilters',
   'bookIndex.view',

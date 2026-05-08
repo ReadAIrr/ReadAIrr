@@ -57,12 +57,10 @@ class Queue extends Component {
   componentDidUpdate(prevProps) {
     const {
       items,
-      isFetching,
-      isBooksFetching
+      isFetching
     } = this.props;
 
     if (
-      (!isBooksFetching && prevProps.isBooksFetching) ||
       (!isFetching && prevProps.isFetching) ||
       (hasDifferentItems(prevProps.items, items) && !items.some((e) => e.bookId))
     ) {
@@ -151,9 +149,6 @@ class Queue extends Component {
       error,
       isAuthorFetching,
       isAuthorPopulated,
-      isBooksFetching,
-      isBooksPopulated,
-      booksError,
       columns,
       totalRecords,
       isGrabbing,
@@ -172,9 +167,9 @@ class Queue extends Component {
       items
     } = this.state;
 
-    const isRefreshing = isFetching || isAuthorFetching || isBooksFetching || isRefreshMonitoredDownloadsExecuting;
-    const isAllPopulated = isPopulated && ((isAuthorPopulated && isBooksPopulated) || !items.length || items.every((e) => !e.bookId));
-    const hasError = error || booksError;
+    const isRefreshing = isFetching || isAuthorFetching || isRefreshMonitoredDownloadsExecuting;
+    const isAllPopulated = isPopulated && (isAuthorPopulated || !items.length || items.every((e) => !e.bookId));
+    const hasError = error;
     const selectedIds = this.getSelectedIds();
     const selectedCount = selectedIds.length;
     const disableSelectedActions = selectedCount === 0;
@@ -332,9 +327,6 @@ Queue.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   isAuthorFetching: PropTypes.bool.isRequired,
   isAuthorPopulated: PropTypes.bool.isRequired,
-  isBooksFetching: PropTypes.bool.isRequired,
-  isBooksPopulated: PropTypes.bool.isRequired,
-  booksError: PropTypes.object,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   totalRecords: PropTypes.number,
   isGrabbing: PropTypes.bool.isRequired,

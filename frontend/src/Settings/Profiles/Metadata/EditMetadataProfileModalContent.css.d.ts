@@ -2,6 +2,17 @@
 // Please do not change this file!
 interface CssExports {
   'deleteButtonContainer': string;
+  'preview': string;
+  'previewError': string;
+  'previewExamples': string;
+  'previewHeader': string;
+  'previewLoading': string;
+  'previewRule': string;
+  'previewRuleDescription': string;
+  'previewRuleHeader': string;
+  'previewRules': string;
+  'previewSummary': string;
+  'previewTitle': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

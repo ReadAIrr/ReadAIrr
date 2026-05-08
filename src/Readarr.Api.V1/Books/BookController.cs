@@ -7,6 +7,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.AuthorStats;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Events;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
@@ -98,27 +99,7 @@ namespace Readarr.Api.V1.Books
 
             if (authorId.HasValue)
             {
-                var books = _bookService.GetBooksByAuthor(authorId.Value);
-
-                var author = _authorService.GetAuthor(authorId.Value);
-                var editions = _editionService.GetEditionsByAuthor(authorId.Value)
-                    .GroupBy(x => x.BookId)
-                    .ToDictionary(x => x.Key, y => y.ToList());
-
-                foreach (var book in books)
-                {
-                    book.Author = author;
-                    if (editions.TryGetValue(book.Id, out var bookEditions))
-                    {
-                        book.Editions = bookEditions;
-                    }
-                    else
-                    {
-                        book.Editions = new List<Edition>();
-                    }
-                }
-
-                return MapToResource(books, false);
+                return GetBooksByAuthor(authorId.Value);
             }
 
             if (titleSlug.IsNotNullOrWhiteSpace())
@@ -132,7 +113,7 @@ namespace Readarr.Api.V1.Books
 
                 if (includeAllAuthorBooks)
                 {
-                    return MapToResource(_bookService.GetBooksByAuthor(book.AuthorId), false);
+                    return GetBooksByAuthor(book.AuthorId);
                 }
                 else
                 {
@@ -141,6 +122,85 @@ namespace Readarr.Api.V1.Books
             }
 
             return MapToResource(_bookService.GetBooks(bookIds), false);
+        }
+
+        private List<BookResource> GetBooksByAuthor(int authorId)
+        {
+            var books = _bookService.GetBooksByAuthor(authorId);
+
+            var author = _authorService.GetAuthor(authorId);
+            var editions = _editionService.GetEditionsByAuthor(authorId)
+                .GroupBy(x => x.BookId)
+                .ToDictionary(x => x.Key, y => y.ToList());
+
+            foreach (var book in books)
+            {
+                book.Author = author;
+                if (editions.TryGetValue(book.Id, out var bookEditions))
+                {
+                    book.Editions = bookEditions;
+                }
+                else
+                {
+                    book.Editions = new List<Edition>();
+                }
+            }
+
+            return MapToResource(books, false);
+        }
+
+        [HttpGet("paged")]
+        public PagingResource<BookResource> GetBooksPaged([FromQuery] PagingRequestResource paging, [FromQuery] bool? monitored)
+        {
+            var pagingResource = new PagingResource<BookResource>(paging);
+            var pagingSpec = pagingResource.MapToPagingSpec<BookResource, Book>("title", SortDirection.Ascending);
+
+            if (monitored.HasValue)
+            {
+                pagingSpec.FilterExpressions.Add(v => v.Monitored == monitored.Value);
+            }
+
+            var page = _bookService.Paged(pagingSpec);
+
+            HydrateBooksForList(page.Records);
+
+            return new PagingResource<BookResource>
+            {
+                Page = page.Page,
+                PageSize = page.PageSize,
+                SortKey = page.SortKey,
+                SortDirection = page.SortDirection,
+                TotalRecords = page.TotalRecords,
+                Records = MapToResource(page.Records, false, true)
+            };
+        }
+
+        private void HydrateBooksForList(List<Book> books)
+        {
+            if (!books.Any())
+            {
+                return;
+            }
+
+            var authors = _authorService.GetAuthorsByMetadataId(books.Select(x => x.AuthorMetadataId).Distinct())
+                .ToDictionary(x => x.AuthorMetadataId);
+
+            var editions = _editionService.GetEditionsByBook(books.Select(x => x.Id))
+                .Where(x => x.Monitored)
+                .GroupBy(x => x.BookId)
+                .ToDictionary(x => x.Key, y => y.ToList());
+
+            foreach (var book in books)
+            {
+                if (authors.TryGetValue(book.AuthorMetadataId, out var author))
+                {
+                    book.Author = author;
+                }
+
+                book.Editions = editions.TryGetValue(book.Id, out var bookEditions) ?
+                    bookEditions :
+                    new List<Edition>();
+            }
         }
 
         [HttpGet("{id:int}/overview")]

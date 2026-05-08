@@ -67,6 +67,11 @@ namespace Readarr.Api.V1.Books
 
         protected List<BookResource> MapToResource(List<Book> books, bool includeAuthor)
         {
+            return MapToResource(books, includeAuthor, false);
+        }
+
+        protected List<BookResource> MapToResource(List<Book> books, bool includeAuthor, bool pageScopedStatistics)
+        {
             var seriesLinks = _seriesBookLinkService.GetLinksByBook(books.Select(x => x.Id).ToList())
                 .GroupBy(x => x.BookId)
                 .ToDictionary(x => x.Key, y => y.ToList());
@@ -99,7 +104,10 @@ namespace Readarr.Api.V1.Books
                 }
             }
 
-            var authorStats = _authorStatisticsService.AuthorStatistics();
+            var authorStats = pageScopedStatistics ?
+                _authorStatisticsService.AuthorStatistics(result.Select(x => x.AuthorId).Distinct()) :
+                _authorStatisticsService.AuthorStatistics();
+
             LinkAuthorStatistics(result, authorStats);
             LinkMissingReasons(books, result);
             MapCoversToLocal(result.ToArray());

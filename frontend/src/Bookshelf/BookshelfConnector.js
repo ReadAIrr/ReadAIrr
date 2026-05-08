@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+import { fetchBooks } from 'Store/Actions/bookActions';
 import { saveBookshelf, setBookshelfFilter, setBookshelfSort } from 'Store/Actions/bookshelfActions';
 import createAuthorClientSideCollectionItemsSelector from 'Store/Selectors/createAuthorClientSideCollectionItemsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
@@ -43,12 +44,20 @@ function createMapStateToProps() {
 }
 
 const mapDispatchToProps = {
+  fetchBooks,
   setBookshelfSort,
   setBookshelfFilter,
   saveBookshelf
 };
 
 class BookshelfConnector extends Component {
+
+  //
+  // Lifecycle
+
+  componentDidMount() {
+    this.props.fetchBooks();
+  }
 
   //
   // Listeners
@@ -81,6 +90,7 @@ class BookshelfConnector extends Component {
 }
 
 BookshelfConnector.propTypes = {
+  fetchBooks: PropTypes.func.isRequired,
   setBookshelfSort: PropTypes.func.isRequired,
   setBookshelfFilter: PropTypes.func.isRequired,
   saveBookshelf: PropTypes.func.isRequired

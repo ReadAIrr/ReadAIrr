@@ -18,6 +18,7 @@ interface CssExports {
   'header': string;
   'left': string;
   'noBooks': string;
+  'seriesLinkButton': string;
   'seriesTitle': string;
 }
 export const cssExports: CssExports;

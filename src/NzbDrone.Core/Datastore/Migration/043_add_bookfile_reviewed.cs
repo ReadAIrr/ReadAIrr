@@ -8,7 +8,10 @@ namespace NzbDrone.Core.Datastore.Migration
     {
         protected override void MainDbUpgrade()
         {
-            Alter.Table("BookFiles").AddColumn("Reviewed").AsBoolean().WithDefaultValue(false);
+            if (!Schema.Table("BookFiles").Column("Reviewed").Exists())
+            {
+                Alter.Table("BookFiles").AddColumn("Reviewed").AsBoolean().WithDefaultValue(false);
+            }
         }
     }
 }

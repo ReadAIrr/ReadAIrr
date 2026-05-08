@@ -11,14 +11,10 @@ function createMapStateToProps() {
   return createSelector(
     (state) => state.history,
     (state) => state.authors,
-    (state) => state.books,
-    (history, authors, books) => {
+    (history, authors) => {
       return {
         isAuthorFetching: authors.isFetching,
         isAuthorPopulated: authors.isPopulated,
-        isBooksFetching: books.isFetching,
-        isBooksPopulated: books.isPopulated,
-        booksError: books.error,
         ...history
       };
     }

@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withScrollPosition from 'Components/withScrollPosition';
+import { fetchBooks } from 'Store/Actions/bookActions';
 import { saveBookEditor, setBookFilter, setBookSort, setBookTableOption, setBookView } from 'Store/Actions/bookIndexActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import scrollPositions from 'Store/scrollPositions';
@@ -47,14 +48,24 @@ function createMapDispatchToProps(dispatch, props) {
   return {
     onTableOptionChange(payload) {
       dispatch(setBookTableOption(payload));
+
+      if (payload.pageSize) {
+        dispatch(fetchBooks({ paged: true, page: 1 }));
+      }
     },
 
     onSortSelect(sortKey) {
       dispatch(setBookSort({ sortKey }));
+      dispatch(fetchBooks({ paged: true, page: 1, sortKey }));
     },
 
     onFilterSelect(selectedFilterKey) {
       dispatch(setBookFilter({ selectedFilterKey }));
+      dispatch(fetchBooks({ paged: true, page: 1 }));
+    },
+
+    onPageSelect(page) {
+      dispatch(fetchBooks({ paged: true, page }));
     },
 
     dispatchSetBookView(view) {
@@ -90,6 +101,13 @@ function createMapDispatchToProps(dispatch, props) {
 class BookIndexConnector extends Component {
 
   //
+  // Lifecycle
+
+  componentDidMount() {
+    this.props.onPageSelect(this.props.page || 1);
+  }
+
+  //
   // Listeners
 
   onViewSelect = (view) => {
@@ -104,6 +122,22 @@ class BookIndexConnector extends Component {
     scrollPositions.bookIndex = scrollTop;
   };
 
+  onFirstPagePress = () => {
+    this.props.onPageSelect(1);
+  };
+
+  onPreviousPagePress = () => {
+    this.props.onPageSelect(Math.max((this.props.page || 1) - 1, 1));
+  };
+
+  onNextPagePress = () => {
+    this.props.onPageSelect(Math.min((this.props.page || 1) + 1, this.props.totalPages || 1));
+  };
+
+  onLastPagePress = () => {
+    this.props.onPageSelect(this.props.totalPages || 1);
+  };
+
   //
   // Render
 
@@ -114,14 +148,21 @@ class BookIndexConnector extends Component {
         onViewSelect={this.onViewSelect}
         onScroll={this.onScroll}
         onSaveSelected={this.onSaveSelected}
+        onFirstPagePress={this.onFirstPagePress}
+        onPreviousPagePress={this.onPreviousPagePress}
+        onNextPagePress={this.onNextPagePress}
+        onLastPagePress={this.onLastPagePress}
       />
     );
   }
 }
 
 BookIndexConnector.propTypes = {
+  page: PropTypes.number,
+  totalPages: PropTypes.number,
   isSmallScreen: PropTypes.bool.isRequired,
   view: PropTypes.string.isRequired,
+  onPageSelect: PropTypes.func.isRequired,
   dispatchSetBookView: PropTypes.func.isRequired,
   dispatchSaveBookEditor: PropTypes.func.isRequired
 };
@@ -130,4 +171,3 @@ export default withScrollPosition(
   connect(createMapStateToProps, createMapDispatchToProps)(BookIndexConnector),
   'bookIndex'
 );
-

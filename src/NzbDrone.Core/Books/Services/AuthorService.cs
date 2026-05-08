@@ -14,6 +14,7 @@ namespace NzbDrone.Core.Books
     {
         Author GetAuthor(int authorId);
         Author GetAuthorByMetadataId(int authorMetadataId);
+        List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataIds);
         List<Author> GetAuthors(IEnumerable<int> authorIds);
         Author AddAuthor(Author newAuthor, bool doRefresh);
         List<Author> AddAuthors(List<Author> newAuthors, bool doRefresh);
@@ -210,6 +211,11 @@ namespace NzbDrone.Core.Books
         public Author GetAuthorByMetadataId(int authorMetadataId)
         {
             return _authorRepository.GetAuthorByMetadataId(authorMetadataId);
+        }
+
+        public List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataIds)
+        {
+            return _authorRepository.GetAuthorsByMetadataId(authorMetadataIds).ToList();
         }
 
         public List<Author> GetAuthors(IEnumerable<int> authorIds)

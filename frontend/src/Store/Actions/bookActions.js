@@ -10,7 +10,7 @@ import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
 import translate from 'Utilities/String/translate';
-import { removeItem, set, update, updateItem } from './baseActions';
+import { removeItem, set, update, updateItem, updateServerSideCollection } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 import createRemoveItemHandler from './Creators/createRemoveItemHandler';
 import createSaveProviderHandler from './Creators/createSaveProviderHandler';
@@ -188,6 +188,10 @@ export const defaultState = {
   isFetching: false,
   isPopulated: false,
   error: null,
+  page: 1,
+  pageSize: 100,
+  totalPages: 0,
+  totalRecords: 0,
   isSaving: false,
   saveError: null,
   sortKey: 'releaseDate',
@@ -327,12 +331,89 @@ export const setBookValue = createAction(SET_BOOK_VALUE, (payload) => {
   };
 });
 
+const pagedBookIndexFilterKeys = new Set([
+  'all',
+  'monitored',
+  'unmonitored'
+]);
+
+const pagedBookIndexSortKeys = {
+  added: 'added',
+  authorName: 'authorMetadata.sortName',
+  path: 'authors.path',
+  qualityProfileId: 'authors.qualityProfileId',
+  ratings: 'ratings',
+  releaseDate: 'releaseDate',
+  title: 'title'
+};
+
+function getPagedBookIndexRequestData(state, payload = {}) {
+  const bookIndex = state.bookIndex || {};
+  const selectedFilterKey = bookIndex.selectedFilterKey || 'all';
+  const sortKey = payload.sortKey || bookIndex.sortKey || 'title';
+  const mappedSortKey = pagedBookIndexSortKeys[sortKey];
+
+  if (!pagedBookIndexFilterKeys.has(selectedFilterKey) || !mappedSortKey) {
+    return null;
+  }
+
+  const data = {
+    page: payload.page || 1,
+    pageSize: bookIndex.pageSize || state.books.pageSize || 100,
+    sortKey: mappedSortKey,
+    sortDirection: bookIndex.sortDirection || sortDirections.ASCENDING
+  };
+
+  if (selectedFilterKey === 'monitored') {
+    data.monitored = true;
+  } else if (selectedFilterKey === 'unmonitored') {
+    data.monitored = false;
+  }
+
+  return data;
+}
+
 //
 // Action Handlers
 
 export const actionHandlers = handleThunks({
   [FETCH_BOOKS]: function(getState, payload, dispatch) {
     dispatch(set({ section, isFetching: true }));
+
+    if (payload?.paged) {
+      const data = getPagedBookIndexRequestData(getState(), payload);
+
+      if (data) {
+        const { request, abortRequest } = createAjaxRequest({
+          url: '/book/paged',
+          data
+        });
+
+        request.done((response) => {
+          dispatch(batchActions([
+            updateServerSideCollection({ section, data: response }),
+
+            set({
+              section,
+              isFetching: false,
+              isPopulated: true,
+              error: null
+            })
+          ]));
+        });
+
+        request.fail((xhr) => {
+          dispatch(set({
+            section,
+            isFetching: false,
+            isPopulated: false,
+            error: xhr.aborted ? null : xhr
+          }));
+        });
+
+        return abortRequest;
+      }
+    }
 
     const { request, abortRequest } = createAjaxRequest({
       url: '/book',
@@ -342,7 +423,7 @@ export const actionHandlers = handleThunks({
 
     request.done((data) => {
       // Preserve books for other authors we didn't fetch
-      if (payload.hasOwnProperty('authorId')) {
+      if (payload?.hasOwnProperty('authorId')) {
         const oldBooks = getState().books.items;
         const newBooks = oldBooks.filter((x) => x.authorId !== payload.authorId);
         data = newBooks.concat(data);

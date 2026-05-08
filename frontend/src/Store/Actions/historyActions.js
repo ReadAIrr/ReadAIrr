@@ -240,6 +240,14 @@ export const clearHistory = createAction(CLEAR_HISTORY);
 export const markAsFailed = createThunk(MARK_AS_FAILED);
 
 //
+// Helpers
+
+function fetchDataAugmenter(getState, payload, data) {
+  data.includeAuthor = true;
+  data.includeBook = true;
+}
+
+//
 // Action Handlers
 
 export const actionHandlers = handleThunks({
@@ -256,7 +264,8 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_HISTORY_PAGE,
       [serverSideCollectionHandlers.SORT]: SET_HISTORY_SORT,
       [serverSideCollectionHandlers.FILTER]: SET_HISTORY_FILTER
-    }),
+    },
+    fetchDataAugmenter),
 
   [MARK_AS_FAILED]: function(getState, payload, dispatch) {
     const id = payload.id;

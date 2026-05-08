@@ -175,6 +175,8 @@ export const persistState = [
 
 function fetchDataAugmenter(getState, payload, data) {
   data.includeUnknownAuthorItems = getState().queue.options.includeUnknownAuthorItems;
+  data.includeAuthor = true;
+  data.includeBook = true;
 }
 
 //
