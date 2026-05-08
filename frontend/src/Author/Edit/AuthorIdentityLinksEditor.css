@@ -1,0 +1,43 @@
+.summary {
+  margin-bottom: 12px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.linkedAuthorsList {
+  margin-bottom: 12px;
+}
+
+.linkedAuthorRow {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 120px 32px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--borderColor);
+}
+
+.linkedAuthorRow span {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.empty {
+  margin-bottom: 12px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.linkAuthorControls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 150px 150px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media only screen and (max-width: $breakpointSmall) {
+  .linkAuthorControls,
+  .linkedAuthorRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

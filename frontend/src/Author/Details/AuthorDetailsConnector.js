@@ -17,7 +17,6 @@ import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createSortedSectionSelector from 'Store/Selectors/createSortedSectionSelector';
 import { findCommand, isCommandExecuting } from 'Utilities/Command';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { registerPagePopulator, unregisterPagePopulator } from 'Utilities/pagePopulator';
 import AuthorDetails from './AuthorDetails';
 
@@ -306,30 +305,8 @@ class AuthorDetailsConnector extends Component {
     });
   };
 
-  onLinkAuthorPress = (payload) => {
-    const { request } = createAjaxRequest({
-      url: '/authoridentitylink',
-      method: 'POST',
-      data: JSON.stringify(payload),
-      dataType: 'json'
-    });
-
-    request.done(() => {
-      this.props.fetchAuthor();
-      this.populate();
-    });
-  };
-
-  onUnlinkAuthorPress = (linkId) => {
-    const { request } = createAjaxRequest({
-      url: `/authoridentitylink/${linkId}`,
-      method: 'DELETE'
-    });
-
-    request.done(() => {
-      this.props.fetchAuthor();
-      this.populate();
-    });
+  onAuthorIdentityLinkChange = () => {
+    this.populate();
   };
 
   onSaveSelected = (payload) => {
@@ -346,8 +323,7 @@ class AuthorDetailsConnector extends Component {
         onMonitorTogglePress={this.onMonitorTogglePress}
         onRefreshPress={this.onRefreshPress}
         onSearchPress={this.onSearchPress}
-        onLinkAuthorPress={this.onLinkAuthorPress}
-        onUnlinkAuthorPress={this.onUnlinkAuthorPress}
+        onAuthorIdentityLinkChange={this.onAuthorIdentityLinkChange}
         onSaveSelected={this.onSaveSelected}
       />
     );

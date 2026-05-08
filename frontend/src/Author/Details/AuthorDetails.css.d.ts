@@ -8,13 +8,6 @@ interface CssExports {
   'errorMessage': string;
   'filterIcon': string;
   'innerContentBody': string;
-  'linkAuthorControls': string;
-  'linkedAuthorRow': string;
-  'linkedAuthorsHeader': string;
-  'linkedAuthorsList': string;
-  'linkedAuthorsPanel': string;
-  'linkedAuthorsSummary': string;
-  'linkedAuthorsTitle': string;
   'metadataMessage': string;
   'selectedTab': string;
   'tab': string;

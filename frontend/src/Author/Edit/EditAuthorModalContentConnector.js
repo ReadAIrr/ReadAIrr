@@ -3,9 +3,11 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { saveAuthor, setAuthorValue } from 'Store/Actions/authorActions';
+import { fetchAuthor, saveAuthor, setAuthorValue } from 'Store/Actions/authorActions';
+import createAllAuthorsSelector from 'Store/Selectors/createAllAuthorsSelector';
 import createAuthorSelector from 'Store/Selectors/createAuthorSelector';
 import selectSettings from 'Store/Selectors/selectSettings';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import EditAuthorModalContent from './EditAuthorModalContent';
 
 function createIsPathChangingSelector() {
@@ -28,9 +30,10 @@ function createMapStateToProps() {
   return createSelector(
     (state) => state.authors,
     (state) => state.settings.metadataProfiles,
+    createAllAuthorsSelector(),
     createAuthorSelector(),
     createIsPathChangingSelector(),
-    (authorsState, metadataProfiles, author, isPathChanging) => {
+    (authorsState, metadataProfiles, allAuthors, author, isPathChanging) => {
       const {
         isSaving,
         saveError,
@@ -54,6 +57,9 @@ function createMapStateToProps() {
         saveError,
         isPathChanging,
         originalPath: author.path,
+        allAuthors: _.orderBy(allAuthors, 'sortNameLastFirst'),
+        linkedAuthors: author.linkedAuthors || [],
+        identityStatistics: author.identityStatistics || {},
         item: settings.settings,
         showMetadataProfile: metadataProfiles.items.length > 1,
         ...settings
@@ -64,7 +70,8 @@ function createMapStateToProps() {
 
 const mapDispatchToProps = {
   dispatchSetAuthorValue: setAuthorValue,
-  dispatchSaveAuthor: saveAuthor
+  dispatchSaveAuthor: saveAuthor,
+  dispatchFetchAuthor: fetchAuthor
 };
 
 class EditAuthorModalContentConnector extends Component {
@@ -92,6 +99,34 @@ class EditAuthorModalContentConnector extends Component {
     });
   };
 
+  onAuthorIdentityLinkChange = () => {
+    this.props.dispatchFetchAuthor();
+
+    if (this.props.onAuthorIdentityLinkChange) {
+      this.props.onAuthorIdentityLinkChange();
+    }
+  };
+
+  onLinkAuthorPress = (payload) => {
+    const { request } = createAjaxRequest({
+      url: '/authoridentitylink',
+      method: 'POST',
+      data: JSON.stringify(payload),
+      dataType: 'json'
+    });
+
+    request.done(this.onAuthorIdentityLinkChange);
+  };
+
+  onUnlinkAuthorPress = (linkId) => {
+    const { request } = createAjaxRequest({
+      url: `/authoridentitylink/${linkId}`,
+      method: 'DELETE'
+    });
+
+    request.done(this.onAuthorIdentityLinkChange);
+  };
+
   //
   // Render
 
@@ -100,6 +135,8 @@ class EditAuthorModalContentConnector extends Component {
       <EditAuthorModalContent
         {...this.props}
         onInputChange={this.onInputChange}
+        onLinkAuthorPress={this.onLinkAuthorPress}
+        onUnlinkAuthorPress={this.onUnlinkAuthorPress}
         onSavePress={this.onSavePress}
         onMoveAuthorPress={this.onMoveAuthorPress}
       />
@@ -113,6 +150,8 @@ EditAuthorModalContentConnector.propTypes = {
   saveError: PropTypes.object,
   dispatchSetAuthorValue: PropTypes.func.isRequired,
   dispatchSaveAuthor: PropTypes.func.isRequired,
+  dispatchFetchAuthor: PropTypes.func.isRequired,
+  onAuthorIdentityLinkChange: PropTypes.func,
   onModalClose: PropTypes.func.isRequired
 };
 

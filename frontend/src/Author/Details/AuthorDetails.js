@@ -9,7 +9,6 @@ import BookEditorFooter from 'Book/Editor/BookEditorFooter';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
 import Alert from 'Components/Alert';
 import SelectInput from 'Components/Form/SelectInput';
-import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -49,24 +48,6 @@ const bookMonitorFilterOptions = [
   { key: 'unmonitored', value: () => translate('Unmonitored') }
 ];
 
-const relationshipTypeOptions = [
-  { key: 'penName', value: 'Pen name' },
-  { key: 'coauthor', value: 'Coauthor' },
-  { key: 'alias', value: 'Alias' }
-];
-
-const displayPreferenceOptions = [
-  { key: 'canonical', value: 'Canonical' },
-  { key: 'alias', value: 'Alias' },
-  { key: 'both', value: 'Both' }
-];
-
-const relationshipTypeLabels = {
-  penName: 'Pen name',
-  coauthor: 'Coauthor',
-  alias: 'Alias'
-};
-
 class AuthorDetails extends Component {
 
   //
@@ -91,10 +72,7 @@ class AuthorDetails extends Component {
       lastToggled: null,
       selectedState: {},
       selectedTabIndex: 0,
-      bookMonitorFilter: 'all',
-      linkAuthorId: '',
-      linkRelationshipType: 'penName',
-      linkDisplayPreference: 'canonical'
+      bookMonitorFilter: 'all'
     };
   }
 
@@ -246,46 +224,6 @@ class AuthorDetails extends Component {
     this.setState({ bookMonitorFilter: value });
   };
 
-  onLinkedAuthorSelectChange = ({ value }) => {
-    this.setState({ linkAuthorId: value });
-  };
-
-  onLinkRelationshipTypeChange = ({ value }) => {
-    this.setState({ linkRelationshipType: value });
-  };
-
-  onLinkDisplayPreferenceChange = ({ value }) => {
-    this.setState({ linkDisplayPreference: value });
-  };
-
-  onLinkAuthorPress = (selectedLinkAuthorId) => {
-    const {
-      id,
-      onLinkAuthorPress
-    } = this.props;
-
-    const {
-      linkAuthorId,
-      linkRelationshipType,
-      linkDisplayPreference
-    } = this.state;
-
-    const aliasAuthorId = selectedLinkAuthorId || linkAuthorId;
-
-    if (!aliasAuthorId) {
-      return;
-    }
-
-    onLinkAuthorPress({
-      canonicalAuthorId: id,
-      aliasAuthorId: parseInt(aliasAuthorId),
-      relationshipType: linkRelationshipType,
-      displayPreference: linkDisplayPreference
-    });
-
-    this.setState({ linkAuthorId: '' });
-  };
-
   //
   // Render
 
@@ -306,14 +244,11 @@ class AuthorDetails extends Component {
       hasSeries,
       series,
       hasBookFiles,
-      allAuthors = [],
-      linkedAuthors = [],
-      identityStatistics = {},
       previousAuthor,
       nextAuthor,
       onRefreshPress,
       onSearchPress,
-      onUnlinkAuthorPress,
+      onAuthorIdentityLinkChange,
       isSaving,
       saveError,
       isDeleting,
@@ -340,10 +275,7 @@ class AuthorDetails extends Component {
       allCollapsed,
       expandedState,
       selectedTabIndex,
-      bookMonitorFilter,
-      linkAuthorId,
-      linkRelationshipType,
-      linkDisplayPreference
+      bookMonitorFilter
     } = this.state;
 
     let expandIcon = icons.EXPAND_INDETERMINATE;
@@ -355,11 +287,6 @@ class AuthorDetails extends Component {
     }
 
     const selectedBookIds = this.getSelectedIds();
-    const linkedAuthorIds = linkedAuthors.map((linkedAuthor) => linkedAuthor.id);
-    const linkableAuthors = allAuthors.filter((author) => {
-      return author.id !== id && linkedAuthorIds.indexOf(author.id) === -1;
-    });
-    const selectedLinkAuthorId = linkAuthorId || linkableAuthors[0]?.id || '';
 
     return (
       <PageContent title={authorName}>
@@ -528,86 +455,6 @@ class AuthorDetails extends Component {
                 null
             }
 
-            <div className={styles.linkedAuthorsPanel}>
-              <div className={styles.linkedAuthorsHeader}>
-                <div>
-                  <div className={styles.linkedAuthorsTitle}>
-                    Linked Authors
-                  </div>
-
-                  <div className={styles.linkedAuthorsSummary}>
-                    {identityStatistics.availableBookCount || 0}/{identityStatistics.bookCount || 0} available across {linkedAuthors.length + 1} identities
-                  </div>
-                </div>
-              </div>
-
-              {
-                linkedAuthors.length > 0 &&
-                  <div className={styles.linkedAuthorsList}>
-                    {
-                      linkedAuthors.map((linkedAuthor) => {
-                        return (
-                          <div
-                            key={linkedAuthor.id}
-                            className={styles.linkedAuthorRow}
-                          >
-                            <Link to={`/author/${linkedAuthor.titleSlug}`}>
-                              {linkedAuthor.authorName}
-                            </Link>
-
-                            <span>
-                              {relationshipTypeLabels[linkedAuthor.relationshipType] || linkedAuthor.relationshipType || 'Linked'}
-                            </span>
-
-                            <IconButton
-                              name={icons.REMOVE}
-                              title="Unlink author"
-                              onPress={() => onUnlinkAuthorPress(linkedAuthor.linkId)}
-                            />
-                          </div>
-                        );
-                      })
-                    }
-                  </div>
-              }
-
-              <div className={styles.linkAuthorControls}>
-                <SelectInput
-                  name="linkAuthorId"
-                  value={selectedLinkAuthorId}
-                  values={linkableAuthors.map((author) => {
-                    return {
-                      key: author.id,
-                      value: author.authorName
-                    };
-                  })}
-                  isDisabled={!linkableAuthors.length}
-                  onChange={this.onLinkedAuthorSelectChange}
-                />
-
-                <SelectInput
-                  name="linkRelationshipType"
-                  value={linkRelationshipType}
-                  values={relationshipTypeOptions}
-                  onChange={this.onLinkRelationshipTypeChange}
-                />
-
-                <SelectInput
-                  name="linkDisplayPreference"
-                  value={linkDisplayPreference}
-                  values={displayPreferenceOptions}
-                  onChange={this.onLinkDisplayPreferenceChange}
-                />
-
-                <Button
-                  isDisabled={!selectedLinkAuthorId}
-                  onPress={() => this.onLinkAuthorPress(selectedLinkAuthorId)}
-                >
-                  Link
-                </Button>
-              </div>
-            </div>
-
             {
               isPopulated &&
                 <Tabs selectedIndex={selectedTabIndex} onSelect={this.onTabSelect}>
@@ -741,6 +588,7 @@ class AuthorDetails extends Component {
             authorId={id}
             onModalClose={this.onEditAuthorModalClose}
             onDeleteAuthorPress={this.onDeleteAuthorPress}
+            onAuthorIdentityLinkChange={onAuthorIdentityLinkChange}
           />
 
           <DeleteAuthorModal
@@ -808,17 +656,13 @@ AuthorDetails.propTypes = {
   hasSeries: PropTypes.bool.isRequired,
   series: PropTypes.arrayOf(PropTypes.object).isRequired,
   hasBookFiles: PropTypes.bool.isRequired,
-  allAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
-  linkedAuthors: PropTypes.arrayOf(PropTypes.object),
-  identityStatistics: PropTypes.object,
   previousAuthor: PropTypes.object.isRequired,
   nextAuthor: PropTypes.object.isRequired,
   isSmallScreen: PropTypes.bool.isRequired,
   onMonitorTogglePress: PropTypes.func.isRequired,
   onRefreshPress: PropTypes.func.isRequired,
   onSearchPress: PropTypes.func.isRequired,
-  onLinkAuthorPress: PropTypes.func.isRequired,
-  onUnlinkAuthorPress: PropTypes.func.isRequired,
+  onAuthorIdentityLinkChange: PropTypes.func.isRequired,
   isSaving: PropTypes.bool.isRequired,
   saveError: PropTypes.object,
   isDeleting: PropTypes.bool.isRequired,

@@ -17,6 +17,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import AuthorIdentityLinksEditor from './AuthorIdentityLinksEditor';
 import styles from './EditAuthorModalContent.css';
 
 class EditAuthorModalContent extends Component {
@@ -66,7 +67,12 @@ class EditAuthorModalContent extends Component {
       isSaving,
       showMetadataProfile,
       originalPath,
+      allAuthors,
+      linkedAuthors,
+      identityStatistics,
       onInputChange,
+      onLinkAuthorPress,
+      onUnlinkAuthorPress,
       onModalClose,
       onDeleteAuthorPress,
       ...otherProps
@@ -198,6 +204,15 @@ class EditAuthorModalContent extends Component {
               />
             </FormGroup>
           </Form>
+
+          <AuthorIdentityLinksEditor
+            authorId={this.props.authorId}
+            allAuthors={allAuthors}
+            linkedAuthors={linkedAuthors}
+            identityStatistics={identityStatistics}
+            onLinkAuthorPress={onLinkAuthorPress}
+            onUnlinkAuthorPress={onUnlinkAuthorPress}
+          />
         </ModalBody>
         <ModalFooter>
           <Button
@@ -243,7 +258,12 @@ EditAuthorModalContent.propTypes = {
   showMetadataProfile: PropTypes.bool.isRequired,
   isPathChanging: PropTypes.bool.isRequired,
   originalPath: PropTypes.string.isRequired,
+  allAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
+  linkedAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
+  identityStatistics: PropTypes.object.isRequired,
   onInputChange: PropTypes.func.isRequired,
+  onLinkAuthorPress: PropTypes.func.isRequired,
+  onUnlinkAuthorPress: PropTypes.func.isRequired,
   onSavePress: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired,
   onDeleteAuthorPress: PropTypes.func.isRequired
