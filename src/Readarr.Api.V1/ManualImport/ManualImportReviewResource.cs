@@ -77,6 +77,7 @@ namespace Readarr.Api.V1.ManualImport
         public int? ProviderStatusCode { get; set; }
         public int? ProviderDurationMs { get; set; }
         public string ProviderResponseExcerpt { get; set; }
+        public string AudioPreviewUrl { get; set; }
         public List<ManualImportReviewReasonResource> Evidence { get; set; }
         public List<ManualImportReviewReasonResource> Warnings { get; set; }
         public bool IsStale { get; set; }

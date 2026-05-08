@@ -192,7 +192,8 @@ namespace Readarr.Api.V1.BookFiles
                     ProviderModel = transcription.ProviderModel,
                     ProviderStatusCode = transcription.ProviderStatusCode,
                     ProviderDurationMs = transcription.ProviderDurationMs,
-                    ProviderResponseExcerpt = transcription.ProviderResponseExcerpt
+                    ProviderResponseExcerpt = transcription.ProviderResponseExcerpt,
+                    AudioPreviewUrl = $"/bookFile/unmapped/{resource.Id}/intro-preview"
                 };
             }).ToList();
 
@@ -442,6 +443,7 @@ namespace Readarr.Api.V1.BookFiles
                 ProviderStatusCode = suggestion.ProviderStatusCode,
                 ProviderDurationMs = suggestion.ProviderDurationMs,
                 ProviderResponseExcerpt = suggestion.ProviderResponseExcerpt,
+                AudioPreviewUrl = suggestion.Type == "deepAudio" ? $"/bookFile/unmapped/{resource.Id}/intro-preview" : null,
                 IsStale = isStale,
                 Created = suggestion.Created,
                 Updated = suggestion.Updated

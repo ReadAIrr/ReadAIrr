@@ -16,6 +16,7 @@ namespace Readarr.Api.V1.BookFiles
     public interface IAudioIntroTranscriptionService
     {
         AudioIntroTranscriptionResult Prepare(BookFileResource resource);
+        AudioIntroSegment ExtractPreview(BookFileResource resource);
         AudioIntroTranscriptionResult Transcribe(BookFileResource resource);
         AudioIntroTranscriptClues ExtractClues(string transcript);
     }
@@ -169,6 +170,12 @@ namespace Readarr.Api.V1.BookFiles
             };
         }
 
+        public AudioIntroSegment ExtractPreview(BookFileResource resource)
+        {
+            var introSeconds = BoundIntroSeconds(_configService.SpeechToTextIntroSeconds);
+            return _audioIntroSegmentExtractor.Extract(resource.Path, introSeconds);
+        }
+
         public AudioIntroTranscriptionResult Transcribe(BookFileResource resource)
         {
             var ready = Prepare(resource);
@@ -179,7 +186,7 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             var introSeconds = BoundIntroSeconds(_configService.SpeechToTextIntroSeconds);
-            var segment = _audioIntroSegmentExtractor.Extract(resource.Path, introSeconds);
+            var segment = ExtractPreview(resource);
 
             if (!segment.IsSuccess)
             {

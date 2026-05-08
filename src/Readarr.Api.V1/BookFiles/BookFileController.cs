@@ -35,6 +35,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IBookService _bookService;
         private readonly IUpgradableSpecification _upgradableSpecification;
         private readonly IUnmappedIdentificationSuggestionService _unmappedIdentificationSuggestionService;
+        private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
 
         public BookFileController(IBroadcastSignalRMessage signalRBroadcaster,
                                IMediaFileService mediaFileService,
@@ -44,7 +45,8 @@ namespace Readarr.Api.V1.BookFiles
                                IAuthorService authorService,
                                IBookService bookService,
                                IUpgradableSpecification upgradableSpecification,
-                               IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService)
+                               IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService,
+                               IAudioIntroTranscriptionService audioIntroTranscriptionService)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -55,6 +57,7 @@ namespace Readarr.Api.V1.BookFiles
             _bookService = bookService;
             _upgradableSpecification = upgradableSpecification;
             _unmappedIdentificationSuggestionService = unmappedIdentificationSuggestionService;
+            _audioIntroTranscriptionService = audioIntroTranscriptionService;
         }
 
         private BookFileResource MapToResource(BookFile bookFile)
@@ -205,6 +208,27 @@ namespace Readarr.Api.V1.BookFiles
             _unmappedIdentificationSuggestionService.Clear(bookFiles.Select(x => x.Id).ToList());
 
             return Accepted(MapUnmappedToResources(bookFiles));
+        }
+
+        [HttpGet("unmapped/{id:int}/intro-preview")]
+        public IActionResult GetUnmappedIntroPreview(int id)
+        {
+            var bookFile = _mediaFileService.Get(id);
+
+            if (bookFile == null || bookFile.EditionId > 0)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unmapped book file not found");
+            }
+
+            var resource = MapToResource(bookFile);
+            var segment = _audioIntroTranscriptionService.ExtractPreview(resource);
+
+            if (!segment.IsSuccess)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.BadRequest, segment.Explanation);
+            }
+
+            return File(segment.Content, segment.ContentType ?? "audio/mpeg", segment.FileName ?? "readairr-intro.mp3");
         }
 
         [RestDeleteById]

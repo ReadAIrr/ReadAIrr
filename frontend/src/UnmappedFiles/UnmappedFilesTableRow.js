@@ -175,6 +175,16 @@ function getSuggestionDetails(suggestion) {
   return details;
 }
 
+function getAudioPreviewUrl(audioPreviewUrl) {
+  if (!audioPreviewUrl) {
+    return null;
+  }
+
+  const separator = audioPreviewUrl.includes('?') ? '&' : '?';
+
+  return `${window.Readarr.apiRoot}${audioPreviewUrl}${separator}apikey=${encodeURIComponent(window.Readarr.apiKey)}`;
+}
+
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -377,6 +387,7 @@ class UnmappedFilesTableRow extends Component {
               const candidateTitle = candidate.bookTitle || parsed.book || 'No book candidate';
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
+              const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
 
               return (
                 <VirtualTableRowCell
@@ -406,6 +417,23 @@ class UnmappedFilesTableRow extends Component {
                         title={`${getSuggestionSource(suggestion)} details`}
                         body={
                           <div className={styles.reasonList}>
+                            {
+                              audioPreviewUrl &&
+                                <div className={styles.reason}>
+                                  <div className={styles.reasonLabel}>
+                                    Intro preview
+                                  </div>
+
+                                  <div className={styles.reasonDetail}>
+                                    <audio
+                                      controls={true}
+                                      preload="none"
+                                      src={audioPreviewUrl}
+                                    />
+                                  </div>
+                                </div>
+                            }
+
                             {
                               getSuggestionDetails(suggestion).map((detail, index) => {
                                 return (
