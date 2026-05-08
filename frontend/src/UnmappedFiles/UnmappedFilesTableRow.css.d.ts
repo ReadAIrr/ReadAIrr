@@ -13,6 +13,7 @@ interface CssExports {
   'dateAdded': string;
   'noConfidence': string;
   'path': string;
+  'progressStatus': string;
   'quality': string;
   'reason': string;
   'reasonDetail': string;

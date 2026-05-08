@@ -105,10 +105,22 @@ class UnmappedFilesTableConnector extends Component {
     registerPagePopulator(this.repopulate, ['bookFileUpdated']);
 
     this.repopulate();
+    this.updateDeepIdentifyPolling();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.isDeepIdentifyAudioRunning !== this.props.isDeepIdentifyAudioRunning) {
+      this.updateDeepIdentifyPolling();
+
+      if (!this.props.isDeepIdentifyAudioRunning) {
+        this.repopulate();
+      }
+    }
   }
 
   componentWillUnmount() {
     unregisterPagePopulator(this.repopulate);
+    this.stopDeepIdentifyPolling();
   }
 
   //
@@ -116,6 +128,33 @@ class UnmappedFilesTableConnector extends Component {
 
   repopulate = () => {
     this.props.fetchUnmappedFiles();
+  };
+
+  updateDeepIdentifyPolling = () => {
+    if (this.props.isDeepIdentifyAudioRunning) {
+      this.startDeepIdentifyPolling();
+    } else {
+      this.stopDeepIdentifyPolling();
+    }
+  };
+
+  startDeepIdentifyPolling = () => {
+    if (this._deepIdentifyPolling) {
+      return;
+    }
+
+    this._deepIdentifyPolling = setInterval(() => {
+      this.props.fetchUnmappedFiles();
+    }, 5000);
+  };
+
+  stopDeepIdentifyPolling = () => {
+    if (!this._deepIdentifyPolling) {
+      return;
+    }
+
+    clearInterval(this._deepIdentifyPolling);
+    this._deepIdentifyPolling = null;
   };
 
   //

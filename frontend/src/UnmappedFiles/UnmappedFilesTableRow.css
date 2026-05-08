@@ -70,6 +70,15 @@
   white-space: nowrap;
 }
 
+.progressStatus {
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--linkColor);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .confidenceValue {
   margin-bottom: 3px;
   font-size: 12px;

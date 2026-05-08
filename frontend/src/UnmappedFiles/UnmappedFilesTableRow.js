@@ -35,6 +35,10 @@ function getSuggestionSource(suggestion) {
   return suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI review';
 }
 
+function getDeepIdentifySuggestion(review) {
+  return review?.suggestions?.find((item) => item.type === 'deepAudio');
+}
+
 function getSuggestionStatusLabel(status) {
   switch (status) {
     case 'queued':
@@ -90,6 +94,20 @@ function getSuggestionSummary(suggestion) {
   }
 
   return `${source}${suggestion.isStale ? ' stale' : ''}: ${statusLabel}`;
+}
+
+function getDeepIdentifyStatus(review, isReprocessing) {
+  const suggestion = getDeepIdentifySuggestion(review);
+
+  if (suggestion) {
+    return getSuggestionStatusLabel(suggestion.stage || suggestion.status);
+  }
+
+  if (isReprocessing) {
+    return 'Queued';
+  }
+
+  return null;
 }
 
 function getSuggestionDetails(suggestion) {
@@ -343,6 +361,7 @@ class UnmappedFilesTableRow extends Component {
             if (name === 'status') {
               const status = review?.status || 'needsReview';
               const reasons = review?.reasons || [];
+              const deepIdentifyStatus = getDeepIdentifyStatus(review, isReprocessing);
 
               return (
                 <VirtualTableRowCell
@@ -384,6 +403,13 @@ class UnmappedFilesTableRow extends Component {
                     }
                     position={tooltipPositions.LEFT}
                   />
+
+                  {
+                    deepIdentifyStatus &&
+                      <div className={styles.progressStatus}>
+                        Deep Identify: {deepIdentifyStatus}
+                      </div>
+                  }
                 </VirtualTableRowCell>
               );
             }

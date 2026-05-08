@@ -99,6 +99,91 @@ function matchesSearchTerm(item, searchTerm) {
   ].some((value) => valueContainsSearchTerm(value, term));
 }
 
+function getDeepIdentifySuggestion(item) {
+  return item.review?.suggestions?.find((suggestion) => suggestion.type === 'deepAudio');
+}
+
+function getDeepIdentifyStatus(item) {
+  const suggestion = getDeepIdentifySuggestion(item);
+
+  if (!suggestion && item.isReprocessing) {
+    return 'queued';
+  }
+
+  return suggestion?.stage || suggestion?.status;
+}
+
+function getDeepIdentifySummary(items, isDeepIdentifyAudioRunning) {
+  const summary = {
+    queued: 0,
+    running: 0,
+    complete: 0,
+    failed: 0,
+    skipped: 0
+  };
+
+  items.forEach((item) => {
+    const status = getDeepIdentifyStatus(item);
+
+    if (!status) {
+      return;
+    }
+
+    if (status === 'queued') {
+      summary.queued++;
+      return;
+    }
+
+    if (status === 'extractingIntro' ||
+        status === 'introClipReady' ||
+        status === 'sendingToProvider' ||
+        status === 'waitingForTranscription' ||
+        status === 'parsingTranscript' ||
+        item.isReprocessing) {
+      summary.running++;
+      return;
+    }
+
+    if (status === 'transcriptCaptured' || status === 'suggested' || status === 'providerReady') {
+      summary.complete++;
+      return;
+    }
+
+    if (status === 'skipped') {
+      summary.skipped++;
+      return;
+    }
+
+    if (status === 'disabled' || status === 'extractionFailed' || status === 'transcriptionFailed' || status === 'failed' || status === 'unavailable') {
+      summary.failed++;
+    }
+  });
+
+  const total = summary.queued + summary.running + summary.complete + summary.failed + summary.skipped;
+
+  if (!total && !isDeepIdentifyAudioRunning) {
+    return null;
+  }
+
+  return summary;
+}
+
+function formatDeepIdentifySummary(summary, isDeepIdentifyAudioRunning) {
+  const parts = [
+    summary.queued && `${summary.queued} queued`,
+    summary.running && `${summary.running} running`,
+    summary.complete && `${summary.complete} complete`,
+    summary.failed && `${summary.failed} failed/disabled`,
+    summary.skipped && `${summary.skipped} skipped`
+  ].filter(Boolean);
+
+  if (!parts.length && isDeepIdentifyAudioRunning) {
+    return 'Deep Identify Audio is running. Refreshing unmapped file status while the background task progresses.';
+  }
+
+  return `Deep Identify Audio: ${parts.join(', ')}. Row status updates persist after refresh.`;
+}
+
 class UnmappedFilesTable extends Component {
 
   //
@@ -402,6 +487,7 @@ class UnmappedFilesTable extends Component {
 
     const selectedTrackFileIds = this.getSelectedIds();
     const visibleItems = this.getVisibleItems();
+    const deepIdentifySummary = getDeepIdentifySummary(items, isDeepIdentifyAudioRunning);
     this._visibleItems = visibleItems;
 
     return (
@@ -547,6 +633,13 @@ class UnmappedFilesTable extends Component {
                     'No unmapped files match the current search or filter.' :
                     'Success! My work is done, all files on disk are matched to known books.'
                 }
+              </Alert>
+          }
+
+          {
+            isPopulated && !error && deepIdentifySummary &&
+              <Alert kind={isDeepIdentifyAudioRunning || deepIdentifySummary.running || deepIdentifySummary.queued ? kinds.INFO : kinds.SUCCESS}>
+                {formatDeepIdentifySummary(deepIdentifySummary, isDeepIdentifyAudioRunning)}
               </Alert>
           }
 
