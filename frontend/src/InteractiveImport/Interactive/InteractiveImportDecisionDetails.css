@@ -31,3 +31,14 @@
 .reasonDetail {
   color: var(--textSecondaryColor);
 }
+
+.reviewDetails {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--borderColor);
+}
+
+.reviewDetailsTitle {
+  margin-bottom: 6px;
+  font-weight: 600;
+}

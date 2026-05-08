@@ -5,6 +5,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
+using Readarr.Api.V1.BookFiles;
 using Readarr.Api.V1.ManualImport;
 
 namespace NzbDrone.Api.Test.ManualImport
@@ -81,6 +82,51 @@ namespace NzbDrone.Api.Test.ManualImport
             resource.Candidate.AuthorName.Should().Be("Alice Writer");
             resource.Candidate.BookTitle.Should().Be("The Hidden Book");
             resource.Reasons.Should().Contain(x => x.Kind == "noEdition");
+        }
+
+        [Test]
+        public void should_warn_when_contributor_evidence_sources_disagree_on_narrator()
+        {
+            var resource = new ManualImportReviewResource
+            {
+                Hints = new List<ManualImportReviewReasonResource>(),
+                Candidate = new ManualImportCandidateResource
+                {
+                    AuthorName = "Alice Writer",
+                    BookTitle = "The Hidden Book"
+                },
+                ContributorEvidence = new List<ContributorEvidenceResource>
+                {
+                    new ContributorEvidenceResource
+                    {
+                        Role = "narrator",
+                        DisplayName = "Jane Reader",
+                        NormalizedName = "janereader",
+                        Source = "manual"
+                    },
+                    new ContributorEvidenceResource
+                    {
+                        Role = "narrator",
+                        DisplayName = "Janet Voice",
+                        NormalizedName = "janetvoice",
+                        Source = "sttTranscript"
+                    }
+                },
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>
+                {
+                    new ManualImportIdentificationSuggestionResource
+                    {
+                        Type = "deepAudio",
+                        Provider = "openrouter-stt",
+                        Narrator = "Janet Voice"
+                    }
+                }
+            };
+
+            ManualImportReviewResourceMapper.ApplySuggestionEvidence(resource);
+
+            resource.Hints.Should().Contain(x => x.Kind == "narratorEvidenceConflict");
+            resource.Suggestions[0].Warnings.Should().Contain(x => x.Kind == "narratorEvidenceMismatch");
         }
     }
 }

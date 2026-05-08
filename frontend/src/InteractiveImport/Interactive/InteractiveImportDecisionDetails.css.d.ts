@@ -9,6 +9,8 @@ interface CssExports {
   'reasonDetail': string;
   'reasonLabel': string;
   'reasonList': string;
+  'reviewDetails': string;
+  'reviewDetailsTitle': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

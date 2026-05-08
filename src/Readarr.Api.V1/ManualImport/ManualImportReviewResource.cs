@@ -197,8 +197,16 @@ namespace Readarr.Api.V1.ManualImport
 
         public static void ApplySuggestionEvidence(ManualImportReviewResource review)
         {
-            if (review?.Suggestions == null)
+            if (review == null)
             {
+                return;
+            }
+
+            review.Hints ??= new List<ManualImportReviewReasonResource>();
+
+            if (review.Suggestions == null)
+            {
+                AddContributorEvidenceWarnings(review);
                 return;
             }
 
@@ -223,6 +231,7 @@ namespace Readarr.Api.V1.ManualImport
             }
 
             AddNarratorConflictWarnings(review.Suggestions);
+            AddContributorEvidenceWarnings(review);
         }
 
         private static ManualImportParsedResource BuildParsed(ManualImportItem model)
@@ -305,6 +314,71 @@ namespace Readarr.Api.V1.ManualImport
                     Detail = $"{GetSuggestionSource(suggestion)} found narrator '{suggestion.Narrator}', but {GetSuggestionSource(conflict)} found '{conflict.Narrator}'."
                 });
             }
+        }
+
+        private static void AddContributorEvidenceWarnings(ManualImportReviewResource review)
+        {
+            var narratorEvidence = (review.ContributorEvidence ?? new List<ContributorEvidenceResource>())
+                .Where(x => x.Role == "narrator" && x.DisplayName.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            if (!narratorEvidence.Any())
+            {
+                return;
+            }
+
+            var groupedEvidence = narratorEvidence
+                .GroupBy(x => x.NormalizedName.IsNotNullOrWhiteSpace() ? x.NormalizedName : NormalizeEvidenceText(x.DisplayName))
+                .Where(x => x.Key.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            if (groupedEvidence.Count > 1)
+            {
+                review.Hints.Add(new ManualImportReviewReasonResource
+                {
+                    Kind = "narratorEvidenceConflict",
+                    Label = "Narrator evidence conflict",
+                    Detail = string.Join(" vs ", groupedEvidence.Select(x => FormatContributorEvidence(x.First())))
+                });
+            }
+
+            foreach (var suggestion in review.Suggestions ?? Enumerable.Empty<ManualImportIdentificationSuggestionResource>())
+            {
+                if (suggestion.Narrator.IsNullOrWhiteSpace() || suggestion.Warnings == null)
+                {
+                    continue;
+                }
+
+                var conflict = narratorEvidence.FirstOrDefault(x => !IsLikelySameText(x.DisplayName, suggestion.Narrator));
+
+                if (conflict == null)
+                {
+                    continue;
+                }
+
+                suggestion.Warnings.Add(new ManualImportReviewReasonResource
+                {
+                    Kind = "narratorEvidenceMismatch",
+                    Label = "Narrator evidence mismatch",
+                    Detail = $"{GetSuggestionSource(suggestion)} found narrator '{suggestion.Narrator}', but {GetContributorEvidenceSource(conflict)} evidence says '{conflict.DisplayName}'."
+                });
+            }
+        }
+
+        private static string FormatContributorEvidence(ContributorEvidenceResource evidence)
+        {
+            return $"{evidence.DisplayName} from {GetContributorEvidenceSource(evidence)}";
+        }
+
+        private static string GetContributorEvidenceSource(ContributorEvidenceResource evidence)
+        {
+            return evidence.Source switch
+            {
+                "manual" => "manual",
+                "aiReview" => "AI review",
+                "sttTranscript" => "STT transcript",
+                _ => evidence.Source.IsNotNullOrWhiteSpace() ? evidence.Source : "unknown"
+            };
         }
 
         private static string GetSuggestionSource(ManualImportIdentificationSuggestionResource suggestion)

@@ -206,12 +206,26 @@ function getSuggestionDetails(suggestion) {
 }
 
 function getContributorEvidenceDetails(contributorEvidence) {
+  function getSourceLabel(source) {
+    switch (source) {
+      case 'manual':
+        return 'Manual';
+      case 'aiReview':
+        return 'AI Review';
+      case 'sttTranscript':
+        return 'STT transcript';
+      default:
+        return source || 'Unknown source';
+    }
+  }
+
   const details = (contributorEvidence || []).map((item) => {
     const confidence = item.confidence == null ? '' : ` (${item.confidence}%)`;
+    const source = getSourceLabel(item.source);
 
     return {
       label: `${item.role || 'Contributor'} evidence`,
-      detail: `${item.displayName} from ${item.source}${confidence}`
+      detail: `${source}: ${item.displayName}${confidence}`
     };
   });
 
@@ -222,7 +236,7 @@ function getContributorEvidenceDetails(contributorEvidence) {
         acc[item.normalizedName] = [];
       }
 
-      acc[item.normalizedName].push(`${item.displayName} from ${item.source}`);
+      acc[item.normalizedName].push(`${getSourceLabel(item.source)}: ${item.displayName}`);
 
       return acc;
     }, {});
