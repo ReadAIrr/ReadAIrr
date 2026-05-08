@@ -12,6 +12,7 @@ import BookshelfConnector from 'Bookshelf/BookshelfConnector';
 import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
+import NarratorEvidenceIndex from 'Narrators/NarratorEvidenceIndex';
 import AddNewItemConnector from 'Search/AddNewItemConnector';
 import SeriesDetailsConnector from 'Series/SeriesDetailsConnector';
 import SeriesIndexConnector from 'Series/SeriesIndexConnector';
@@ -100,6 +101,12 @@ function AppRoutes(props) {
         exact={true}
         path="/series"
         component={SeriesIndexConnector}
+      />
+
+      <Route
+        exact={true}
+        path="/narrators"
+        component={NarratorEvidenceIndex}
       />
 
       <Route

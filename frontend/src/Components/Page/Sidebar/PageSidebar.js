@@ -38,6 +38,10 @@ const links = [
         to: '/series'
       },
       {
+        title: () => 'Narrators',
+        to: '/narrators'
+      },
+      {
         title: () => translate('AddNew'),
         to: '/add/search'
       },

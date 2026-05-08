@@ -1,0 +1,68 @@
+.filterButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.emptyMessage {
+  margin-top: 24px;
+  color: var(--textSecondaryColor);
+  text-align: center;
+}
+
+.narratorList {
+  display: grid;
+  gap: 10px;
+}
+
+.narratorRow {
+  padding: 12px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+}
+
+.narratorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.narratorName {
+  font-weight: 600;
+}
+
+.narratorMeta,
+.exampleMeta {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.sourceCounts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.sourceCount {
+  padding: 2px 6px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.examples {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.examples li {
+  margin-top: 4px;
+}
+
+.exampleMeta {
+  margin-left: 8px;
+}
