@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.MediaFiles;
-using Readarr.Api.V1.ManualImport;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
+using Readarr.Api.V1.ManualImport;
 using Readarr.Http.REST;
 
 namespace Readarr.Api.V1.BookFiles
