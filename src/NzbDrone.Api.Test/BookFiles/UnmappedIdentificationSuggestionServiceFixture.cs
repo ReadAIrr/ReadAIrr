@@ -114,6 +114,19 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
+        public void audio_intro_transcript_clues_should_parse_spoken_book_evidence()
+        {
+            var result = _audioIntroTranscriptionService.ExtractClues("You're listening to The Hidden Book, written by Alice Writer, narrated by Jane Reader, published by Example Audio. Book 2 of The Hidden Series.");
+
+            result.Title.Should().Be("The Hidden Book");
+            result.Author.Should().Be("Alice Writer");
+            result.Narrator.Should().Be("Jane Reader");
+            result.Publisher.Should().Be("Example Audio");
+            result.Series.Should().Be("The Hidden Series");
+            result.Confidence.Should().Be(100);
+        }
+
+        [Test]
         public void persisted_suggestions_should_be_marked_stale_when_file_identity_changes()
         {
             var updated = new global::System.DateTime(2026, 05, 08, 20, 0, 0, global::System.DateTimeKind.Utc);
