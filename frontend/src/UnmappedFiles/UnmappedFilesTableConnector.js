@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withCurrentPage from 'Components/withCurrentPage';
-import { deleteBookFile, deleteBookFiles, fetchBookFiles, setBookFilesSort, setBookFilesTableOption } from 'Store/Actions/bookFileActions';
+import { deleteBookFile, deleteBookFiles, fetchBookFiles, retryUnmappedFiles, setBookFilesSort, setBookFilesTableOption, setUnmappedFilesReviewed } from 'Store/Actions/bookFileActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
@@ -71,16 +71,12 @@ function createMapDispatchToProps(dispatch, props) {
       }));
     },
 
-    onRetryIdentifyPress(folders) {
-      dispatch(executeCommand({
-        name: commandNames.RESCAN_FOLDERS,
-        folders,
-        addNewAuthors: false,
-        filter: 'matched',
-        commandFinished: () => {
-          dispatch(fetchBookFiles({ unmapped: true }));
-        }
-      }));
+    onRetryIdentifyPress(bookFileIds) {
+      dispatch(retryUnmappedFiles({ bookFileIds }));
+    },
+
+    setUnmappedFilesReviewed(bookFileIds, reviewed) {
+      dispatch(setUnmappedFilesReviewed({ bookFileIds, reviewed }));
     }
   };
 }
@@ -126,7 +122,8 @@ UnmappedFilesTableConnector.propTypes = {
   fetchUnmappedFiles: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
   deleteUnmappedFiles: PropTypes.func.isRequired,
-  onRetryIdentifyPress: PropTypes.func.isRequired
+  onRetryIdentifyPress: PropTypes.func.isRequired,
+  setUnmappedFilesReviewed: PropTypes.func.isRequired
 };
 
 export default withCurrentPage(

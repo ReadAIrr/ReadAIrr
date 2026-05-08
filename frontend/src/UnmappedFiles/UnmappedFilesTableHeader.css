@@ -9,11 +9,29 @@
 .path {
   composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
 
-  flex: 4 0 400px;
+  flex: 4 0 360px;
+}
+
+.status {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+
+  flex: 0 0 150px;
+}
+
+.candidate {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+
+  flex: 3 0 260px;
+}
+
+.confidence {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+
+  flex: 0 0 140px;
 }
 
 .actions {
   composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
 
-  flex: 0 1 100px;
+  flex: 0 1 140px;
 }

@@ -37,6 +37,18 @@ export const defaultState = {
   sortPredicates: {
     quality: function(item, direction) {
       return item.quality ? item.qualityWeight : 0;
+    },
+
+    status: function(item, direction) {
+      return item.review ? item.review.statusLabel : '';
+    },
+
+    candidate: function(item, direction) {
+      return item.review?.candidate?.bookTitle || item.review?.parsed?.book || '';
+    },
+
+    confidence: function(item, direction) {
+      return item.review?.confidence ?? -1;
     }
   },
 
@@ -55,6 +67,24 @@ export const defaultState = {
       isSortable: true,
       isVisible: true,
       isModifiable: false
+    },
+    {
+      name: 'status',
+      label: 'Status',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'candidate',
+      label: 'Candidate',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'confidence',
+      label: 'Confidence',
+      isSortable: true,
+      isVisible: true
     },
     {
       name: 'size',
@@ -94,6 +124,8 @@ export const persistState = [
 export const FETCH_BOOK_FILES = 'bookFiles/fetchBookFiles';
 export const DELETE_BOOK_FILE = 'bookFiles/deleteBookFile';
 export const DELETE_BOOK_FILES = 'bookFiles/deleteBookFiles';
+export const RETRY_UNMAPPED_FILES = 'bookFiles/retryUnmappedFiles';
+export const SET_UNMAPPED_FILES_REVIEWED = 'bookFiles/setUnmappedFilesReviewed';
 export const UPDATE_BOOK_FILES = 'bookFiles/updateBookFiles';
 export const SET_BOOK_FILES_SORT = 'bookFiles/setBookFilesSort';
 export const SET_BOOK_FILES_TABLE_OPTION = 'bookFiles/setBookFilesTableOption';
@@ -105,6 +137,8 @@ export const CLEAR_BOOK_FILES = 'bookFiles/clearBookFiles';
 export const fetchBookFiles = createThunk(FETCH_BOOK_FILES);
 export const deleteBookFile = createThunk(DELETE_BOOK_FILE);
 export const deleteBookFiles = createThunk(DELETE_BOOK_FILES);
+export const retryUnmappedFiles = createThunk(RETRY_UNMAPPED_FILES);
+export const setUnmappedFilesReviewed = createThunk(SET_UNMAPPED_FILES_REVIEWED);
 export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
 export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
 export const setBookFilesTableOption = createAction(SET_BOOK_FILES_TABLE_OPTION);
@@ -196,6 +230,103 @@ export const actionHandlers = handleThunks({
         section,
         isDeleting: false,
         deleteError: xhr
+      }));
+    });
+  },
+
+  [RETRY_UNMAPPED_FILES]: function(getState, payload, dispatch) {
+    const {
+      bookFileIds
+    } = payload;
+
+    dispatch(batchActions([
+      ...bookFileIds.map((id) => updateItem({
+        section,
+        id,
+        isReprocessing: true,
+        updateOnly: true
+      })),
+      set({ section, isSaving: true, saveError: null })
+    ]));
+
+    const promise = createAjaxRequest({
+      url: '/bookFile/unmapped/retry',
+      method: 'POST',
+      dataType: 'json',
+      data: JSON.stringify({ bookFileIds })
+    }).request;
+
+    promise.done((data) => {
+      dispatch(batchActions([
+        ...data.map((item) => updateItem({
+          section,
+          ...item,
+          isReprocessing: false,
+          updateOnly: true
+        })),
+
+        set({
+          section,
+          isSaving: false,
+          saveError: null
+        })
+      ]));
+    });
+
+    promise.fail((xhr) => {
+      dispatch(batchActions([
+        ...bookFileIds.map((id) => updateItem({
+          section,
+          id,
+          isReprocessing: false,
+          updateOnly: true
+        })),
+
+        set({
+          section,
+          isSaving: false,
+          saveError: xhr
+        })
+      ]));
+    });
+  },
+
+  [SET_UNMAPPED_FILES_REVIEWED]: function(getState, payload, dispatch) {
+    const {
+      bookFileIds,
+      reviewed = true
+    } = payload;
+
+    dispatch(set({ section, isSaving: true, saveError: null }));
+
+    const promise = createAjaxRequest({
+      url: '/bookFile/unmapped/reviewed',
+      method: 'PUT',
+      dataType: 'json',
+      data: JSON.stringify({ bookFileIds, reviewed })
+    }).request;
+
+    promise.done((data) => {
+      dispatch(batchActions([
+        ...data.map((item) => updateItem({
+          section,
+          ...item,
+          updateOnly: true
+        })),
+
+        set({
+          section,
+          isSaving: false,
+          saveError: null
+        })
+      ]));
+    });
+
+    promise.fail((xhr) => {
+      dispatch(set({
+        section,
+        isSaving: false,
+        saveError: xhr
       }));
     });
   },

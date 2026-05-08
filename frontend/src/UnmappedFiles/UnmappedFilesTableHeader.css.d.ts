@@ -2,10 +2,13 @@
 // Please do not change this file!
 interface CssExports {
   'actions': string;
+  'candidate': string;
+  'confidence': string;
   'dateAdded': string;
   'path': string;
   'quality': string;
   'size': string;
+  'status': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

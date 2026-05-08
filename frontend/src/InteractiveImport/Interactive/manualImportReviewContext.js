@@ -1,4 +1,41 @@
 export function getManualImportReviewContext(item) {
+  if (item.review) {
+    const {
+      parsed = {},
+      candidate = {}
+    } = item.review;
+
+    return {
+      id: item.id,
+      path: item.path,
+      matched: {
+        authorId: candidate.authorId,
+        authorName: candidate.authorName,
+        bookId: candidate.bookId,
+        bookTitle: candidate.bookTitle,
+        foreignEditionId: candidate.foreignEditionId,
+        quality: item.quality,
+        releaseGroup: item.releaseGroup
+      },
+      tags: {
+        authorTitle: parsed.author,
+        bookTitle: parsed.book,
+        title: parsed.title,
+        isbn: parsed.isbn,
+        asin: parsed.asin,
+        year: parsed.year,
+        seriesTitle: parsed.seriesTitle,
+        seriesIndex: parsed.seriesIndex
+      },
+      rejections: (item.review.reasons || []).map((reason) => {
+        return {
+          reason: reason.detail,
+          type: reason.kind
+        };
+      })
+    };
+  }
+
   const {
     id,
     path,
@@ -44,7 +81,15 @@ export function getManualImportReviewContext(item) {
 
 export function getManualImportDecision(item) {
   const reviewContext = getManualImportReviewContext(item);
-  const reasons = [];
+  const reasons = item.review ?
+    (item.review.reasons || []).map((reason) => {
+      return {
+        kind: reason.kind,
+        label: reason.label,
+        detail: reason.detail
+      };
+    }) :
+    [];
 
   if (item.importError) {
     reasons.push({
@@ -52,6 +97,14 @@ export function getManualImportDecision(item) {
       label: 'Import failed',
       detail: item.importError
     });
+  }
+
+  if (item.review) {
+    return {
+      reviewContext,
+      reasons,
+      isImportable: !item.importError && item.review.status === 'ready'
+    };
   }
 
   if (!item.author) {

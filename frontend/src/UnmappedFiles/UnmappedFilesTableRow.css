@@ -1,9 +1,29 @@
 .path {
   composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
 
-  flex: 4 0 400px;
+  flex: 4 0 360px;
   font-size: 13px;
   font-family: $monoSpaceFontFamily;
+}
+
+.status {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+
+  flex: 0 0 150px;
+  white-space: nowrap;
+}
+
+.candidate {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+
+  flex: 3 0 260px;
+  min-width: 0;
+}
+
+.confidence {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+
+  flex: 0 0 140px;
 }
 
 .quality,
@@ -18,11 +38,68 @@
 .actions {
   composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
 
-  flex: 0 0 100px;
+  flex: 0 0 140px;
 }
 
 .checkInput {
   composes: input from '~Components/Form/CheckInput.css';
 
   margin-top: 0;
+}
+
+.candidateTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidateMeta {
+  overflow: hidden;
+  color: var(--dimColor);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confidenceValue {
+  margin-bottom: 3px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.confidenceTrack {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--borderColor);
+}
+
+.confidenceFill {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--successColor);
+}
+
+.noConfidence {
+  color: var(--dimColor);
+}
+
+.reasonList {
+  max-width: 360px;
+}
+
+.reason {
+  margin-bottom: 8px;
+}
+
+.reason:last-child {
+  margin-bottom: 0;
+}
+
+.reasonLabel {
+  font-weight: bold;
+}
+
+.reasonDetail {
+  color: var(--dimColor);
 }

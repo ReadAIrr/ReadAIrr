@@ -115,6 +115,7 @@ namespace NzbDrone.Core.Datastore.Migration
                 .WithColumn("ReleaseGroup").AsString().Nullable()
                 .WithColumn("MediaInfo").AsString().Nullable()
                 .WithColumn("Modified").AsDateTime().WithDefaultValue(new DateTime(2000, 1, 1))
+                .WithColumn("Reviewed").AsBoolean().WithDefaultValue(false)
                 .WithColumn("Path").AsString().NotNullable().Unique();
 
             Create.TableForModel("History")

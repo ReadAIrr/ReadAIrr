@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.MediaFiles;
+using Readarr.Api.V1.ManualImport;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using Readarr.Http.REST;
@@ -19,6 +20,8 @@ namespace Readarr.Api.V1.BookFiles
         public int QualityWeight { get; set; }
         public int? IndexerFlags { get; set; }
         public MediaInfoResource MediaInfo { get; set; }
+        public bool Reviewed { get; set; }
+        public ManualImportReviewResource Review { get; set; }
 
         public bool QualityCutoffNotMet { get; set; }
         public ParsedTrackInfo AudioTags { get; set; }
@@ -55,7 +58,8 @@ namespace Readarr.Api.V1.BookFiles
                 DateAdded = model.DateAdded,
                 Quality = model.Quality,
                 QualityWeight = QualityWeight(model.Quality),
-                MediaInfo = model.MediaInfo.ToResource()
+                MediaInfo = model.MediaInfo.ToResource(),
+                Reviewed = model.Reviewed
             };
         }
 
@@ -79,7 +83,8 @@ namespace Readarr.Api.V1.BookFiles
                 QualityWeight = QualityWeight(model.Quality),
                 MediaInfo = model.MediaInfo.ToResource(),
                 QualityCutoffNotMet = upgradableSpecification.QualityCutoffNotMet(author.QualityProfile.Value, model.Quality),
-                IndexerFlags = (int)model.IndexerFlags
+                IndexerFlags = (int)model.IndexerFlags,
+                Reviewed = model.Reviewed
             };
         }
     }

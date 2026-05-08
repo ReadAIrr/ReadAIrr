@@ -27,6 +27,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
     public interface IManualImportService
     {
         List<ManualImportItem> GetMediaFiles(string path, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles);
+        List<ManualImportItem> GetMediaFiles(List<string> paths, string downloadId, bool replaceExistingFiles);
         List<ManualImportItem> UpdateItems(List<ManualImportItem> item);
     }
 
@@ -132,6 +133,32 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             }
 
             return ProcessFolder(path, downloadId, author, filter, replaceExistingFiles);
+        }
+
+        public List<ManualImportItem> GetMediaFiles(List<string> paths, string downloadId, bool replaceExistingFiles)
+        {
+            var files = paths.Where(_diskProvider.FileExists)
+                             .Select(_diskProvider.GetFileInfo)
+                             .ToList();
+
+            if (!files.Any())
+            {
+                return new List<ManualImportItem>();
+            }
+
+            var config = new ImportDecisionMakerConfig
+            {
+                Filter = FilterFilesType.None,
+                NewDownload = true,
+                SingleRelease = false,
+                IncludeExisting = !replaceExistingFiles,
+                AddNewAuthors = false,
+                KeepAllEditions = true
+            };
+
+            var decisions = _importDecisionMaker.GetImportDecisions(files, null, null, config);
+
+            return decisions.Select(x => MapItem(x, downloadId, replaceExistingFiles, false)).ToList();
         }
 
         private List<ManualImportItem> ProcessFolder(string folder, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles)
@@ -289,6 +316,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             item.IndexerFlags = (int)decision.Item.IndexerFlags;
             item.Size = _diskProvider.GetFileSize(decision.Item.Path);
             item.Rejections = decision.Rejections;
+            item.MatchDistance = decision.Item.Distance?.NormalizedDistance();
+            item.MatchDistanceReasons = decision.Item.Distance?.Reasons;
             item.Tags = decision.Item.FileTrackInfo;
             item.AdditionalFile = decision.Item.AdditionalFile;
             item.ReplaceExistingFiles = replaceExistingFiles;

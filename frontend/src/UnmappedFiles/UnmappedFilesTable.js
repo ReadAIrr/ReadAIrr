@@ -1,7 +1,12 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
+import Icon from 'Components/Icon';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import Menu from 'Components/Menu/Menu';
+import MenuButton from 'Components/Menu/MenuButton';
+import MenuContent from 'Components/Menu/MenuContent';
+import SelectedMenuItem from 'Components/Menu/SelectedMenuItem';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
@@ -20,6 +25,24 @@ import toggleSelected from 'Utilities/Table/toggleSelected';
 import UnmappedFilesTableHeader from './UnmappedFilesTableHeader';
 import UnmappedFilesTableRow from './UnmappedFilesTableRow';
 
+const triageFilterOptions = {
+  ALL: 'all',
+  NEEDS_REVIEW: 'needsReview',
+  LOW_CONFIDENCE: 'lowConfidence',
+  NO_CANDIDATE: 'noCandidate',
+  METADATA_MISMATCH: 'metadataMismatch',
+  REVIEWED: 'reviewed'
+};
+
+const triageFilterLabels = {
+  [triageFilterOptions.ALL]: 'All unmapped',
+  [triageFilterOptions.NEEDS_REVIEW]: 'Needs review',
+  [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence',
+  [triageFilterOptions.NO_CANDIDATE]: 'No candidate',
+  [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch',
+  [triageFilterOptions.REVIEWED]: 'Reviewed'
+};
+
 class UnmappedFilesTable extends Component {
 
   //
@@ -34,7 +57,7 @@ class UnmappedFilesTable extends Component {
       allUnselected: false,
       lastToggled: null,
       selectedState: {},
-      ignoredIds: [],
+      triageFilter: triageFilterOptions.NEEDS_REVIEW,
       isManualMatchModalOpen: false,
       manualMatchFolder: null
     };
@@ -148,11 +171,26 @@ class UnmappedFilesTable extends Component {
 
   getVisibleItems = () => {
     const {
-      ignoredIds
+      triageFilter
     } = this.state;
 
     return this.props.items.filter((item) => {
-      return ignoredIds.indexOf(item.id) === -1;
+      const status = item.review?.status;
+      const isReviewed = item.reviewed || status === 'reviewed';
+
+      if (triageFilter === triageFilterOptions.ALL) {
+        return true;
+      }
+
+      if (triageFilter === triageFilterOptions.NEEDS_REVIEW) {
+        return !isReviewed;
+      }
+
+      if (triageFilter === triageFilterOptions.REVIEWED) {
+        return isReviewed;
+      }
+
+      return status === triageFilter;
     });
   };
 
@@ -170,25 +208,18 @@ class UnmappedFilesTable extends Component {
     return path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
   };
 
-  getSelectedFolders = () => {
-    return [...new Set(this.getSelectedItems().map((item) => {
-      const {
-        path
-      } = item;
-
-      return path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
-    }))];
-  };
-
   onIgnoreSelectedPress = () => {
     const selectedIds = this.getSelectedIds();
 
-    this.setState((state) => {
-      return {
-        ignoredIds: [...new Set([...state.ignoredIds, ...selectedIds])],
-        ...selectAll(state.selectedState, false)
-      };
-    });
+    this.props.setUnmappedFilesReviewed(selectedIds, true);
+    this.setState(selectAll(this.state.selectedState, false));
+  };
+
+  onKeepReviewSelectedPress = () => {
+    const selectedIds = this.getSelectedIds();
+
+    this.props.setUnmappedFilesReviewed(selectedIds, false);
+    this.setState(selectAll(this.state.selectedState, false));
   };
 
   onOpenManualMatchPress = () => {
@@ -208,13 +239,19 @@ class UnmappedFilesTable extends Component {
   };
 
   onRetryIdentifyPress = () => {
-    this.props.onRetryIdentifyPress(this.getSelectedFolders());
+    this.props.onRetryIdentifyPress(this.getSelectedIds());
+  };
+
+  onTriageFilterChange = (triageFilter) => {
+    this.setState({ triageFilter });
   };
 
   rowRenderer = ({ key, rowIndex, style }) => {
     const {
       columns,
-      deleteUnmappedFile
+      deleteUnmappedFile,
+      onRetryIdentifyPress,
+      setUnmappedFilesReviewed
     } = this.props;
 
     const {
@@ -234,6 +271,8 @@ class UnmappedFilesTable extends Component {
           isSelected={selectedState[item.id]}
           onSelectedChange={this.onSelectedChange}
           deleteUnmappedFile={deleteUnmappedFile}
+          retryUnmappedFile={onRetryIdentifyPress}
+          setUnmappedFileReviewed={setUnmappedFilesReviewed}
           {...item}
         />
       </VirtualTableRow>
@@ -246,6 +285,7 @@ class UnmappedFilesTable extends Component {
       isFetching,
       isPopulated,
       isDeleting,
+      isSaving,
       error,
       items,
       columns,
@@ -253,6 +293,7 @@ class UnmappedFilesTable extends Component {
       sortDirection,
       onTableOptionChange,
       onSortPress,
+      fetchUnmappedFiles,
       isScanningFolders,
       onAddMissingAuthorsPress,
       ...otherProps
@@ -264,7 +305,8 @@ class UnmappedFilesTable extends Component {
       allUnselected,
       selectedState,
       isManualMatchModalOpen,
-      manualMatchFolder
+      manualMatchFolder,
+      triageFilter
     } = this.state;
 
     const selectedTrackFileIds = this.getSelectedIds();
@@ -288,9 +330,16 @@ class UnmappedFilesTable extends Component {
               onPress={this.onIgnoreSelectedPress}
             />
             <PageToolbarButton
+              label="Keep Reviewing"
+              iconName={icons.RESTORE}
+              isDisabled={selectedTrackFileIds.length === 0}
+              onPress={this.onKeepReviewSelectedPress}
+            />
+            <PageToolbarButton
               label="Retry Identify"
               iconName={icons.REFRESH}
               isDisabled={selectedTrackFileIds.length === 0}
+              isSpinning={isSaving}
               onPress={this.onRetryIdentifyPress}
             />
             <PageToolbarButton
@@ -309,6 +358,43 @@ class UnmappedFilesTable extends Component {
           </PageToolbarSection>
 
           <PageToolbarSection alignContent={align.RIGHT}>
+            <Menu alignMenu={align.RIGHT}>
+              <MenuButton>
+                <Icon
+                  name={icons.FILTER}
+                  size={22}
+                />
+
+                <div>
+                  {triageFilterLabels[triageFilter]}
+                </div>
+              </MenuButton>
+
+              <MenuContent>
+                {
+                  Object.keys(triageFilterLabels).map((filter) => {
+                    return (
+                      <SelectedMenuItem
+                        key={filter}
+                        name={filter}
+                        isSelected={triageFilter === filter}
+                        onPress={this.onTriageFilterChange}
+                      >
+                        {triageFilterLabels[filter]}
+                      </SelectedMenuItem>
+                    );
+                  })
+                }
+              </MenuContent>
+            </Menu>
+
+            <PageToolbarButton
+              label={translate('Refresh')}
+              iconName={icons.REFRESH}
+              isSpinning={isFetching}
+              onPress={fetchUnmappedFiles}
+            />
+
             <TableOptionsModalWrapper
               {...otherProps}
               columns={columns}
@@ -334,7 +420,11 @@ class UnmappedFilesTable extends Component {
           {
             isPopulated && !error && !visibleItems.length &&
               <Alert kind={kinds.INFO}>
-                Success! My work is done, all files on disk are matched to known books.
+                {
+                  items.length ?
+                    'No unmapped files match the current filter.' :
+                    'Success! My work is done, all files on disk are matched to known books.'
+                }
               </Alert>
           }
 
@@ -385,6 +475,7 @@ UnmappedFilesTable.propTypes = {
   isFetching: PropTypes.bool.isRequired,
   isPopulated: PropTypes.bool.isRequired,
   isDeleting: PropTypes.bool.isRequired,
+  isSaving: PropTypes.bool.isRequired,
   deleteError: PropTypes.object,
   error: PropTypes.object,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -396,6 +487,7 @@ UnmappedFilesTable.propTypes = {
   fetchUnmappedFiles: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
   deleteUnmappedFiles: PropTypes.func.isRequired,
+  setUnmappedFilesReviewed: PropTypes.func.isRequired,
   isScanningFolders: PropTypes.bool.isRequired,
   onAddMissingAuthorsPress: PropTypes.func.isRequired,
   onRetryIdentifyPress: PropTypes.func.isRequired

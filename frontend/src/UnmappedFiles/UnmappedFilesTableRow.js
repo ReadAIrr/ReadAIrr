@@ -2,16 +2,34 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import BookQuality from 'Book/BookQuality';
 import FileDetailsModal from 'BookFile/FileDetailsModal';
+import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellConnector';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
-import { icons, kinds } from 'Helpers/Props';
+import Popover from 'Components/Tooltip/Popover';
+import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import styles from './UnmappedFilesTableRow.css';
+
+function getStatusKind(status) {
+  if (status === 'ready') {
+    return kinds.SUCCESS;
+  }
+
+  if (status === 'reviewed') {
+    return kinds.DEFAULT;
+  }
+
+  if (status === 'lowConfidence' || status === 'metadataMismatch') {
+    return kinds.WARNING;
+  }
+
+  return kinds.DANGER;
+}
 
 class UnmappedFilesTableRow extends Component {
 
@@ -47,6 +65,14 @@ class UnmappedFilesTableRow extends Component {
     this.setState({ isInteractiveImportModalOpen: false });
   };
 
+  onRetryIdentifyPress = () => {
+    this.props.retryUnmappedFile([this.props.id]);
+  };
+
+  onMarkReviewedPress = () => {
+    this.props.setUnmappedFileReviewed([this.props.id], !this.props.reviewed);
+  };
+
   onDeleteFilePress = () => {
     this.setState({ isConfirmDeleteModalOpen: true });
   };
@@ -70,6 +96,9 @@ class UnmappedFilesTableRow extends Component {
       size,
       dateAdded,
       quality,
+      reviewed,
+      review,
+      isReprocessing,
       columns,
       isSelected,
       onSelectedChange
@@ -131,6 +160,109 @@ class UnmappedFilesTableRow extends Component {
               );
             }
 
+            if (name === 'status') {
+              const status = review?.status || 'needsReview';
+              const reasons = review?.reasons || [];
+
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  <Popover
+                    anchor={
+                      <Label kind={getStatusKind(status)}>
+                        {review?.statusLabel || 'Needs review'}
+                      </Label>
+                    }
+                    title="Triage reasons"
+                    body={
+                      <div className={styles.reasonList}>
+                        {
+                          reasons.length ?
+                            reasons.map((reason, index) => {
+                              return (
+                                <div
+                                  key={index}
+                                  className={styles.reason}
+                                >
+                                  <div className={styles.reasonLabel}>
+                                    {reason.label}
+                                  </div>
+
+                                  <div className={styles.reasonDetail}>
+                                    {reason.detail}
+                                  </div>
+                                </div>
+                              );
+                            }) :
+                            <div className={styles.reasonDetail}>
+                              No rejection details were returned.
+                            </div>
+                        }
+                      </div>
+                    }
+                    position={tooltipPositions.LEFT}
+                  />
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'candidate') {
+              const parsed = review?.parsed || {};
+              const candidate = review?.candidate || {};
+              const candidateTitle = candidate.bookTitle || parsed.book || 'No book candidate';
+              const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
+              const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
+
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  <div className={styles.candidateTitle}>
+                    {candidateTitle}
+                  </div>
+
+                  <div className={styles.candidateMeta}>
+                    {candidateAuthor}
+                    {
+                      edition &&
+                        ` - ${edition}`
+                    }
+                  </div>
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'confidence') {
+              const confidence = review?.confidence;
+
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  {
+                    confidence == null ?
+                      <span className={styles.noConfidence}>--</span> :
+                      <div className={styles.confidence}>
+                        <div className={styles.confidenceValue}>
+                          {confidence}%
+                        </div>
+
+                        <div className={styles.confidenceTrack}>
+                          <div
+                            className={styles.confidenceFill}
+                            style={{ width: `${confidence}%` }}
+                          />
+                        </div>
+                      </div>
+                  }
+                </VirtualTableRowCell>
+              );
+            }
+
             if (name === 'dateAdded') {
               return (
                 <RelativeDateCellConnector
@@ -148,9 +280,13 @@ class UnmappedFilesTableRow extends Component {
                   key={name}
                   className={styles[name]}
                 >
-                  <BookQuality
-                    quality={quality}
-                  />
+                  {
+                    quality ?
+                      <BookQuality
+                        quality={quality}
+                      /> :
+                      <span className={styles.noConfidence}>--</span>
+                  }
                 </VirtualTableRowCell>
               );
             }
@@ -164,6 +300,18 @@ class UnmappedFilesTableRow extends Component {
                   <IconButton
                     name={icons.INFO}
                     onPress={this.onDetailsPress}
+                  />
+
+                  <IconButton
+                    name={icons.REFRESH}
+                    isSpinning={isReprocessing}
+                    onPress={this.onRetryIdentifyPress}
+                  />
+
+                  <IconButton
+                    name={reviewed ? icons.RESTORE : icons.IGNORE}
+                    title={reviewed ? 'Keep reviewing' : 'Mark reviewed'}
+                    onPress={this.onMarkReviewedPress}
                   />
 
                   <IconButton
@@ -221,12 +369,22 @@ UnmappedFilesTableRow.propTypes = {
   id: PropTypes.number.isRequired,
   path: PropTypes.string.isRequired,
   size: PropTypes.number.isRequired,
-  quality: PropTypes.object.isRequired,
+  quality: PropTypes.object,
   dateAdded: PropTypes.string.isRequired,
+  reviewed: PropTypes.bool.isRequired,
+  review: PropTypes.object,
+  isReprocessing: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired,
-  deleteUnmappedFile: PropTypes.func.isRequired
+  deleteUnmappedFile: PropTypes.func.isRequired,
+  retryUnmappedFile: PropTypes.func.isRequired,
+  setUnmappedFileReviewed: PropTypes.func.isRequired
+};
+
+UnmappedFilesTableRow.defaultProps = {
+  reviewed: false,
+  isReprocessing: false
 };
 
 export default UnmappedFilesTableRow;

@@ -25,6 +25,7 @@ namespace Readarr.Api.V1.ManualImport
         public int IndexerFlags { get; set; }
         public IEnumerable<Rejection> Rejections { get; set; }
         public ParsedTrackInfo AudioTags { get; set; }
+        public ManualImportReviewResource Review { get; set; }
         public bool AdditionalFile { get; set; }
         public bool ReplaceExistingFiles { get; set; }
         public bool DisableReleaseSwitching { get; set; }
@@ -57,6 +58,7 @@ namespace Readarr.Api.V1.ManualImport
                 Rejections = model.Rejections,
 
                 AudioTags = model.Tags,
+                Review = model.ToReviewResource(),
                 AdditionalFile = model.AdditionalFile,
                 ReplaceExistingFiles = model.ReplaceExistingFiles,
                 DisableReleaseSwitching = model.DisableReleaseSwitching

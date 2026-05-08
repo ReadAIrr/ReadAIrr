@@ -233,6 +233,7 @@ export const actionHandlers = handleThunks({
           section,
           ...item,
           isReprocessing: false,
+          importError: null,
           updateOnly: true
         }))
       ));
@@ -248,6 +249,7 @@ export const actionHandlers = handleThunks({
           section,
           id,
           isReprocessing: false,
+          importError: xhr.responseJSON?.message || 'Unable to retry identification',
           updateOnly: true
         }))
       ));

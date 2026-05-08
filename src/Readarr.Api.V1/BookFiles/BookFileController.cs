@@ -3,14 +3,17 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Http.REST.Attributes;
+using Readarr.Api.V1.ManualImport;
 using NzbDrone.SignalR;
 using Readarr.Http;
 using Readarr.Http.REST;
@@ -27,6 +30,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IMediaFileService _mediaFileService;
         private readonly IDeleteMediaFiles _mediaFileDeletionService;
         private readonly IMetadataTagService _metadataTagService;
+        private readonly IManualImportService _manualImportService;
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IUpgradableSpecification _upgradableSpecification;
@@ -35,6 +39,7 @@ namespace Readarr.Api.V1.BookFiles
                                IMediaFileService mediaFileService,
                                IDeleteMediaFiles mediaFileDeletionService,
                                IMetadataTagService metadataTagService,
+                               IManualImportService manualImportService,
                                IAuthorService authorService,
                                IBookService bookService,
                                IUpgradableSpecification upgradableSpecification)
@@ -43,6 +48,7 @@ namespace Readarr.Api.V1.BookFiles
             _mediaFileService = mediaFileService;
             _mediaFileDeletionService = mediaFileDeletionService;
             _metadataTagService = metadataTagService;
+            _manualImportService = manualImportService;
             _authorService = authorService;
             _bookService = bookService;
             _upgradableSpecification = upgradableSpecification;
@@ -78,7 +84,7 @@ namespace Readarr.Api.V1.BookFiles
             if (unmapped.HasValue && unmapped.Value)
             {
                 var files = _mediaFileService.GetUnmappedFiles();
-                return files.ConvertAll(f => MapToResource(f));
+                return MapUnmappedToResources(files);
             }
 
             if (authorId.HasValue && !bookIds.Any())
@@ -135,6 +141,32 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(bookFiles.ConvertAll(f => f.ToResource(bookFiles.First().Author.Value, _upgradableSpecification)));
         }
 
+        [HttpPost("unmapped/retry")]
+        public ActionResult<List<BookFileResource>> RetryUnmappedIdentify([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+
+            return Accepted(MapUnmappedToResources(bookFiles));
+        }
+
+        [HttpPut("unmapped/reviewed")]
+        public ActionResult<List<BookFileResource>> SetUnmappedReviewed([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var reviewed = resource.Reviewed ?? true;
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+
+            foreach (var bookFile in bookFiles)
+            {
+                bookFile.Reviewed = reviewed;
+            }
+
+            _mediaFileService.Update(bookFiles);
+
+            return Accepted(MapUnmappedToResources(bookFiles));
+        }
+
         [RestDeleteById]
         public void DeleteBookFile(int id)
         {
@@ -173,6 +205,26 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             return new { };
+        }
+
+        private List<BookFileResource> MapUnmappedToResources(List<BookFile> files)
+        {
+            var reviewItems = _manualImportService.GetMediaFiles(files.Select(x => x.Path).ToList(), null, false)
+                                                  .GroupBy(x => x.Path, PathEqualityComparer.Instance)
+                                                  .ToDictionary(x => x.Key, x => x.First(), PathEqualityComparer.Instance);
+
+            return files.ConvertAll(file =>
+            {
+                var resource = MapToResource(file);
+
+                if (reviewItems.TryGetValue(file.Path, out var reviewItem))
+                {
+                    resource.Review = reviewItem.ToReviewResource(file.Reviewed);
+                    resource.AudioTags = reviewItem.Tags;
+                }
+
+                return resource;
+            });
         }
 
         [NonAction]

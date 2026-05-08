@@ -28,6 +28,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
         public int IndexerFlags { get; set; }
         public IEnumerable<Rejection> Rejections { get; set; }
         public ParsedTrackInfo Tags { get; set; }
+        public double? MatchDistance { get; set; }
+        public string MatchDistanceReasons { get; set; }
         public bool AdditionalFile { get; set; }
         public bool ReplaceExistingFiles { get; set; }
         public bool DisableReleaseSwitching { get; set; }
