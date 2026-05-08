@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Processes;
+using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Configuration;
 
 namespace Readarr.Api.V1.BookFiles
@@ -29,6 +30,7 @@ namespace Readarr.Api.V1.BookFiles
         public string Explanation { get; set; }
         public string FileName { get; set; }
         public string ContentType { get; set; }
+        public string Format { get; set; }
         public byte[] Content { get; set; }
 
         public bool IsSuccess => Status == "extracted" && Content != null && Content.Length > 0;
@@ -84,6 +86,45 @@ namespace Readarr.Api.V1.BookFiles
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "Speech-to-text provider is disabled. Configure a provider before Deep Identify Audio can transcribe intro evidence.",
                     ContextSummary = "No audio or transcript was sent. Deep Identify Audio remains a manual review-only action."
+                };
+            }
+
+            if (provider == "openrouter")
+            {
+                if (!_configService.OpenRouterEnabled)
+                {
+                    return new AudioIntroTranscriptionResult
+                    {
+                        Provider = "openrouter-stt",
+                        Status = "disabled",
+                        IntroSeconds = _configService.SpeechToTextIntroSeconds,
+                        Clues = new AudioIntroTranscriptClues(),
+                        Explanation = "OpenRouter speech-to-text is selected, but OpenRouter is disabled.",
+                        ContextSummary = "No audio or transcript was sent. Enable OpenRouter and add its API key before using Deep Identify Audio with OpenRouter STT."
+                    };
+                }
+
+                if (_configService.OpenRouterApiKey.IsNullOrWhiteSpace())
+                {
+                    return new AudioIntroTranscriptionResult
+                    {
+                        Provider = "openrouter-stt",
+                        Status = "disabled",
+                        IntroSeconds = _configService.SpeechToTextIntroSeconds,
+                        Clues = new AudioIntroTranscriptClues(),
+                        Explanation = "OpenRouter speech-to-text is selected, but the OpenRouter API key is missing.",
+                        ContextSummary = "No audio or transcript was sent. OpenRouter STT shares the same BYO OpenRouter API key used by AI Review."
+                    };
+                }
+
+                return new AudioIntroTranscriptionResult
+                {
+                    Provider = "openrouter-stt",
+                    Status = "providerReady",
+                    IntroSeconds = _configService.SpeechToTextIntroSeconds,
+                    Clues = new AudioIntroTranscriptClues(),
+                    Explanation = "OpenRouter speech-to-text configuration is present. Intro extraction/transcription remains manual-triggered only.",
+                    ContextSummary = $"OpenRouter STT will receive only a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
                 };
             }
 
@@ -227,8 +268,48 @@ namespace Readarr.Api.V1.BookFiles
 
         private HttpResponse SendTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
         {
+            if (_configService.SpeechToTextProvider == "openrouter")
+            {
+                return SendOpenRouterTranscriptionRequest(segment, introSeconds);
+            }
+
+            return SendOpenAiCompatibleTranscriptionRequest(segment, introSeconds);
+        }
+
+        private HttpResponse SendOpenRouterTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        {
+            var baseUrl = _configService.OpenRouterBaseUrl.IsNotNullOrWhiteSpace() ? _configService.OpenRouterBaseUrl.TrimEnd('/') : "https://openrouter.ai/api/v1";
+            var model = GetSpeechToTextModel("openai/whisper-1");
+            var request = new HttpRequestBuilder(baseUrl)
+            {
+                Method = HttpMethod.Post,
+                SuppressHttpError = true,
+                LogResponseContent = false
+            }
+                .Resource("audio/transcriptions")
+                .Build();
+
+            request.Headers.Set("Authorization", $"Bearer {_configService.OpenRouterApiKey}");
+            request.Headers.Set("Content-Type", "application/json");
+            request.RequestTimeout = TimeSpan.FromSeconds(Math.Max(30, introSeconds + 30));
+            request.SetContent(new
+            {
+                model,
+                input_audio = new
+                {
+                    data = Convert.ToBase64String(segment.Content),
+                    format = segment.Format ?? "mp3"
+                }
+            }.ToJson());
+            request.ContentSummary = $"OpenRouter speech-to-text request with {segment.Content.Length} bytes from first {introSeconds} seconds of selected audio";
+
+            return PostTranscriptionRequest(request);
+        }
+
+        private HttpResponse SendOpenAiCompatibleTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        {
             var baseUrl = _configService.SpeechToTextBaseUrl.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextBaseUrl.TrimEnd('/') : "https://api.openai.com/v1";
-            var model = _configService.SpeechToTextModel.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextModel : "whisper-1";
+            var model = GetSpeechToTextModel("whisper-1");
             var request = new HttpRequestBuilder(baseUrl)
             {
                 Method = HttpMethod.Post,
@@ -244,6 +325,11 @@ namespace Readarr.Api.V1.BookFiles
             request.RequestTimeout = TimeSpan.FromSeconds(Math.Max(30, introSeconds + 30));
             request.ContentSummary = $"Speech-to-text transcription request with {segment.Content.Length} bytes from first {introSeconds} seconds of selected audio";
 
+            return PostTranscriptionRequest(request);
+        }
+
+        private HttpResponse PostTranscriptionRequest(HttpRequest request)
+        {
             var response = _httpClient.Post(request);
 
             if (response.HasHttpError)
@@ -252,6 +338,16 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             return response;
+        }
+
+        private string GetSpeechToTextModel(string defaultModel)
+        {
+            if (_configService.SpeechToTextProvider == "openrouter" && _configService.SpeechToTextModel == "whisper-1")
+            {
+                return defaultModel;
+            }
+
+            return _configService.SpeechToTextModel.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextModel : defaultModel;
         }
 
         private static string ExtractTranscript(string responseContent)
@@ -324,6 +420,7 @@ namespace Readarr.Api.V1.BookFiles
                     Explanation = $"Extracted the first {introSeconds} seconds for user-triggered speech-to-text review.",
                     FileName = Path.GetFileName(tempPath),
                     ContentType = "audio/mpeg",
+                    Format = "mp3",
                     Content = bytes
                 };
             }

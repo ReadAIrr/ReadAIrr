@@ -349,7 +349,7 @@ namespace NzbDrone.Core.Configuration
 
         public int SpeechToTextIntroSeconds
         {
-            get { return GetValueInt("SpeechToTextIntroSeconds", 30); }
+            get { return GetValueInt("SpeechToTextIntroSeconds", 60); }
 
             set { SetValue("SpeechToTextIntroSeconds", value); }
         }

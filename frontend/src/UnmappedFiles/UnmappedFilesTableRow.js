@@ -31,6 +31,94 @@ function getStatusKind(status) {
   return kinds.DANGER;
 }
 
+function getSuggestionSource(suggestion) {
+  return suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI review';
+}
+
+function getSuggestionStatusLabel(status) {
+  switch (status) {
+    case 'disabled':
+      return 'Not configured';
+    case 'extractionFailed':
+      return 'Intro extraction failed';
+    case 'transcriptionFailed':
+      return 'Transcription failed';
+    case 'transcriptCaptured':
+      return 'Transcript captured';
+    case 'providerReady':
+      return 'Provider ready';
+    case 'suggested':
+      return 'Suggestion ready';
+    case 'failed':
+      return 'Review failed';
+    case 'unavailable':
+      return 'No suggestion returned';
+    default:
+      return status || 'Pending review';
+  }
+}
+
+function getSuggestionSummary(suggestion) {
+  const statusLabel = getSuggestionStatusLabel(suggestion.status);
+  const source = getSuggestionSource(suggestion);
+
+  if (suggestion.status === 'transcriptCaptured') {
+    const likely = [
+      suggestion.likelyAuthor || 'Unknown author',
+      suggestion.likelyBook || 'Unknown book'
+    ].join(' - ');
+
+    return `${source}${suggestion.isStale ? ' stale' : ''}: ${statusLabel} - ${likely}`;
+  }
+
+  if (suggestion.status === 'suggested') {
+    return `${source}${suggestion.isStale ? ' stale' : ''}: ${suggestion.likelyAuthor || 'Unknown author'} - ${suggestion.likelyBook || 'Unknown book'}`;
+  }
+
+  return `${source}${suggestion.isStale ? ' stale' : ''}: ${statusLabel}`;
+}
+
+function getSuggestionDetails(suggestion) {
+  const details = [];
+
+  if (suggestion.explanation) {
+    details.push({
+      label: getSuggestionStatusLabel(suggestion.status),
+      detail: suggestion.explanation
+    });
+  }
+
+  if (suggestion.contextSummary) {
+    details.push({
+      label: 'Context',
+      detail: suggestion.contextSummary
+    });
+  }
+
+  if (suggestion.narrator) {
+    details.push({
+      label: 'Narrator evidence',
+      detail: suggestion.narrator
+    });
+  }
+
+  if (suggestion.transcriptExcerpt) {
+    details.push({
+      label: 'Transcript excerpt',
+      detail: suggestion.transcriptExcerpt
+    });
+  }
+
+  if (suggestion.isStale) {
+    details.push({
+      label: 'Stale suggestion',
+      detail: 'The file path, size, or modified time changed after this suggestion was created.'
+    });
+  }
+
+  return details;
+}
+
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -247,9 +335,37 @@ class UnmappedFilesTableRow extends Component {
 
                   {
                     suggestion &&
-                      <div className={styles.suggestionMeta}>
-                        {suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI'}{suggestion.isStale ? ' stale' : ''}: {suggestion.likelyAuthor || 'Unknown author'} - {suggestion.likelyBook || suggestion.status}
-                      </div>
+                      <Popover
+                        anchor={
+                          <div className={styles.suggestionMeta}>
+                            {getSuggestionSummary(suggestion)}
+                          </div>
+                        }
+                        title={`${getSuggestionSource(suggestion)} details`}
+                        body={
+                          <div className={styles.reasonList}>
+                            {
+                              getSuggestionDetails(suggestion).map((detail, index) => {
+                                return (
+                                  <div
+                                    key={index}
+                                    className={styles.reason}
+                                  >
+                                    <div className={styles.reasonLabel}>
+                                      {detail.label}
+                                    </div>
+
+                                    <div className={styles.reasonDetail}>
+                                      {detail.detail}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+                        }
+                        position={tooltipPositions.LEFT}
+                      />
                   }
                 </VirtualTableRowCell>
               );

@@ -23,6 +23,7 @@ const logLevelOptions = [
 
 const speechToTextProviderOptions = [
   { key: 'disabled', value: 'Disabled' },
+  { key: 'openrouter', value: 'OpenRouter speech-to-text' },
   { key: 'openai-compatible', value: 'OpenAI-compatible speech-to-text' }
 ];
 
@@ -397,39 +398,45 @@ class DevelopmentSettings extends Component {
                       type={inputTypes.SELECT}
                       name="speechToTextProvider"
                       values={speechToTextProviderOptions}
-                      helpText="Deep Identify Audio is manual-triggered only. Audio is not sent externally unless a speech-to-text provider is configured."
+                      helpText="Deep Identify Audio is manual-triggered only. Only the short intro segment is sent when a speech-to-text provider is configured."
                       onChange={onInputChange}
                       {...settings.speechToTextProvider}
                     />
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>
-                      Provider API key
-                    </FormLabel>
+                  {
+                    settings.speechToTextProvider.value === 'openai-compatible' &&
+                      <FormGroup>
+                        <FormLabel>
+                          Provider API key
+                        </FormLabel>
 
-                    <FormInputGroup
-                      type={inputTypes.PASSWORD}
-                      name="speechToTextApiKey"
-                      helpText="Stored server-side and redacted in API responses. This is separate from the OpenRouter chat key."
-                      onChange={onInputChange}
-                      {...settings.speechToTextApiKey}
-                    />
-                  </FormGroup>
+                        <FormInputGroup
+                          type={inputTypes.PASSWORD}
+                          name="speechToTextApiKey"
+                          helpText="Stored server-side and redacted in API responses. Only needed for the OpenAI-compatible fallback provider."
+                          onChange={onInputChange}
+                          {...settings.speechToTextApiKey}
+                        />
+                      </FormGroup>
+                  }
 
-                  <FormGroup>
-                    <FormLabel>
-                      Provider base URL
-                    </FormLabel>
+                  {
+                    settings.speechToTextProvider.value === 'openai-compatible' &&
+                      <FormGroup>
+                        <FormLabel>
+                          Provider base URL
+                        </FormLabel>
 
-                    <FormInputGroup
-                      type={inputTypes.TEXT}
-                      name="speechToTextBaseUrl"
-                      helpText="Optional OpenAI-compatible speech-to-text endpoint URL."
-                      onChange={onInputChange}
-                      {...settings.speechToTextBaseUrl}
-                    />
-                  </FormGroup>
+                        <FormInputGroup
+                          type={inputTypes.TEXT}
+                          name="speechToTextBaseUrl"
+                          helpText="Optional OpenAI-compatible speech-to-text endpoint URL."
+                          onChange={onInputChange}
+                          {...settings.speechToTextBaseUrl}
+                        />
+                      </FormGroup>
+                  }
 
                   <FormGroup>
                     <FormLabel>
@@ -439,7 +446,7 @@ class DevelopmentSettings extends Component {
                     <FormInputGroup
                       type={inputTypes.TEXT}
                       name="speechToTextModel"
-                      helpText="Provider-specific speech-to-text model name."
+                      helpText="Provider-specific speech-to-text model name. OpenRouter default: openai/whisper-1."
                       onChange={onInputChange}
                       {...settings.speechToTextModel}
                     />
@@ -455,14 +462,14 @@ class DevelopmentSettings extends Component {
                       name="speechToTextIntroSeconds"
                       min={5}
                       max={120}
-                      helpText="Maximum beginning segment length, in seconds, reserved for manual deep identification."
+                      helpText="Maximum beginning segment length, in seconds. Use about 60 seconds to capture title, author, narrator, and publisher intro clues without sending the full file."
                       onChange={onInputChange}
                       {...settings.speechToTextIntroSeconds}
                     />
                   </FormGroup>
 
                   <Alert kind={kinds.INFO}>
-                    Deep Identify Audio currently records provider readiness and keeps transcript evidence fields ready for the next extraction pass. It does not transcribe automatically during scans.
+                    OpenRouter speech-to-text uses the existing OpenRouter API key. The OpenAI-compatible option is an advanced fallback with a separate key. Deep Identify Audio never transcribes automatically during scans.
                   </Alert>
                 </FieldSet>
 

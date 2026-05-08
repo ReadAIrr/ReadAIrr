@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
 using Moq;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
@@ -97,6 +98,74 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
+        public void deep_identify_should_return_disabled_when_openrouter_stt_is_selected_without_openrouter_key()
+        {
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openrouter");
+            _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
+            _configService.SetupGet(x => x.OpenRouterApiKey).Returns(string.Empty);
+
+            var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b" }
+            });
+
+            result.Should().ContainSingle();
+            result[0].Status.Should().Be("disabled");
+            result[0].Provider.Should().Be("openrouter-stt");
+            result[0].Explanation.Should().Contain("OpenRouter API key");
+            _audioIntroSegmentExtractor.Verify(x => x.Extract(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+            _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
+            _suggestionRepository.Verify(x => x.Insert(It.IsAny<UnmappedFileIdentificationSuggestion>()), Times.Never);
+        }
+
+        [Test]
+        public void deep_identify_should_capture_transcript_with_openrouter_stt_json_audio()
+        {
+            HttpRequest postedRequest = null;
+
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openrouter");
+            _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
+            _configService.SetupGet(x => x.OpenRouterApiKey).Returns("openrouter-key");
+            _configService.SetupGet(x => x.SpeechToTextModel).Returns(string.Empty);
+            _audioIntroSegmentExtractor.Setup(x => x.Extract("/books/Alice Writer - Hidden.m4b", 30))
+                .Returns(new AudioIntroSegment
+                {
+                    Status = "extracted",
+                    FileName = "intro.mp3",
+                    ContentType = "audio/mpeg",
+                    Format = "mp3",
+                    Content = Encoding.UTF8.GetBytes("audio bytes")
+                });
+            _httpClient.Setup(x => x.Post(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r =>
+                {
+                    postedRequest = r;
+                    return new HttpResponse(r, new HttpHeader { ContentType = "application/json" }, "{\"text\":\"You're listening to The Hidden Book, written by Alice Writer, narrated by Jane Reader.\"}");
+                });
+
+            var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b" }
+            });
+
+            result.Should().ContainSingle();
+            result[0].Status.Should().Be("transcriptCaptured");
+            result[0].Provider.Should().Be("openrouter-stt");
+            result[0].LikelyBook.Should().Be("The Hidden Book");
+            result[0].LikelyAuthor.Should().Be("Alice Writer");
+            result[0].Narrator.Should().Be("Jane Reader");
+            postedRequest.Should().NotBeNull();
+            postedRequest.Url.FullUri.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
+            postedRequest.Headers.GetSingleValue("Authorization").Should().Be("Bearer openrouter-key");
+            postedRequest.Headers.ContentType.Should().Be("application/json");
+            var body = JObject.Parse(Encoding.UTF8.GetString(postedRequest.ContentData));
+            body.Value<string>("model").Should().Be("openai/whisper-1");
+            body["input_audio"].Value<string>("data").Should().Be("YXVkaW8gYnl0ZXM=");
+            body["input_audio"].Value<string>("format").Should().Be("mp3");
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader")), Times.Once);
+        }
+
+        [Test]
         public void deep_identify_should_capture_transcript_when_stt_provider_returns_text()
         {
             _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openai-compatible");
@@ -128,7 +197,7 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].TranscriptExcerpt.Should().Contain("The Hidden Book");
             result[0].RequiresManualConfirmation.Should().BeTrue();
             result[1].Status.Should().Be("disabled");
-            _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key")), Times.Once);
+            _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key" && r.Headers.ContentType.StartsWith("multipart/form-data"))), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openai-compatible" && s.Narrator == "Jane Reader")), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
         }
