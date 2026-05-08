@@ -32,6 +32,7 @@ const triageFilterOptions = {
   NEEDS_REVIEW: 'needsReview',
   LOW_CONFIDENCE: 'lowConfidence',
   NO_CANDIDATE: 'noCandidate',
+  NO_EDITION: 'noEdition',
   METADATA_MISMATCH: 'metadataMismatch',
   REVIEWED: 'reviewed'
 };
@@ -41,6 +42,7 @@ const triageFilterLabels = {
   [triageFilterOptions.NEEDS_REVIEW]: 'Needs review',
   [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence',
   [triageFilterOptions.NO_CANDIDATE]: 'No candidate',
+  [triageFilterOptions.NO_EDITION]: 'No edition',
   [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch',
   [triageFilterOptions.REVIEWED]: 'Reviewed'
 };
@@ -91,6 +93,7 @@ function matchesSearchTerm(item, searchTerm) {
     review.reason,
     review.reasons,
     review.rejectionReasons,
+    review.suggestions,
     review.candidate,
     review.candidates
   ].some((value) => valueContainsSearchTerm(value, term));
@@ -303,6 +306,14 @@ class UnmappedFilesTable extends Component {
     this.props.onRetryIdentifyPress(this.getSelectedIds());
   };
 
+  onAiReviewPress = () => {
+    this.props.onAiReviewPress(this.getSelectedIds());
+  };
+
+  onDeepIdentifyPress = () => {
+    this.props.onDeepIdentifyPress(this.getSelectedIds());
+  };
+
   onTriageFilterChange = (triageFilter) => {
     this.setState({ triageFilter });
   };
@@ -316,6 +327,8 @@ class UnmappedFilesTable extends Component {
       columns,
       deleteUnmappedFile,
       onRetryIdentifyPress,
+      onAiReviewPress,
+      onDeepIdentifyPress,
       setUnmappedFilesReviewed
     } = this.props;
 
@@ -337,6 +350,8 @@ class UnmappedFilesTable extends Component {
           onSelectedChange={this.onSelectedChange}
           deleteUnmappedFile={deleteUnmappedFile}
           retryUnmappedFile={onRetryIdentifyPress}
+          aiReviewUnmappedFile={onAiReviewPress}
+          deepIdentifyUnmappedFile={onDeepIdentifyPress}
           setUnmappedFileReviewed={setUnmappedFilesReviewed}
           {...item}
         />
@@ -361,6 +376,8 @@ class UnmappedFilesTable extends Component {
       fetchUnmappedFiles,
       isScanningFolders,
       onAddMissingAuthorsPress,
+      onAiReviewPress,
+      onDeepIdentifyPress,
       ...otherProps
     } = this.props;
 
@@ -414,6 +431,20 @@ class UnmappedFilesTable extends Component {
               iconName={icons.INTERACTIVE}
               isDisabled={selectedTrackFileIds.length === 0}
               onPress={this.onOpenManualMatchPress}
+            />
+            <PageToolbarButton
+              label="AI Review"
+              iconName={icons.QUICK}
+              isDisabled={selectedTrackFileIds.length === 0}
+              isSpinning={isSaving}
+              onPress={this.onAiReviewPress}
+            />
+            <PageToolbarButton
+              label="Deep Identify Audio"
+              iconName={icons.TRACK_FILE}
+              isDisabled={selectedTrackFileIds.length === 0}
+              isSpinning={isSaving}
+              onPress={this.onDeepIdentifyPress}
             />
             <PageToolbarButton
               label={translate('DeleteSelected')}
@@ -566,7 +597,9 @@ UnmappedFilesTable.propTypes = {
   setUnmappedFilesReviewed: PropTypes.func.isRequired,
   isScanningFolders: PropTypes.bool.isRequired,
   onAddMissingAuthorsPress: PropTypes.func.isRequired,
-  onRetryIdentifyPress: PropTypes.func.isRequired
+  onRetryIdentifyPress: PropTypes.func.isRequired,
+  onAiReviewPress: PropTypes.func.isRequired,
+  onDeepIdentifyPress: PropTypes.func.isRequired
 };
 
 export default UnmappedFilesTable;

@@ -19,6 +19,7 @@ namespace Readarr.Api.V1.ManualImport
         public ManualImportCandidateResource Candidate { get; set; }
         public List<ManualImportReviewReasonResource> Reasons { get; set; }
         public List<ManualImportReviewReasonResource> Hints { get; set; }
+        public List<ManualImportIdentificationSuggestionResource> Suggestions { get; set; }
     }
 
     public class ManualImportParsedResource
@@ -52,6 +53,24 @@ namespace Readarr.Api.V1.ManualImport
         public string Kind { get; set; }
         public string Label { get; set; }
         public string Detail { get; set; }
+    }
+
+    public class ManualImportIdentificationSuggestionResource
+    {
+        public string Type { get; set; }
+        public string Provider { get; set; }
+        public string Status { get; set; }
+        public string Path { get; set; }
+        public string LikelyAuthor { get; set; }
+        public string LikelyBook { get; set; }
+        public string LikelyEdition { get; set; }
+        public string Language { get; set; }
+        public string Narrator { get; set; }
+        public int? Confidence { get; set; }
+        public string Explanation { get; set; }
+        public bool RequiresManualConfirmation { get; set; }
+        public string TranscriptExcerpt { get; set; }
+        public string ContextSummary { get; set; }
     }
 
     public static class ManualImportReviewResourceMapper
@@ -98,8 +117,8 @@ namespace Readarr.Api.V1.ManualImport
             {
                 reasons.Add(new ManualImportReviewReasonResource
                 {
-                    Kind = "missingEdition",
-                    Label = "Missing edition",
+                    Kind = "noEdition",
+                    Label = "No edition",
                     Detail = "A book candidate was found, but no edition candidate was selected."
                 });
             }
@@ -157,7 +176,8 @@ namespace Readarr.Api.V1.ManualImport
                 Parsed = parsed,
                 Candidate = candidate,
                 Reasons = reasons.Take(5).ToList(),
-                Hints = hints.Take(5).ToList()
+                Hints = hints.Take(5).ToList(),
+                Suggestions = new List<ManualImportIdentificationSuggestionResource>()
             };
         }
 
@@ -245,6 +265,11 @@ namespace Readarr.Api.V1.ManualImport
                 return "metadataMismatch";
             }
 
+            if (reasons.Any(x => x.Kind == "noEdition"))
+            {
+                return "noEdition";
+            }
+
             if (reasons.Any(x => x.Kind == "lowConfidence") || (confidence.HasValue && confidence.Value < 80))
             {
                 return "lowConfidence";
@@ -268,6 +293,8 @@ namespace Readarr.Api.V1.ManualImport
                     return "No candidate";
                 case "metadataMismatch":
                     return "Metadata mismatch";
+                case "noEdition":
+                    return "No edition";
                 case "lowConfidence":
                     return "Low confidence";
                 case "ready":

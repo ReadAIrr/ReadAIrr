@@ -20,6 +20,7 @@ interface CssExports {
   'reasonList': string;
   'size': string;
   'status': string;
+  'suggestionMeta': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

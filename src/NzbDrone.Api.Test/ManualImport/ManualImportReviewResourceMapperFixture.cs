@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
@@ -58,6 +59,28 @@ namespace NzbDrone.Api.Test.ManualImport
             resource.Status.Should().Be("noCandidate");
             resource.Reasons.Should().Contain(x => x.Kind == "lowConfidence");
             resource.Hints.Should().Contain(x => x.Kind == "matchDistance");
+        }
+
+        [Test]
+        public void should_shape_no_edition_reason_when_book_candidate_has_no_edition()
+        {
+            var item = new ManualImportItem
+            {
+                Path = "/books/Alice Writer - The Hidden Book.m4b",
+                Name = "Alice Writer - The Hidden Book",
+                Author = new Author { Name = "Alice Writer" },
+                Book = new Book { Title = "The Hidden Book" },
+                Tags = new ParsedTrackInfo(),
+                Rejections = new List<Rejection>()
+            };
+
+            var resource = item.ToReviewResource();
+
+            resource.Status.Should().Be("noEdition");
+            resource.StatusLabel.Should().Be("No edition");
+            resource.Candidate.AuthorName.Should().Be("Alice Writer");
+            resource.Candidate.BookTitle.Should().Be("The Hidden Book");
+            resource.Reasons.Should().Contain(x => x.Kind == "noEdition");
         }
     }
 }

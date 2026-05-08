@@ -69,6 +69,14 @@ class UnmappedFilesTableRow extends Component {
     this.props.retryUnmappedFile([this.props.id]);
   };
 
+  onAiReviewPress = () => {
+    this.props.aiReviewUnmappedFile([this.props.id]);
+  };
+
+  onDeepIdentifyPress = () => {
+    this.props.deepIdentifyUnmappedFile([this.props.id]);
+  };
+
   onMarkReviewedPress = () => {
     this.props.setUnmappedFileReviewed([this.props.id], !this.props.reviewed);
   };
@@ -211,6 +219,7 @@ class UnmappedFilesTableRow extends Component {
             if (name === 'candidate') {
               const parsed = review?.parsed || {};
               const candidate = review?.candidate || {};
+              const suggestion = review?.suggestions?.find((item) => item.status !== 'disabled');
               const candidateTitle = candidate.bookTitle || parsed.book || 'No book candidate';
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
@@ -231,6 +240,13 @@ class UnmappedFilesTableRow extends Component {
                         ` - ${edition}`
                     }
                   </div>
+
+                  {
+                    suggestion &&
+                      <div className={styles.suggestionMeta}>
+                        {suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI'}: {suggestion.likelyAuthor || 'Unknown author'} - {suggestion.likelyBook || 'Unknown book'}
+                      </div>
+                  }
                 </VirtualTableRowCell>
               );
             }
@@ -320,6 +336,20 @@ class UnmappedFilesTableRow extends Component {
                   />
 
                   <IconButton
+                    name={icons.QUICK}
+                    title="AI review"
+                    isSpinning={isReprocessing}
+                    onPress={this.onAiReviewPress}
+                  />
+
+                  <IconButton
+                    name={icons.TRACK_FILE}
+                    title="Deep identify audio"
+                    isSpinning={isReprocessing}
+                    onPress={this.onDeepIdentifyPress}
+                  />
+
+                  <IconButton
                     name={icons.DELETE}
                     onPress={this.onDeleteFilePress}
                   />
@@ -379,6 +409,8 @@ UnmappedFilesTableRow.propTypes = {
   onSelectedChange: PropTypes.func.isRequired,
   deleteUnmappedFile: PropTypes.func.isRequired,
   retryUnmappedFile: PropTypes.func.isRequired,
+  aiReviewUnmappedFile: PropTypes.func.isRequired,
+  deepIdentifyUnmappedFile: PropTypes.func.isRequired,
   setUnmappedFileReviewed: PropTypes.func.isRequired
 };
 

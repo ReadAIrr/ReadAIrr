@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { clearPendingChanges } from 'Store/Actions/baseActions';
-import { fetchDevelopmentSettings, saveDevelopmentSettings, setDevelopmentSettingsValue, testDevelopmentMetadataSource } from 'Store/Actions/settingsActions';
+import { fetchDevelopmentSettings, saveDevelopmentSettings, setDevelopmentSettingsValue, testDevelopmentMetadataSource, testOpenRouter } from 'Store/Actions/settingsActions';
 import createSettingsSectionSelector from 'Store/Selectors/createSettingsSectionSelector';
 import DevelopmentSettings from './DevelopmentSettings';
 
@@ -20,6 +20,9 @@ function createMapStateToProps() {
         isTestingMetadataSource: developmentState.isTestingMetadataSource,
         metadataSourceTestResult: developmentState.metadataSourceTestResult,
         metadataSourceTestError: developmentState.metadataSourceTestError,
+        isTestingOpenRouter: developmentState.isTestingOpenRouter,
+        openRouterTestResult: developmentState.openRouterTestResult,
+        openRouterTestError: developmentState.openRouterTestError,
         ...sectionSettings
       };
     }
@@ -30,6 +33,7 @@ const mapDispatchToProps = {
   setDevelopmentSettingsValue,
   saveDevelopmentSettings,
   testDevelopmentMetadataSource,
+  testOpenRouter,
   fetchDevelopmentSettings,
   clearPendingChanges
 };
@@ -62,6 +66,10 @@ class DevelopmentSettingsConnector extends Component {
     this.props.testDevelopmentMetadataSource();
   };
 
+  onTestOpenRouterPress = () => {
+    this.props.testOpenRouter();
+  };
+
   //
   // Render
 
@@ -71,6 +79,7 @@ class DevelopmentSettingsConnector extends Component {
         onInputChange={this.onInputChange}
         onSavePress={this.onSavePress}
         onTestMetadataSourcePress={this.onTestMetadataSourcePress}
+        onTestOpenRouterPress={this.onTestOpenRouterPress}
         {...this.props}
       />
     );
@@ -81,6 +90,7 @@ DevelopmentSettingsConnector.propTypes = {
   setDevelopmentSettingsValue: PropTypes.func.isRequired,
   saveDevelopmentSettings: PropTypes.func.isRequired,
   testDevelopmentMetadataSource: PropTypes.func.isRequired,
+  testOpenRouter: PropTypes.func.isRequired,
   fetchDevelopmentSettings: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };

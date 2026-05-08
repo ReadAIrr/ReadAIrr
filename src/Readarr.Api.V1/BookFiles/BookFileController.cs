@@ -34,6 +34,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IUpgradableSpecification _upgradableSpecification;
+        private readonly IUnmappedIdentificationSuggestionService _unmappedIdentificationSuggestionService;
 
         public BookFileController(IBroadcastSignalRMessage signalRBroadcaster,
                                IMediaFileService mediaFileService,
@@ -42,7 +43,8 @@ namespace Readarr.Api.V1.BookFiles
                                IManualImportService manualImportService,
                                IAuthorService authorService,
                                IBookService bookService,
-                               IUpgradableSpecification upgradableSpecification)
+                               IUpgradableSpecification upgradableSpecification,
+                               IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -52,6 +54,7 @@ namespace Readarr.Api.V1.BookFiles
             _authorService = authorService;
             _bookService = bookService;
             _upgradableSpecification = upgradableSpecification;
+            _unmappedIdentificationSuggestionService = unmappedIdentificationSuggestionService;
         }
 
         private BookFileResource MapToResource(BookFile bookFile)
@@ -167,6 +170,32 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(MapUnmappedToResources(bookFiles));
         }
 
+        [HttpPost("unmapped/ai-review")]
+        public ActionResult<List<BookFileResource>> ReviewUnmappedWithAi([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+            var resources = MapUnmappedToResources(bookFiles);
+            var suggestions = _unmappedIdentificationSuggestionService.ReviewWithAi(resources);
+
+            AddSuggestions(resources, suggestions);
+
+            return Accepted(resources);
+        }
+
+        [HttpPost("unmapped/deep-identify")]
+        public ActionResult<List<BookFileResource>> DeepIdentifyUnmappedAudio([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+            var resources = MapUnmappedToResources(bookFiles);
+            var suggestions = _unmappedIdentificationSuggestionService.DeepIdentifyAudio(resources);
+
+            AddSuggestions(resources, suggestions);
+
+            return Accepted(resources);
+        }
+
         [RestDeleteById]
         public void DeleteBookFile(int id)
         {
@@ -225,6 +254,22 @@ namespace Readarr.Api.V1.BookFiles
 
                 return resource;
             });
+        }
+
+        private static void AddSuggestions(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions)
+        {
+            foreach (var resource in resources)
+            {
+                resource.Review ??= new ManualImportReviewResource
+                {
+                    Status = "unknown",
+                    StatusLabel = "Unknown",
+                    Suggestions = new List<ManualImportIdentificationSuggestionResource>()
+                };
+
+                resource.Review.Suggestions ??= new List<ManualImportIdentificationSuggestionResource>();
+                resource.Review.Suggestions.AddRange(suggestions.Where(x => string.Equals(x.Path, resource.Path, global::System.StringComparison.OrdinalIgnoreCase)));
+            }
         }
 
         [NonAction]

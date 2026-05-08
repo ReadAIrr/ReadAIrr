@@ -96,9 +96,13 @@ class DevelopmentSettings extends Component {
       onInputChange,
       onSavePress,
       onTestMetadataSourcePress,
+      onTestOpenRouterPress,
       isTestingMetadataSource,
       metadataSourceTestResult,
       metadataSourceTestError,
+      isTestingOpenRouter,
+      openRouterTestResult,
+      openRouterTestError,
       ...otherProps
     } = this.props;
 
@@ -236,6 +240,148 @@ class DevelopmentSettings extends Component {
                   </FormGroup>
                 </FieldSet>
 
+                <FieldSet legend="AI / Deep Identification">
+                  <FormGroup>
+                    <FormLabel>
+                      OpenRouter enabled
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.CHECK}
+                      name="openRouterEnabled"
+                      helpText="AI Review and Deep Identify are opt-in manual actions for selected unmapped files. Normal matching does not require OpenRouter."
+                      onChange={onInputChange}
+                      {...settings.openRouterEnabled}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      OpenRouter API key
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.PASSWORD}
+                      name="openRouterApiKey"
+                      helpText="Stored server-side and redacted in API responses. The key is never sent back to the browser after save."
+                      onChange={onInputChange}
+                      {...settings.openRouterApiKey}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      OpenRouter base URL
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.TEXT}
+                      name="openRouterBaseUrl"
+                      helpText="Default: https://openrouter.ai/api/v1"
+                      onChange={onInputChange}
+                      {...settings.openRouterBaseUrl}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      OpenRouter model
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.TEXT}
+                      name="openRouterModel"
+                      helpText="Used for manual AI Review suggestions. Suggestions require user confirmation and never auto-import."
+                      onChange={onInputChange}
+                      {...settings.openRouterModel}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Timeout
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.NUMBER}
+                      name="openRouterTimeout"
+                      min={5}
+                      max={120}
+                      helpText="Request timeout in seconds."
+                      onChange={onInputChange}
+                      {...settings.openRouterTimeout}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Max files per AI review
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.NUMBER}
+                      name="openRouterMaxFileContext"
+                      min={1}
+                      max={20}
+                      helpText="Limits selected-file context sent to the provider."
+                      onChange={onInputChange}
+                      {...settings.openRouterMaxFileContext}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      {translate('Test')}
+                    </FormLabel>
+
+                    <div>
+                      <SpinnerButton
+                        kind={kinds.PRIMARY}
+                        isSpinning={isTestingOpenRouter}
+                        onPress={onTestOpenRouterPress}
+                      >
+                        Test OpenRouter
+                      </SpinnerButton>
+
+                      {
+                        openRouterTestResult &&
+                          <Alert
+                            className={styles.testResult}
+                            kind={openRouterTestResult.isHealthy ? kinds.SUCCESS : kinds.WARNING}
+                          >
+                            <div>{openRouterTestResult.message}</div>
+
+                            {
+                              openRouterTestResult.detail &&
+                                <div className={styles.testDetail}>{openRouterTestResult.detail}</div>
+                            }
+
+                            {
+                              openRouterTestResult.statusCode &&
+                                <div className={styles.testDetail}>
+                                  HTTP {openRouterTestResult.statusCode}
+                                </div>
+                            }
+                          </Alert>
+                      }
+
+                      {
+                        openRouterTestError &&
+                          <Alert
+                            className={styles.testResult}
+                            kind={kinds.DANGER}
+                          >
+                            OpenRouter test failed
+                          </Alert>
+                      }
+                    </div>
+                  </FormGroup>
+
+                  <Alert kind={kinds.INFO}>
+                    AI/STT actions send only selected file path/name, parsed metadata, candidate summary, confidence, and rejection reasons to your configured provider. Transcript snippets are short and kept in triage only.
+                  </Alert>
+                </FieldSet>
+
                 <FieldSet legend={translate('Logging')}>
                   <FormGroup>
                     <FormLabel>
@@ -311,9 +457,13 @@ DevelopmentSettings.propTypes = {
   onSavePress: PropTypes.func.isRequired,
   onInputChange: PropTypes.func.isRequired,
   onTestMetadataSourcePress: PropTypes.func.isRequired,
+  onTestOpenRouterPress: PropTypes.func.isRequired,
   isTestingMetadataSource: PropTypes.bool.isRequired,
   metadataSourceTestResult: PropTypes.object,
-  metadataSourceTestError: PropTypes.object
+  metadataSourceTestError: PropTypes.object,
+  isTestingOpenRouter: PropTypes.bool.isRequired,
+  openRouterTestResult: PropTypes.object,
+  openRouterTestError: PropTypes.object
 };
 
 export default DevelopmentSettings;

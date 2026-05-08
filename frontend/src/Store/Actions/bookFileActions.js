@@ -125,6 +125,8 @@ export const FETCH_BOOK_FILES = 'bookFiles/fetchBookFiles';
 export const DELETE_BOOK_FILE = 'bookFiles/deleteBookFile';
 export const DELETE_BOOK_FILES = 'bookFiles/deleteBookFiles';
 export const RETRY_UNMAPPED_FILES = 'bookFiles/retryUnmappedFiles';
+export const AI_REVIEW_UNMAPPED_FILES = 'bookFiles/aiReviewUnmappedFiles';
+export const DEEP_IDENTIFY_UNMAPPED_FILES = 'bookFiles/deepIdentifyUnmappedFiles';
 export const SET_UNMAPPED_FILES_REVIEWED = 'bookFiles/setUnmappedFilesReviewed';
 export const UPDATE_BOOK_FILES = 'bookFiles/updateBookFiles';
 export const SET_BOOK_FILES_SORT = 'bookFiles/setBookFilesSort';
@@ -138,6 +140,8 @@ export const fetchBookFiles = createThunk(FETCH_BOOK_FILES);
 export const deleteBookFile = createThunk(DELETE_BOOK_FILE);
 export const deleteBookFiles = createThunk(DELETE_BOOK_FILES);
 export const retryUnmappedFiles = createThunk(RETRY_UNMAPPED_FILES);
+export const aiReviewUnmappedFiles = createThunk(AI_REVIEW_UNMAPPED_FILES);
+export const deepIdentifyUnmappedFiles = createThunk(DEEP_IDENTIFY_UNMAPPED_FILES);
 export const setUnmappedFilesReviewed = createThunk(SET_UNMAPPED_FILES_REVIEWED);
 export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
 export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
@@ -148,6 +152,63 @@ export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
 // Helpers
 
 const deleteBookFileHelper = createRemoveItemHandler(section, '/bookFile');
+
+function handleUnmappedSuggestionRequest(url, payload, dispatch) {
+  const {
+    bookFileIds
+  } = payload;
+
+  dispatch(batchActions([
+    ...bookFileIds.map((id) => updateItem({
+      section,
+      id,
+      isReprocessing: true,
+      updateOnly: true
+    })),
+    set({ section, isSaving: true, saveError: null })
+  ]));
+
+  const promise = createAjaxRequest({
+    url,
+    method: 'POST',
+    dataType: 'json',
+    data: JSON.stringify({ bookFileIds })
+  }).request;
+
+  promise.done((data) => {
+    dispatch(batchActions([
+      ...data.map((item) => updateItem({
+        section,
+        ...item,
+        isReprocessing: false,
+        updateOnly: true
+      })),
+
+      set({
+        section,
+        isSaving: false,
+        saveError: null
+      })
+    ]));
+  });
+
+  promise.fail((xhr) => {
+    dispatch(batchActions([
+      ...bookFileIds.map((id) => updateItem({
+        section,
+        id,
+        isReprocessing: false,
+        updateOnly: true
+      })),
+
+      set({
+        section,
+        isSaving: false,
+        saveError: xhr
+      })
+    ]));
+  });
+}
 
 //
 // Action Handlers
@@ -289,6 +350,14 @@ export const actionHandlers = handleThunks({
         })
       ]));
     });
+  },
+
+  [AI_REVIEW_UNMAPPED_FILES]: function(getState, payload, dispatch) {
+    handleUnmappedSuggestionRequest('/bookFile/unmapped/ai-review', payload, dispatch);
+  },
+
+  [DEEP_IDENTIFY_UNMAPPED_FILES]: function(getState, payload, dispatch) {
+    handleUnmappedSuggestionRequest('/bookFile/unmapped/deep-identify', payload, dispatch);
   },
 
   [SET_UNMAPPED_FILES_REVIEWED]: function(getState, payload, dispatch) {

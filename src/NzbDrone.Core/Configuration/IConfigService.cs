@@ -68,6 +68,12 @@ namespace NzbDrone.Core.Configuration
         //Metadata
         string MetadataSource { get; set; }
         int MinimumBookMatchSimilarity { get; set; }
+        bool OpenRouterEnabled { get; set; }
+        string OpenRouterApiKey { get; set; }
+        string OpenRouterBaseUrl { get; set; }
+        string OpenRouterModel { get; set; }
+        int OpenRouterTimeout { get; set; }
+        int OpenRouterMaxFileContext { get; set; }
         WriteAudioTagsType WriteAudioTags { get; set; }
         bool ScrubAudioTags { get; set; }
         WriteBookTagsType WriteBookTags { get; set; }

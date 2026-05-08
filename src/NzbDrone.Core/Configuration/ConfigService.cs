@@ -277,6 +277,48 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MinimumBookMatchSimilarity", value); }
         }
 
+        public bool OpenRouterEnabled
+        {
+            get { return GetValueBoolean("OpenRouterEnabled", false); }
+
+            set { SetValue("OpenRouterEnabled", value); }
+        }
+
+        public string OpenRouterApiKey
+        {
+            get { return GetValue("OpenRouterApiKey", string.Empty); }
+
+            set { SetValue("OpenRouterApiKey", value); }
+        }
+
+        public string OpenRouterBaseUrl
+        {
+            get { return GetValue("OpenRouterBaseUrl", "https://openrouter.ai/api/v1"); }
+
+            set { SetValue("OpenRouterBaseUrl", value); }
+        }
+
+        public string OpenRouterModel
+        {
+            get { return GetValue("OpenRouterModel", "openai/gpt-4.1-mini"); }
+
+            set { SetValue("OpenRouterModel", value); }
+        }
+
+        public int OpenRouterTimeout
+        {
+            get { return GetValueInt("OpenRouterTimeout", 30); }
+
+            set { SetValue("OpenRouterTimeout", value); }
+        }
+
+        public int OpenRouterMaxFileContext
+        {
+            get { return GetValueInt("OpenRouterMaxFileContext", 5); }
+
+            set { SetValue("OpenRouterMaxFileContext", value); }
+        }
+
         public WriteAudioTagsType WriteAudioTags
         {
             get { return GetValueEnum("WriteAudioTags", WriteAudioTagsType.No); }
@@ -479,10 +521,19 @@ namespace NzbDrone.Core.Configuration
         {
             key = key.ToLowerInvariant();
 
-            _logger.Trace("Writing Setting to database. Key:'{0}' Value:'{1}'", key, value);
+            var logValue = IsSensitiveKey(key) ? "<redacted>" : value;
+            _logger.Trace("Writing Setting to database. Key:'{0}' Value:'{1}'", key, logValue);
             _repository.Upsert(key, value);
 
             ClearCache();
+        }
+
+        private static bool IsSensitiveKey(string key)
+        {
+            return key.Contains("apikey") ||
+                   key.Contains("password") ||
+                   key.Contains("secret") ||
+                   key.Contains("token");
         }
 
         private void EnsureCache()
