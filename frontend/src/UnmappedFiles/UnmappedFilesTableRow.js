@@ -37,6 +37,18 @@ function getSuggestionSource(suggestion) {
 
 function getSuggestionStatusLabel(status) {
   switch (status) {
+    case 'queued':
+      return 'Queued';
+    case 'extractingIntro':
+      return 'Extracting intro clip';
+    case 'introClipReady':
+      return 'Intro clip ready';
+    case 'sendingToProvider':
+      return 'Sending to provider';
+    case 'waitingForTranscription':
+      return 'Waiting for transcription';
+    case 'parsingTranscript':
+      return 'Parsing transcript clues';
     case 'disabled':
       return 'Not configured';
     case 'extractionFailed':
@@ -92,6 +104,32 @@ function getSuggestionDetails(suggestion) {
     details.push({
       label: 'Context',
       detail: suggestion.contextSummary
+    });
+  }
+
+  if (suggestion.stage) {
+    details.push({
+      label: 'Stage',
+      detail: getSuggestionStatusLabel(suggestion.stage)
+    });
+  }
+
+  if (suggestion.providerEndpoint || suggestion.providerModel || suggestion.providerStatusCode || suggestion.providerDurationMs != null) {
+    details.push({
+      label: 'Provider debug',
+      detail: [
+        suggestion.providerEndpoint,
+        suggestion.providerModel && `model ${suggestion.providerModel}`,
+        suggestion.providerStatusCode && `status ${suggestion.providerStatusCode}`,
+        suggestion.providerDurationMs != null && `${suggestion.providerDurationMs} ms`
+      ].filter(Boolean).join(' - ')
+    });
+  }
+
+  if (suggestion.providerResponseExcerpt) {
+    details.push({
+      label: 'Provider response excerpt',
+      detail: suggestion.providerResponseExcerpt
     });
   }
 
@@ -329,7 +367,13 @@ class UnmappedFilesTableRow extends Component {
             if (name === 'candidate') {
               const parsed = review?.parsed || {};
               const candidate = review?.candidate || {};
-              const suggestion = review?.suggestions?.find((item) => item.status !== 'disabled');
+              const suggestion = review?.suggestions?.find((item) => item.status !== 'disabled') ||
+                (isReprocessing ? {
+                  type: 'deepAudio',
+                  status: 'queued',
+                  stage: 'queued',
+                  explanation: 'Deep Identify Audio is running for this row.'
+                } : null);
               const candidateTitle = candidate.bookTitle || parsed.book || 'No book candidate';
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;

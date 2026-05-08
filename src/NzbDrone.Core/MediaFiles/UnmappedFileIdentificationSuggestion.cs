@@ -22,6 +22,12 @@ namespace NzbDrone.Core.MediaFiles
         public bool RequiresManualConfirmation { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
+        public string Stage { get; set; }
+        public string ProviderEndpoint { get; set; }
+        public string ProviderModel { get; set; }
+        public int? ProviderStatusCode { get; set; }
+        public int? ProviderDurationMs { get; set; }
+        public string ProviderResponseExcerpt { get; set; }
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
     }

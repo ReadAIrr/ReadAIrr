@@ -155,6 +155,12 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].LikelyBook.Should().Be("The Hidden Book");
             result[0].LikelyAuthor.Should().Be("Alice Writer");
             result[0].Narrator.Should().Be("Jane Reader");
+            result[0].Stage.Should().Be("transcriptCaptured");
+            result[0].ProviderEndpoint.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
+            result[0].ProviderModel.Should().Be("openai/whisper-1");
+            result[0].ProviderStatusCode.Should().Be(200);
+            result[0].ProviderDurationMs.Should().NotBeNull();
+            result[0].ProviderResponseExcerpt.Should().Contain("The Hidden Book");
             postedRequest.Should().NotBeNull();
             postedRequest.Url.FullUri.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
             postedRequest.Headers.GetSingleValue("Authorization").Should().Be("Bearer openrouter-key");
@@ -163,7 +169,7 @@ namespace NzbDrone.Api.Test.BookFiles
             body.Value<string>("model").Should().Be("openai/whisper-1");
             body["input_audio"].Value<string>("data").Should().Be("YXVkaW8gYnl0ZXM=");
             body["input_audio"].Value<string>("format").Should().Be("mp3");
-            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1")), Times.Once);
         }
 
         [Test]
@@ -201,6 +207,42 @@ namespace NzbDrone.Api.Test.BookFiles
             _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key" && r.Headers.ContentType.StartsWith("multipart/form-data"))), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openai-compatible" && s.Narrator == "Jane Reader")), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
+        }
+
+        [Test]
+        public void deep_identify_should_return_safe_debug_details_when_provider_fails()
+        {
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openrouter");
+            _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
+            _configService.SetupGet(x => x.OpenRouterApiKey).Returns("secret-key");
+            _configService.SetupGet(x => x.SpeechToTextModel).Returns("openai/whisper-1");
+            _audioIntroSegmentExtractor.Setup(x => x.Extract("/books/Alice Writer - Hidden.m4b", 30))
+                .Returns(new AudioIntroSegment
+                {
+                    Status = "extracted",
+                    FileName = "intro.mp3",
+                    ContentType = "audio/mpeg",
+                    Format = "mp3",
+                    Content = Encoding.UTF8.GetBytes("audio bytes")
+                });
+            _httpClient.Setup(x => x.Post(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader { ContentType = "application/json" }, "{\"error\":\"bad audio\"}", global::System.Net.HttpStatusCode.BadRequest));
+
+            var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b" }
+            });
+
+            result.Should().ContainSingle();
+            result[0].Status.Should().Be("transcriptionFailed");
+            result[0].Stage.Should().Be("transcriptionFailed");
+            result[0].ProviderEndpoint.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
+            result[0].ProviderModel.Should().Be("openai/whisper-1");
+            result[0].ProviderStatusCode.Should().Be(400);
+            result[0].ProviderDurationMs.Should().NotBeNull();
+            result[0].ProviderResponseExcerpt.Should().Contain("bad audio");
+            result[0].ProviderResponseExcerpt.Should().NotContain("secret-key");
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptionFailed" && s.ProviderStatusCode == 400 && s.ProviderResponseExcerpt.Contains("bad audio"))), Times.Once);
         }
 
         [Test]
@@ -307,6 +349,12 @@ namespace NzbDrone.Api.Test.BookFiles
                         Status = "suggested",
                         LikelyAuthor = "Alice Writer",
                         LikelyBook = "Hidden",
+                        Stage = "transcriptCaptured",
+                        ProviderEndpoint = "https://openrouter.ai/api/v1/audio/transcriptions",
+                        ProviderModel = "openai/whisper-1",
+                        ProviderStatusCode = 200,
+                        ProviderDurationMs = 123,
+                        ProviderResponseExcerpt = "{\"text\":\"Hidden\"}",
                         RequiresManualConfirmation = true,
                         Created = updated.AddMinutes(-10),
                         Updated = updated.AddMinutes(-10)
@@ -327,6 +375,9 @@ namespace NzbDrone.Api.Test.BookFiles
             result.Should().ContainSingle();
             result[0].IsStale.Should().BeTrue();
             result[0].LikelyAuthor.Should().Be("Alice Writer");
+            result[0].Stage.Should().Be("transcriptCaptured");
+            result[0].ProviderDurationMs.Should().Be(123);
+            result[0].ProviderResponseExcerpt.Should().Contain("Hidden");
         }
     }
 }

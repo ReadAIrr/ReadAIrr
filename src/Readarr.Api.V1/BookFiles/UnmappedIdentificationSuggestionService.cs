@@ -186,7 +186,13 @@ namespace Readarr.Api.V1.BookFiles
                     RequiresManualConfirmation = true,
                     Explanation = transcription.Explanation,
                     TranscriptExcerpt = transcription.TranscriptExcerpt,
-                    ContextSummary = transcription.ContextSummary
+                    ContextSummary = transcription.ContextSummary,
+                    Stage = transcription.Stage,
+                    ProviderEndpoint = transcription.ProviderEndpoint,
+                    ProviderModel = transcription.ProviderModel,
+                    ProviderStatusCode = transcription.ProviderStatusCode,
+                    ProviderDurationMs = transcription.ProviderDurationMs,
+                    ProviderResponseExcerpt = transcription.ProviderResponseExcerpt
                 };
             }).ToList();
 
@@ -396,6 +402,12 @@ namespace Readarr.Api.V1.BookFiles
                     RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
                     TranscriptExcerpt = suggestion.TranscriptExcerpt,
                     ContextSummary = suggestion.ContextSummary,
+                    Stage = suggestion.Stage,
+                    ProviderEndpoint = suggestion.ProviderEndpoint,
+                    ProviderModel = suggestion.ProviderModel,
+                    ProviderStatusCode = suggestion.ProviderStatusCode,
+                    ProviderDurationMs = suggestion.ProviderDurationMs,
+                    ProviderResponseExcerpt = suggestion.ProviderResponseExcerpt,
                     Created = now,
                     Updated = now
                 });
@@ -424,6 +436,12 @@ namespace Readarr.Api.V1.BookFiles
                 RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
                 TranscriptExcerpt = suggestion.TranscriptExcerpt,
                 ContextSummary = suggestion.ContextSummary,
+                Stage = suggestion.Stage,
+                ProviderEndpoint = suggestion.ProviderEndpoint,
+                ProviderModel = suggestion.ProviderModel,
+                ProviderStatusCode = suggestion.ProviderStatusCode,
+                ProviderDurationMs = suggestion.ProviderDurationMs,
+                ProviderResponseExcerpt = suggestion.ProviderResponseExcerpt,
                 IsStale = isStale,
                 Created = suggestion.Created,
                 Updated = suggestion.Updated

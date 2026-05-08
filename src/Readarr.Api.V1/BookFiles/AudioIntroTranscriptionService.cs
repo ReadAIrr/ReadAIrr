@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -44,6 +45,12 @@ namespace Readarr.Api.V1.BookFiles
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
         public int IntroSeconds { get; set; }
+        public string Stage { get; set; }
+        public string ProviderEndpoint { get; set; }
+        public string ProviderModel { get; set; }
+        public int? ProviderStatusCode { get; set; }
+        public int? ProviderDurationMs { get; set; }
+        public string ProviderResponseExcerpt { get; set; }
         public AudioIntroTranscriptClues Clues { get; set; }
     }
 
@@ -82,6 +89,7 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = "disabled",
                     Status = "disabled",
+                    Stage = "disabled",
                     IntroSeconds = _configService.SpeechToTextIntroSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "Speech-to-text provider is disabled. Configure a provider before Deep Identify Audio can transcribe intro evidence.",
@@ -97,6 +105,7 @@ namespace Readarr.Api.V1.BookFiles
                     {
                         Provider = "openrouter-stt",
                         Status = "disabled",
+                        Stage = "disabled",
                         IntroSeconds = _configService.SpeechToTextIntroSeconds,
                         Clues = new AudioIntroTranscriptClues(),
                         Explanation = "OpenRouter speech-to-text is selected, but OpenRouter is disabled.",
@@ -110,6 +119,7 @@ namespace Readarr.Api.V1.BookFiles
                     {
                         Provider = "openrouter-stt",
                         Status = "disabled",
+                        Stage = "disabled",
                         IntroSeconds = _configService.SpeechToTextIntroSeconds,
                         Clues = new AudioIntroTranscriptClues(),
                         Explanation = "OpenRouter speech-to-text is selected, but the OpenRouter API key is missing.",
@@ -121,7 +131,10 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = "openrouter-stt",
                     Status = "providerReady",
+                    Stage = "providerReady",
                     IntroSeconds = _configService.SpeechToTextIntroSeconds,
+                    ProviderEndpoint = BuildEndpointSummary(_configService.OpenRouterBaseUrl, "audio/transcriptions"),
+                    ProviderModel = GetSpeechToTextModel("openai/whisper-1"),
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "OpenRouter speech-to-text configuration is present. Intro extraction/transcription remains manual-triggered only.",
                     ContextSummary = $"OpenRouter STT will receive only a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
@@ -134,6 +147,7 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = provider,
                     Status = "disabled",
+                    Stage = "disabled",
                     IntroSeconds = _configService.SpeechToTextIntroSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "Speech-to-text provider is selected, but its API key is missing.",
@@ -145,7 +159,10 @@ namespace Readarr.Api.V1.BookFiles
             {
                 Provider = provider,
                 Status = "providerReady",
+                Stage = "providerReady",
                 IntroSeconds = _configService.SpeechToTextIntroSeconds,
+                ProviderEndpoint = BuildEndpointSummary(_configService.SpeechToTextBaseUrl, "audio/transcriptions"),
+                ProviderModel = GetSpeechToTextModel("whisper-1"),
                 Clues = new AudioIntroTranscriptClues(),
                 Explanation = "Speech-to-text provider configuration is present. Intro extraction/transcription is staged behind this provider boundary and remains manual-triggered only.",
                 ContextSummary = $"Provider boundary ready for a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
@@ -170,6 +187,7 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = ready.Provider,
                     Status = segment.Status,
+                    Stage = segment.Status,
                     IntroSeconds = introSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = segment.Explanation,
@@ -180,7 +198,7 @@ namespace Readarr.Api.V1.BookFiles
             try
             {
                 var response = SendTranscriptionRequest(segment, introSeconds);
-                var transcript = ExtractTranscript(response.Content);
+                var transcript = ExtractTranscript(response.Response.Content);
                 var excerpt = Truncate(transcript, 1000);
                 var clues = ExtractClues(transcript);
 
@@ -188,11 +206,35 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = ready.Provider,
                     Status = "transcriptCaptured",
+                    Stage = "transcriptCaptured",
                     IntroSeconds = introSeconds,
                     TranscriptExcerpt = excerpt,
+                    ProviderEndpoint = response.Endpoint,
+                    ProviderModel = response.Model,
+                    ProviderStatusCode = (int)response.Response.StatusCode,
+                    ProviderDurationMs = response.DurationMs,
+                    ProviderResponseExcerpt = Truncate(response.Response.Content, 1000),
                     Clues = clues,
                     Explanation = "Speech-to-text captured a short intro transcript for manual review.",
                     ContextSummary = $"Captured transcript evidence from the first {introSeconds} seconds only. This remains review-only and did not import, rename, retag, or move the file."
+                };
+            }
+            catch (TranscriptionProviderException ex)
+            {
+                return new AudioIntroTranscriptionResult
+                {
+                    Provider = ready.Provider,
+                    Status = "transcriptionFailed",
+                    Stage = "transcriptionFailed",
+                    IntroSeconds = introSeconds,
+                    ProviderEndpoint = ex.Endpoint,
+                    ProviderModel = ex.Model,
+                    ProviderStatusCode = ex.StatusCode,
+                    ProviderDurationMs = ex.DurationMs,
+                    ProviderResponseExcerpt = ex.ResponseExcerpt,
+                    Clues = new AudioIntroTranscriptClues(),
+                    Explanation = ex.Message,
+                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed."
                 };
             }
             catch (Exception ex)
@@ -201,6 +243,7 @@ namespace Readarr.Api.V1.BookFiles
                 {
                     Provider = ready.Provider,
                     Status = "transcriptionFailed",
+                    Stage = "transcriptionFailed",
                     IntroSeconds = introSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = ex.Message,
@@ -266,7 +309,7 @@ namespace Readarr.Api.V1.BookFiles
             return value?.Trim(' ', ',', '.', '"', '\'');
         }
 
-        private HttpResponse SendTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        private TranscriptionHttpResult SendTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
         {
             if (_configService.SpeechToTextProvider == "openrouter")
             {
@@ -276,17 +319,18 @@ namespace Readarr.Api.V1.BookFiles
             return SendOpenAiCompatibleTranscriptionRequest(segment, introSeconds);
         }
 
-        private HttpResponse SendOpenRouterTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        private TranscriptionHttpResult SendOpenRouterTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
         {
             var baseUrl = _configService.OpenRouterBaseUrl.IsNotNullOrWhiteSpace() ? _configService.OpenRouterBaseUrl.TrimEnd('/') : "https://openrouter.ai/api/v1";
             var model = GetSpeechToTextModel("openai/whisper-1");
+            const string resource = "audio/transcriptions";
             var request = new HttpRequestBuilder(baseUrl)
             {
                 Method = HttpMethod.Post,
                 SuppressHttpError = true,
                 LogResponseContent = false
             }
-                .Resource("audio/transcriptions")
+                .Resource(resource)
                 .Build();
 
             request.Headers.Set("Authorization", $"Bearer {_configService.OpenRouterApiKey}");
@@ -303,20 +347,21 @@ namespace Readarr.Api.V1.BookFiles
             }.ToJson());
             request.ContentSummary = $"OpenRouter speech-to-text request with {segment.Content.Length} bytes from first {introSeconds} seconds of selected audio";
 
-            return PostTranscriptionRequest(request);
+            return PostTranscriptionRequest(request, BuildEndpointSummary(baseUrl, resource), model);
         }
 
-        private HttpResponse SendOpenAiCompatibleTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        private TranscriptionHttpResult SendOpenAiCompatibleTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
         {
             var baseUrl = _configService.SpeechToTextBaseUrl.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextBaseUrl.TrimEnd('/') : "https://api.openai.com/v1";
             var model = GetSpeechToTextModel("whisper-1");
+            const string resource = "audio/transcriptions";
             var request = new HttpRequestBuilder(baseUrl)
             {
                 Method = HttpMethod.Post,
                 SuppressHttpError = true,
                 LogResponseContent = false
             }
-                .Resource("audio/transcriptions")
+                .Resource(resource)
                 .AddFormParameter("model", model)
                 .AddFormUpload("file", segment.FileName, segment.Content, segment.ContentType)
                 .Build();
@@ -325,19 +370,36 @@ namespace Readarr.Api.V1.BookFiles
             request.RequestTimeout = TimeSpan.FromSeconds(Math.Max(30, introSeconds + 30));
             request.ContentSummary = $"Speech-to-text transcription request with {segment.Content.Length} bytes from first {introSeconds} seconds of selected audio";
 
-            return PostTranscriptionRequest(request);
+            return PostTranscriptionRequest(request, BuildEndpointSummary(baseUrl, resource), model);
         }
 
-        private HttpResponse PostTranscriptionRequest(HttpRequest request)
+        private TranscriptionHttpResult PostTranscriptionRequest(HttpRequest request, string endpoint, string model)
         {
+            var stopwatch = Stopwatch.StartNew();
             var response = _httpClient.Post(request);
+            stopwatch.Stop();
 
             if (response.HasHttpError)
             {
-                throw new InvalidOperationException($"Speech-to-text provider returned {(int)response.StatusCode}: {Truncate(response.Content, 500)}");
+                var responseExcerpt = Truncate(response.Content, 1000);
+
+                throw new TranscriptionProviderException($"Speech-to-text provider returned {(int)response.StatusCode}: {Truncate(response.Content, 500)}")
+                {
+                    Endpoint = endpoint,
+                    Model = model,
+                    StatusCode = (int)response.StatusCode,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    ResponseExcerpt = responseExcerpt
+                };
             }
 
-            return response;
+            return new TranscriptionHttpResult
+            {
+                Response = response,
+                Endpoint = endpoint,
+                Model = model,
+                DurationMs = (int)stopwatch.ElapsedMilliseconds
+            };
         }
 
         private string GetSpeechToTextModel(string defaultModel)
@@ -376,6 +438,33 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             return value.Substring(0, maxLength);
+        }
+
+        private static string BuildEndpointSummary(string baseUrl, string resource)
+        {
+            return $"{(baseUrl.IsNotNullOrWhiteSpace() ? baseUrl.TrimEnd('/') : "https://api.openai.com/v1")}/{resource}";
+        }
+
+        private sealed class TranscriptionHttpResult
+        {
+            public HttpResponse Response { get; set; }
+            public string Endpoint { get; set; }
+            public string Model { get; set; }
+            public int DurationMs { get; set; }
+        }
+
+        private sealed class TranscriptionProviderException : Exception
+        {
+            public TranscriptionProviderException(string message)
+                : base(message)
+            {
+            }
+
+            public string Endpoint { get; set; }
+            public string Model { get; set; }
+            public int StatusCode { get; set; }
+            public int DurationMs { get; set; }
+            public string ResponseExcerpt { get; set; }
         }
     }
 
