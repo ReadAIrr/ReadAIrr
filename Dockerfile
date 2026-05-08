@@ -53,6 +53,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        ffmpeg \
         libsqlite3-0 \
         tzdata \
     && rm -rf /var/lib/apt/lists/* \
