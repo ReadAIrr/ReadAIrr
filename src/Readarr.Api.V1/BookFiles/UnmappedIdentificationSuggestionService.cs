@@ -171,7 +171,7 @@ namespace Readarr.Api.V1.BookFiles
                     return DisabledSuggestion("deepAudio", resource.Path, "File extension is not recognized as audio.");
                 }
 
-                var transcription = _audioIntroTranscriptionService.Prepare(resource);
+                var transcription = _audioIntroTranscriptionService.Transcribe(resource);
 
                 return new ManualImportIdentificationSuggestionResource
                 {

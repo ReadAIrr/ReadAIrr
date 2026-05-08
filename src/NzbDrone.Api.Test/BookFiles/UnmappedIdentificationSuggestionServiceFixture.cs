@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -16,6 +17,7 @@ namespace NzbDrone.Api.Test.BookFiles
     {
         private Mock<IConfigService> _configService;
         private Mock<IHttpClient> _httpClient;
+        private Mock<IAudioIntroSegmentExtractor> _audioIntroSegmentExtractor;
         private IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private Mock<IUnmappedFileIdentificationSuggestionRepository> _suggestionRepository;
         private UnmappedIdentificationSuggestionService _subject;
@@ -33,9 +35,12 @@ namespace NzbDrone.Api.Test.BookFiles
             _configService.SetupGet(x => x.OpenRouterMaxFileContext).Returns(5);
             _configService.SetupGet(x => x.SpeechToTextProvider).Returns("disabled");
             _configService.SetupGet(x => x.SpeechToTextApiKey).Returns(string.Empty);
+            _configService.SetupGet(x => x.SpeechToTextBaseUrl).Returns("https://api.openai.com/v1");
+            _configService.SetupGet(x => x.SpeechToTextModel).Returns("whisper-1");
             _configService.SetupGet(x => x.SpeechToTextIntroSeconds).Returns(30);
 
-            _audioIntroTranscriptionService = new AudioIntroTranscriptionService(_configService.Object);
+            _audioIntroSegmentExtractor = new Mock<IAudioIntroSegmentExtractor>();
+            _audioIntroTranscriptionService = new AudioIntroTranscriptionService(_configService.Object, _httpClient.Object, _audioIntroSegmentExtractor.Object);
             _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _audioIntroTranscriptionService, _suggestionRepository.Object, TestLogger);
         }
 
@@ -92,10 +97,20 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
-        public void deep_identify_should_mark_audio_provider_ready_when_stt_provider_is_configured()
+        public void deep_identify_should_capture_transcript_when_stt_provider_returns_text()
         {
             _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openai-compatible");
             _configService.SetupGet(x => x.SpeechToTextApiKey).Returns("test-key");
+            _audioIntroSegmentExtractor.Setup(x => x.Extract("/books/Alice Writer - Hidden.m4b", 30))
+                .Returns(new AudioIntroSegment
+                {
+                    Status = "extracted",
+                    FileName = "intro.mp3",
+                    ContentType = "audio/mpeg",
+                    Content = Encoding.UTF8.GetBytes("audio bytes")
+                });
+            _httpClient.Setup(x => x.Post(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader { ContentType = "application/json" }, "{\"text\":\"You're listening to The Hidden Book, written by Alice Writer, narrated by Jane Reader, published by Example Audio. Book 2 of The Hidden Series.\"}"));
 
             var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
             {
@@ -104,12 +119,17 @@ namespace NzbDrone.Api.Test.BookFiles
             });
 
             result.Should().HaveCount(2);
-            result[0].Status.Should().Be("providerReady");
+            result[0].Status.Should().Be("transcriptCaptured");
             result[0].Provider.Should().Be("openai-compatible");
+            result[0].LikelyBook.Should().Be("The Hidden Book");
+            result[0].LikelyAuthor.Should().Be("Alice Writer");
+            result[0].Narrator.Should().Be("Jane Reader");
+            result[0].Confidence.Should().Be(100);
+            result[0].TranscriptExcerpt.Should().Contain("The Hidden Book");
             result[0].RequiresManualConfirmation.Should().BeTrue();
             result[1].Status.Should().Be("disabled");
-            _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
-            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "providerReady" && s.Provider == "openai-compatible")), Times.Once);
+            _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openai-compatible" && s.Narrator == "Jane Reader")), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
         }
 

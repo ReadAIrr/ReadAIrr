@@ -1,6 +1,12 @@
+using System;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Http;
+using NzbDrone.Common.Processes;
 using NzbDrone.Core.Configuration;
 
 namespace Readarr.Api.V1.BookFiles
@@ -8,7 +14,24 @@ namespace Readarr.Api.V1.BookFiles
     public interface IAudioIntroTranscriptionService
     {
         AudioIntroTranscriptionResult Prepare(BookFileResource resource);
+        AudioIntroTranscriptionResult Transcribe(BookFileResource resource);
         AudioIntroTranscriptClues ExtractClues(string transcript);
+    }
+
+    public interface IAudioIntroSegmentExtractor
+    {
+        AudioIntroSegment Extract(string path, int introSeconds);
+    }
+
+    public class AudioIntroSegment
+    {
+        public string Status { get; set; }
+        public string Explanation { get; set; }
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+        public byte[] Content { get; set; }
+
+        public bool IsSuccess => Status == "extracted" && Content != null && Content.Length > 0;
     }
 
     public class AudioIntroTranscriptionResult
@@ -34,11 +57,17 @@ namespace Readarr.Api.V1.BookFiles
 
     public class AudioIntroTranscriptionService : IAudioIntroTranscriptionService
     {
-        private readonly IConfigService _configService;
+        private const int MaxIntroSeconds = 120;
 
-        public AudioIntroTranscriptionService(IConfigService configService)
+        private readonly IConfigService _configService;
+        private readonly IHttpClient _httpClient;
+        private readonly IAudioIntroSegmentExtractor _audioIntroSegmentExtractor;
+
+        public AudioIntroTranscriptionService(IConfigService configService, IHttpClient httpClient, IAudioIntroSegmentExtractor audioIntroSegmentExtractor)
         {
             _configService = configService;
+            _httpClient = httpClient;
+            _audioIntroSegmentExtractor = audioIntroSegmentExtractor;
         }
 
         public AudioIntroTranscriptionResult Prepare(BookFileResource resource)
@@ -80,6 +109,63 @@ namespace Readarr.Api.V1.BookFiles
                 Explanation = "Speech-to-text provider configuration is present. Intro extraction/transcription is staged behind this provider boundary and remains manual-triggered only.",
                 ContextSummary = $"Provider boundary ready for a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
             };
+        }
+
+        public AudioIntroTranscriptionResult Transcribe(BookFileResource resource)
+        {
+            var ready = Prepare(resource);
+
+            if (ready.Status != "providerReady")
+            {
+                return ready;
+            }
+
+            var introSeconds = BoundIntroSeconds(_configService.SpeechToTextIntroSeconds);
+            var segment = _audioIntroSegmentExtractor.Extract(resource.Path, introSeconds);
+
+            if (!segment.IsSuccess)
+            {
+                return new AudioIntroTranscriptionResult
+                {
+                    Provider = ready.Provider,
+                    Status = segment.Status,
+                    IntroSeconds = introSeconds,
+                    Clues = new AudioIntroTranscriptClues(),
+                    Explanation = segment.Explanation,
+                    ContextSummary = "No audio was sent to the speech-to-text provider because intro extraction did not complete."
+                };
+            }
+
+            try
+            {
+                var response = SendTranscriptionRequest(segment, introSeconds);
+                var transcript = ExtractTranscript(response.Content);
+                var excerpt = Truncate(transcript, 1000);
+                var clues = ExtractClues(transcript);
+
+                return new AudioIntroTranscriptionResult
+                {
+                    Provider = ready.Provider,
+                    Status = "transcriptCaptured",
+                    IntroSeconds = introSeconds,
+                    TranscriptExcerpt = excerpt,
+                    Clues = clues,
+                    Explanation = "Speech-to-text captured a short intro transcript for manual review.",
+                    ContextSummary = $"Captured transcript evidence from the first {introSeconds} seconds only. This remains review-only and did not import, rename, retag, or move the file."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new AudioIntroTranscriptionResult
+                {
+                    Provider = ready.Provider,
+                    Status = "transcriptionFailed",
+                    IntroSeconds = introSeconds,
+                    Clues = new AudioIntroTranscriptClues(),
+                    Explanation = ex.Message,
+                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed."
+                };
+            }
         }
 
         public AudioIntroTranscriptClues ExtractClues(string transcript)
@@ -137,6 +223,142 @@ namespace Readarr.Api.V1.BookFiles
         private static string Clean(string value)
         {
             return value?.Trim(' ', ',', '.', '"', '\'');
+        }
+
+        private HttpResponse SendTranscriptionRequest(AudioIntroSegment segment, int introSeconds)
+        {
+            var baseUrl = _configService.SpeechToTextBaseUrl.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextBaseUrl.TrimEnd('/') : "https://api.openai.com/v1";
+            var model = _configService.SpeechToTextModel.IsNotNullOrWhiteSpace() ? _configService.SpeechToTextModel : "whisper-1";
+            var request = new HttpRequestBuilder(baseUrl)
+            {
+                Method = HttpMethod.Post,
+                SuppressHttpError = true,
+                LogResponseContent = false
+            }
+                .Resource("audio/transcriptions")
+                .AddFormParameter("model", model)
+                .AddFormUpload("file", segment.FileName, segment.Content, segment.ContentType)
+                .Build();
+
+            request.Headers.Set("Authorization", $"Bearer {_configService.SpeechToTextApiKey}");
+            request.RequestTimeout = TimeSpan.FromSeconds(Math.Max(30, introSeconds + 30));
+            request.ContentSummary = $"Speech-to-text transcription request with {segment.Content.Length} bytes from first {introSeconds} seconds of selected audio";
+
+            var response = _httpClient.Post(request);
+
+            if (response.HasHttpError)
+            {
+                throw new InvalidOperationException($"Speech-to-text provider returned {(int)response.StatusCode}: {Truncate(response.Content, 500)}");
+            }
+
+            return response;
+        }
+
+        private static string ExtractTranscript(string responseContent)
+        {
+            var json = JObject.Parse(responseContent);
+            var text = json.Value<string>("text");
+
+            if (text.IsNullOrWhiteSpace())
+            {
+                throw new InvalidOperationException("Speech-to-text provider response did not include transcript text.");
+            }
+
+            return text;
+        }
+
+        private static int BoundIntroSeconds(int introSeconds)
+        {
+            return Math.Min(MaxIntroSeconds, Math.Max(1, introSeconds));
+        }
+
+        private static string Truncate(string value, int maxLength)
+        {
+            if (value == null || value.Length <= maxLength)
+            {
+                return value;
+            }
+
+            return value.Substring(0, maxLength);
+        }
+    }
+
+    public class AudioIntroSegmentExtractor : IAudioIntroSegmentExtractor
+    {
+        private readonly IProcessProvider _processProvider;
+
+        public AudioIntroSegmentExtractor(IProcessProvider processProvider)
+        {
+            _processProvider = processProvider;
+        }
+
+        public AudioIntroSegment Extract(string path, int introSeconds)
+        {
+            if (!File.Exists(path))
+            {
+                return Failed("extractionFailed", "Audio file no longer exists at the selected path.");
+            }
+
+            var tempPath = Path.Combine(Path.GetTempPath(), $"readairr-intro-{Guid.NewGuid():N}.mp3");
+
+            try
+            {
+                var output = _processProvider.StartAndCapture("ffmpeg", $"-y -hide_banner -loglevel error -t {introSeconds} -i {Quote(path)} -vn -ac 1 -ar 16000 -f mp3 {Quote(tempPath)}");
+
+                if (output.ExitCode != 0 || !File.Exists(tempPath))
+                {
+                    var error = output.Error.Select(x => x.Content).ConcatToString(" ");
+                    return Failed("extractionFailed", $"Unable to extract short audio intro with ffmpeg. {error}".Trim());
+                }
+
+                var bytes = File.ReadAllBytes(tempPath);
+
+                if (bytes.Length == 0)
+                {
+                    return Failed("extractionFailed", "Short audio intro extraction produced an empty segment.");
+                }
+
+                return new AudioIntroSegment
+                {
+                    Status = "extracted",
+                    Explanation = $"Extracted the first {introSeconds} seconds for user-triggered speech-to-text review.",
+                    FileName = Path.GetFileName(tempPath),
+                    ContentType = "audio/mpeg",
+                    Content = bytes
+                };
+            }
+            catch (Exception ex)
+            {
+                return Failed("extractionFailed", $"Unable to extract short audio intro with ffmpeg. {ex.Message}");
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup. A failed temp delete should not hide the review result.
+                }
+            }
+        }
+
+        private static AudioIntroSegment Failed(string status, string explanation)
+        {
+            return new AudioIntroSegment
+            {
+                Status = status,
+                Explanation = explanation
+            };
+        }
+
+        private static string Quote(string value)
+        {
+            return $"\"{value.Replace("\"", "\\\"")}\"";
         }
     }
 }
