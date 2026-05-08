@@ -1,10 +1,13 @@
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Internal;
+using Npgsql;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Backup;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Lifecycle;
@@ -22,6 +25,7 @@ namespace Readarr.Api.V1.System
         private readonly IOsInfo _osInfo;
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IMainDatabase _database;
+        private readonly IBackupService _backupService;
         private readonly ILifecycleService _lifecycleService;
         private readonly IDeploymentInfoProvider _deploymentInfoProvider;
         private readonly EndpointDataSource _endpointData;
@@ -34,6 +38,7 @@ namespace Readarr.Api.V1.System
                                 IOsInfo osInfo,
                                 IConfigFileProvider configFileProvider,
                                 IMainDatabase database,
+                                IBackupService backupService,
                                 ILifecycleService lifecycleService,
                                 IDeploymentInfoProvider deploymentInfoProvider,
                                 EndpointDataSource endpoints,
@@ -46,6 +51,7 @@ namespace Readarr.Api.V1.System
             _osInfo = osInfo;
             _configFileProvider = configFileProvider;
             _database = database;
+            _backupService = backupService;
             _lifecycleService = lifecycleService;
             _deploymentInfoProvider = deploymentInfoProvider;
             _endpointData = endpoints;
@@ -88,8 +94,15 @@ namespace Readarr.Api.V1.System
                 PackageVersion = _deploymentInfoProvider.PackageVersion,
                 PackageAuthor = _deploymentInfoProvider.PackageAuthor,
                 PackageUpdateMechanism = _deploymentInfoProvider.PackageUpdateMechanism,
-                PackageUpdateMechanismMessage = _deploymentInfoProvider.PackageUpdateMechanismMessage
+                PackageUpdateMechanismMessage = _deploymentInfoProvider.PackageUpdateMechanismMessage,
+                DatabaseStatus = GetDatabaseStatusResource()
             };
+        }
+
+        [HttpGet("database")]
+        public DatabaseStatusResource GetDatabaseStatus()
+        {
+            return GetDatabaseStatusResource();
         }
 
         [HttpGet("routes")]
@@ -107,6 +120,84 @@ namespace Readarr.Api.V1.System
         public object DuplicateRoutes()
         {
             return _detector.GetDuplicateEndpoints(_endpointData);
+        }
+
+        private DatabaseStatusResource GetDatabaseStatusResource()
+        {
+            var sqlitePath = _appFolderInfo.GetDatabase();
+            var sqliteFile = new FileInfo(sqlitePath);
+            var postgresHostConfigured = _configFileProvider.PostgresHost.IsNotNullOrWhiteSpace();
+            bool? postgresReachable = null;
+            string postgresReachabilityMessage = null;
+
+            if (postgresHostConfigured)
+            {
+                (postgresReachable, postgresReachabilityMessage) = CheckPostgresReachability();
+            }
+
+            return DatabaseStatusResourceMapper.ToResource(_database.DatabaseType,
+                sqlitePath,
+                sqliteFile.Exists,
+                sqliteFile.Exists ? sqliteFile.Length : null,
+                postgresHostConfigured,
+                _configFileProvider.PostgresHost,
+                _configFileProvider.PostgresPort,
+                _configFileProvider.PostgresUser.IsNotNullOrWhiteSpace(),
+                _configFileProvider.PostgresPassword.IsNotNullOrWhiteSpace(),
+                _configFileProvider.PostgresMainDb,
+                _configFileProvider.PostgresLogDb,
+                _configFileProvider.PostgresCacheDb,
+                postgresReachable,
+                postgresReachabilityMessage,
+                HasAnyBackup());
+        }
+
+        private (bool? Reachable, string Message) CheckPostgresReachability()
+        {
+            if (_configFileProvider.PostgresUser.IsNullOrWhiteSpace() ||
+                _configFileProvider.PostgresPassword.IsNullOrWhiteSpace() ||
+                _configFileProvider.PostgresMainDb.IsNullOrWhiteSpace())
+            {
+                return (null, "PostgreSQL configuration is incomplete.");
+            }
+
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = _configFileProvider.PostgresHost,
+                    Port = _configFileProvider.PostgresPort,
+                    Username = _configFileProvider.PostgresUser,
+                    Password = _configFileProvider.PostgresPassword,
+                    Database = _configFileProvider.PostgresMainDb,
+                    Timeout = 3,
+                    CommandTimeout = 3,
+                    Enlist = false
+                };
+
+                using (var connection = new NpgsqlConnection(builder.ConnectionString))
+                {
+                    connection.Open();
+                }
+
+                return (true, "PostgreSQL target accepted a connection.");
+            }
+            catch (global::System.Exception ex)
+            {
+                return (false, $"PostgreSQL target is not reachable: {ex.GetType().Name}");
+            }
+        }
+
+        private bool HasAnyBackup()
+        {
+            try
+            {
+                return _backupService.GetBackups().Any();
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         [HttpPost("shutdown")]
