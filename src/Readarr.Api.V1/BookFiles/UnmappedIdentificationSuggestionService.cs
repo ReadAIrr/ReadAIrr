@@ -20,6 +20,8 @@ namespace Readarr.Api.V1.BookFiles
         OpenRouterConfigTestResource Test(OpenRouterConfigTestResource resource);
         List<ManualImportIdentificationSuggestionResource> ReviewWithAi(List<BookFileResource> resources);
         List<ManualImportIdentificationSuggestionResource> DeepIdentifyAudio(List<BookFileResource> resources);
+        List<ManualImportIdentificationSuggestionResource> QueueDeepIdentifyAudio(List<BookFileResource> resources);
+        List<ManualImportIdentificationSuggestionResource> ProcessQueuedDeepIdentifyAudio(List<BookFileResource> resources);
         List<ManualImportIdentificationSuggestionResource> GetPersisted(List<BookFileResource> resources);
         void Clear(List<int> bookFileIds);
     }
@@ -164,40 +166,54 @@ namespace Readarr.Api.V1.BookFiles
 
         public List<ManualImportIdentificationSuggestionResource> DeepIdentifyAudio(List<BookFileResource> resources)
         {
+            var result = resources.Select(DeepIdentifyResource).ToList();
+
+            Store(resources, result);
+
+            return result;
+        }
+
+        public List<ManualImportIdentificationSuggestionResource> QueueDeepIdentifyAudio(List<BookFileResource> resources)
+        {
+            Clear(resources.Select(x => x.Id).ToList());
+
             var result = resources.Select(resource =>
             {
                 if (!IsAudioFile(resource.Path))
                 {
-                    return DisabledSuggestion("deepAudio", resource.Path, "File extension is not recognized as audio.");
+                    return StatusSuggestion("deepAudio", resource.Path, "skipped", "File extension is not recognized as audio.");
                 }
 
-                var transcription = _audioIntroTranscriptionService.Transcribe(resource);
-
-                return new ManualImportIdentificationSuggestionResource
-                {
-                    Type = "deepAudio",
-                    Provider = transcription.Provider,
-                    Status = transcription.Status,
-                    Path = resource.Path,
-                    LikelyAuthor = transcription.Clues?.Author,
-                    LikelyBook = transcription.Clues?.Title,
-                    Narrator = transcription.Clues?.Narrator,
-                    Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
-                    RequiresManualConfirmation = true,
-                    Explanation = transcription.Explanation,
-                    TranscriptExcerpt = transcription.TranscriptExcerpt,
-                    ContextSummary = transcription.ContextSummary,
-                    Stage = transcription.Stage,
-                    ProviderEndpoint = transcription.ProviderEndpoint,
-                    ProviderModel = transcription.ProviderModel,
-                    ProviderStatusCode = transcription.ProviderStatusCode,
-                    ProviderDurationMs = transcription.ProviderDurationMs,
-                    ProviderResponseExcerpt = transcription.ProviderResponseExcerpt,
-                    AudioPreviewUrl = $"/bookFile/unmapped/{resource.Id}/intro-preview"
-                };
+                return StatusSuggestion("deepAudio", resource.Path, "queued", "Deep Identify Audio is queued for background processing.");
             }).ToList();
 
-            Store(resources, result);
+            Store(resources, result, true);
+
+            return result;
+        }
+
+        public List<ManualImportIdentificationSuggestionResource> ProcessQueuedDeepIdentifyAudio(List<BookFileResource> resources)
+        {
+            var result = new List<ManualImportIdentificationSuggestionResource>();
+
+            foreach (var resource in resources)
+            {
+                if (!IsAudioFile(resource.Path))
+                {
+                    var skipped = StatusSuggestion("deepAudio", resource.Path, "skipped", "File extension is not recognized as audio.");
+                    Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { skipped }, true);
+                    result.Add(skipped);
+                    continue;
+                }
+
+                var running = StatusSuggestion("deepAudio", resource.Path, "extractingIntro", "Deep Identify Audio is extracting the bounded intro clip.");
+                running.Stage = "extractingIntro";
+                Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { running }, true);
+
+                var suggestion = DeepIdentifyResource(resource);
+                Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { suggestion }, true);
+                result.Add(suggestion);
+            }
 
             return result;
         }
@@ -223,6 +239,39 @@ namespace Readarr.Api.V1.BookFiles
         public void Clear(List<int> bookFileIds)
         {
             _suggestionRepository.DeleteByBookFileIds(bookFileIds);
+        }
+
+        private ManualImportIdentificationSuggestionResource DeepIdentifyResource(BookFileResource resource)
+        {
+            if (!IsAudioFile(resource.Path))
+            {
+                return DisabledSuggestion("deepAudio", resource.Path, "File extension is not recognized as audio.");
+            }
+
+            var transcription = _audioIntroTranscriptionService.Transcribe(resource);
+
+            return new ManualImportIdentificationSuggestionResource
+            {
+                Type = "deepAudio",
+                Provider = transcription.Provider,
+                Status = transcription.Status,
+                Path = resource.Path,
+                LikelyAuthor = transcription.Clues?.Author,
+                LikelyBook = transcription.Clues?.Title,
+                Narrator = transcription.Clues?.Narrator,
+                Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
+                RequiresManualConfirmation = true,
+                Explanation = transcription.Explanation,
+                TranscriptExcerpt = transcription.TranscriptExcerpt,
+                ContextSummary = transcription.ContextSummary,
+                Stage = transcription.Stage,
+                ProviderEndpoint = transcription.ProviderEndpoint,
+                ProviderModel = transcription.ProviderModel,
+                ProviderStatusCode = transcription.ProviderStatusCode,
+                ProviderDurationMs = transcription.ProviderDurationMs,
+                ProviderResponseExcerpt = transcription.ProviderResponseExcerpt,
+                AudioPreviewUrl = $"/bookFile/unmapped/{resource.Id}/intro-preview"
+            };
         }
 
         private OpenRouterConfig BuildConfig(OpenRouterConfigTestResource resource = null)
@@ -371,11 +420,11 @@ namespace Readarr.Api.V1.BookFiles
             };
         }
 
-        private void Store(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions)
+        private void Store(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions, bool includeDisabled = false)
         {
             var now = DateTime.UtcNow;
 
-            foreach (var suggestion in suggestions.Where(x => x.Status != "disabled"))
+            foreach (var suggestion in suggestions.Where(x => includeDisabled || x.Status != "disabled"))
             {
                 var resource = resources.FirstOrDefault(x => PathEquals(x.Path, suggestion.Path));
 

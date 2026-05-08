@@ -17,10 +17,12 @@ function createMapStateToProps() {
   return createSelector(
     createClientSideCollectionSelector('bookFiles'),
     createCommandExecutingSelector(commandNames.RESCAN_FOLDERS),
+    createCommandExecutingSelector(commandNames.DEEP_IDENTIFY_UNMAPPED_FILES),
     createDimensionsSelector(),
     (
       bookFiles,
       isScanningFolders,
+      isDeepIdentifyAudioRunning,
       dimensionsState
     ) => {
       // bookFiles could pick up mapped entries via signalR so filter again here
@@ -35,6 +37,7 @@ function createMapStateToProps() {
         items: unmappedFiles,
         ...otherProps,
         isScanningFolders,
+        isDeepIdentifyAudioRunning,
         isSmallScreen: dimensionsState.isSmallScreen
       };
     }
@@ -129,6 +132,7 @@ class UnmappedFilesTableConnector extends Component {
 
 UnmappedFilesTableConnector.propTypes = {
   isSmallScreen: PropTypes.bool.isRequired,
+  isDeepIdentifyAudioRunning: PropTypes.bool.isRequired,
   onSortPress: PropTypes.func.isRequired,
   onTableOptionChange: PropTypes.func.isRequired,
   fetchUnmappedFiles: PropTypes.func.isRequired,

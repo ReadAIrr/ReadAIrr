@@ -6,6 +6,7 @@ export const CLEAR_LOGS = 'ClearLog';
 export const CUTOFF_UNMET_BOOK_SEARCH = 'CutoffUnmetBookSearch';
 export const DELETE_LOG_FILES = 'DeleteLogFiles';
 export const DELETE_UPDATE_LOG_FILES = 'DeleteUpdateLogFiles';
+export const DEEP_IDENTIFY_UNMAPPED_FILES = 'DeepIdentifyUnmappedFiles';
 export const DOWNLOADED_BOOKS_SCAN = 'DownloadedBooksScan';
 export const BOOK_SEARCH = 'BookSearch';
 export const INTERACTIVE_IMPORT = 'ManualImport';

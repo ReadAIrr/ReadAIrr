@@ -39,6 +39,8 @@ function getSuggestionStatusLabel(status) {
   switch (status) {
     case 'queued':
       return 'Queued';
+    case 'skipped':
+      return 'Skipped';
     case 'extractingIntro':
       return 'Extracting intro clip';
     case 'introClipReady':

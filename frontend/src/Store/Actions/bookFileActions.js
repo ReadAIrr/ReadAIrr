@@ -2,10 +2,12 @@ import _ from 'lodash';
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
 import bookEntities from 'Book/bookEntities';
+import * as commandNames from 'Commands/commandNames';
 import { sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { removeItem, set, updateItem } from './baseActions';
+import { executeCommand } from './commandActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
 import createRemoveItemHandler from './Creators/createRemoveItemHandler';
@@ -212,6 +214,71 @@ function handleUnmappedSuggestionRequest(url, payload, dispatch) {
   });
 }
 
+function handleBulkDeepIdentifyRequest(payload, dispatch) {
+  const {
+    bookFileIds
+  } = payload;
+
+  dispatch(batchActions([
+    ...bookFileIds.map((id) => updateItem({
+      section,
+      id,
+      isReprocessing: true,
+      updateOnly: true
+    })),
+    set({ section, isSaving: true, saveError: null })
+  ]));
+
+  const promise = createAjaxRequest({
+    url: '/bookFile/unmapped/deep-identify/queue',
+    method: 'POST',
+    dataType: 'json',
+    data: JSON.stringify({ bookFileIds })
+  }).request;
+
+  promise.done((data) => {
+    dispatch(batchActions([
+      ...data.map((item) => updateItem({
+        section,
+        ...item,
+        isReprocessing: true,
+        updateOnly: true
+      })),
+
+      set({
+        section,
+        isSaving: false,
+        saveError: null
+      })
+    ]));
+
+    dispatch(executeCommand({
+      name: commandNames.DEEP_IDENTIFY_UNMAPPED_FILES,
+      bookFileIds,
+      commandFinished: () => {
+        dispatch(fetchBookFiles({ unmapped: true }));
+      }
+    }));
+  });
+
+  promise.fail((xhr) => {
+    dispatch(batchActions([
+      ...bookFileIds.map((id) => updateItem({
+        section,
+        id,
+        isReprocessing: false,
+        updateOnly: true
+      })),
+
+      set({
+        section,
+        isSaving: false,
+        saveError: xhr
+      })
+    ]));
+  });
+}
+
 //
 // Action Handlers
 
@@ -359,6 +426,11 @@ export const actionHandlers = handleThunks({
   },
 
   [DEEP_IDENTIFY_UNMAPPED_FILES]: function(getState, payload, dispatch) {
+    if ((payload.bookFileIds?.length ?? 0) > 1) {
+      handleBulkDeepIdentifyRequest(payload, dispatch);
+      return;
+    }
+
     handleUnmappedSuggestionRequest('/bookFile/unmapped/deep-identify', payload, dispatch);
   },
 

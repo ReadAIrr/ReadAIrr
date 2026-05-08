@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using FluentAssertions;
 using Moq;
@@ -96,6 +97,43 @@ namespace NzbDrone.Api.Test.BookFiles
             result[1].Status.Should().Be("disabled");
             _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
             _suggestionRepository.Verify(x => x.Insert(It.IsAny<UnmappedFileIdentificationSuggestion>()), Times.Never);
+        }
+
+        [Test]
+        public void queue_deep_identify_should_persist_queued_audio_and_skipped_non_audio()
+        {
+            var result = _subject.QueueDeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b", Size = 100 },
+                new BookFileResource { Id = 2, Path = "/books/Alice Writer - Cover.jpg", Size = 200 }
+            });
+
+            result.Should().HaveCount(2);
+            result[0].Status.Should().Be("queued");
+            result[1].Status.Should().Be("skipped");
+            _suggestionRepository.Verify(x => x.DeleteByBookFileIds(It.Is<IEnumerable<int>>(ids => ids.Contains(1) && ids.Contains(2))), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Type == "deepAudio" && s.Status == "queued")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2 && s.Type == "deepAudio" && s.Status == "skipped")), Times.Once);
+        }
+
+        [Test]
+        public void queued_deep_identify_should_persist_running_and_disabled_provider_state()
+        {
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openrouter");
+            _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
+            _configService.SetupGet(x => x.OpenRouterApiKey).Returns(string.Empty);
+
+            var result = _subject.ProcessQueuedDeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b", Size = 100 }
+            });
+
+            result.Should().ContainSingle();
+            result[0].Status.Should().Be("disabled");
+            result[0].Provider.Should().Be("openrouter-stt");
+            _audioIntroSegmentExtractor.Verify(x => x.Extract(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "extractingIntro" && s.Stage == "extractingIntro")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "disabled" && s.Provider == "openrouter-stt")), Times.Once);
         }
 
         [Test]

@@ -381,6 +381,7 @@ class UnmappedFilesTable extends Component {
       onSortPress,
       fetchUnmappedFiles,
       isScanningFolders,
+      isDeepIdentifyAudioRunning,
       onAddMissingAuthorsPress,
       onAiReviewPress,
       onDeepIdentifyPress,
@@ -450,7 +451,7 @@ class UnmappedFilesTable extends Component {
               label="Deep Identify Audio"
               iconName={icons.TRACK_FILE}
               isDisabled={selectedTrackFileIds.length === 0}
-              isSpinning={isSaving}
+              isSpinning={isSaving || isDeepIdentifyAudioRunning}
               onPress={this.onDeepIdentifyPress}
             />
             <PageToolbarButton
@@ -610,6 +611,7 @@ UnmappedFilesTable.propTypes = {
   deleteUnmappedFiles: PropTypes.func.isRequired,
   setUnmappedFilesReviewed: PropTypes.func.isRequired,
   isScanningFolders: PropTypes.bool.isRequired,
+  isDeepIdentifyAudioRunning: PropTypes.bool.isRequired,
   onAddMissingAuthorsPress: PropTypes.func.isRequired,
   onRetryIdentifyPress: PropTypes.func.isRequired,
   onAiReviewPress: PropTypes.func.isRequired,

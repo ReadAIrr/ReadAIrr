@@ -199,6 +199,18 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(resources);
         }
 
+        [HttpPost("unmapped/deep-identify/queue")]
+        public ActionResult<List<BookFileResource>> QueueDeepIdentifyUnmappedAudio([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+            var resources = MapUnmappedToResources(bookFiles);
+
+            _unmappedIdentificationSuggestionService.QueueDeepIdentifyAudio(resources);
+
+            return Accepted(MapUnmappedToResources(bookFiles));
+        }
+
         [HttpPost("unmapped/suggestions/clear")]
         public ActionResult<List<BookFileResource>> ClearUnmappedSuggestions([FromBody] BookFileListResource resource)
         {
