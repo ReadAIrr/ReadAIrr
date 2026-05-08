@@ -74,6 +74,11 @@ namespace NzbDrone.Core.Configuration
         string OpenRouterModel { get; set; }
         int OpenRouterTimeout { get; set; }
         int OpenRouterMaxFileContext { get; set; }
+        string SpeechToTextProvider { get; set; }
+        string SpeechToTextApiKey { get; set; }
+        string SpeechToTextBaseUrl { get; set; }
+        string SpeechToTextModel { get; set; }
+        int SpeechToTextIntroSeconds { get; set; }
         WriteAudioTagsType WriteAudioTags { get; set; }
         bool ScrubAudioTags { get; set; }
         WriteBookTagsType WriteBookTags { get; set; }

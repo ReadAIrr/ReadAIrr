@@ -319,6 +319,41 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("OpenRouterMaxFileContext", value); }
         }
 
+        public string SpeechToTextProvider
+        {
+            get { return GetValue("SpeechToTextProvider", "disabled"); }
+
+            set { SetValue("SpeechToTextProvider", value); }
+        }
+
+        public string SpeechToTextApiKey
+        {
+            get { return GetValue("SpeechToTextApiKey", string.Empty); }
+
+            set { SetValue("SpeechToTextApiKey", value); }
+        }
+
+        public string SpeechToTextBaseUrl
+        {
+            get { return GetValue("SpeechToTextBaseUrl", string.Empty); }
+
+            set { SetValue("SpeechToTextBaseUrl", value); }
+        }
+
+        public string SpeechToTextModel
+        {
+            get { return GetValue("SpeechToTextModel", string.Empty); }
+
+            set { SetValue("SpeechToTextModel", value); }
+        }
+
+        public int SpeechToTextIntroSeconds
+        {
+            get { return GetValueInt("SpeechToTextIntroSeconds", 30); }
+
+            set { SetValue("SpeechToTextIntroSeconds", value); }
+        }
+
         public WriteAudioTagsType WriteAudioTags
         {
             get { return GetValueEnum("WriteAudioTags", WriteAudioTagsType.No); }

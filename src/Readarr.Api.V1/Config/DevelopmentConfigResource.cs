@@ -13,6 +13,11 @@ namespace Prowlarr.Api.V1.Config
         public string OpenRouterModel { get; set; }
         public int OpenRouterTimeout { get; set; }
         public int OpenRouterMaxFileContext { get; set; }
+        public string SpeechToTextProvider { get; set; }
+        public string SpeechToTextApiKey { get; set; }
+        public string SpeechToTextBaseUrl { get; set; }
+        public string SpeechToTextModel { get; set; }
+        public int SpeechToTextIntroSeconds { get; set; }
         public string ConsoleLogLevel { get; set; }
         public bool LogSql { get; set; }
         public int LogRotate { get; set; }
@@ -60,6 +65,11 @@ namespace Prowlarr.Api.V1.Config
                 OpenRouterModel = configService.OpenRouterModel,
                 OpenRouterTimeout = configService.OpenRouterTimeout,
                 OpenRouterMaxFileContext = configService.OpenRouterMaxFileContext,
+                SpeechToTextProvider = configService.SpeechToTextProvider,
+                SpeechToTextApiKey = string.IsNullOrWhiteSpace(configService.SpeechToTextApiKey) ? string.Empty : RedactedSecret,
+                SpeechToTextBaseUrl = configService.SpeechToTextBaseUrl,
+                SpeechToTextModel = configService.SpeechToTextModel,
+                SpeechToTextIntroSeconds = configService.SpeechToTextIntroSeconds,
                 ConsoleLogLevel = model.ConsoleLogLevel,
                 LogSql = model.LogSql,
                 LogRotate = model.LogRotate,

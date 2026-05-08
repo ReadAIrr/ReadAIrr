@@ -42,16 +42,19 @@ namespace Readarr.Api.V1.BookFiles
 
         private readonly IConfigService _configService;
         private readonly IHttpClient _httpClient;
+        private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private readonly IUnmappedFileIdentificationSuggestionRepository _suggestionRepository;
         private readonly Logger _logger;
 
         public UnmappedIdentificationSuggestionService(IConfigService configService,
                                                        IHttpClient httpClient,
+                                                       IAudioIntroTranscriptionService audioIntroTranscriptionService,
                                                        IUnmappedFileIdentificationSuggestionRepository suggestionRepository,
                                                        Logger logger)
         {
             _configService = configService;
             _httpClient = httpClient;
+            _audioIntroTranscriptionService = audioIntroTranscriptionService;
             _suggestionRepository = suggestionRepository;
             _logger = logger;
         }
@@ -161,8 +164,6 @@ namespace Readarr.Api.V1.BookFiles
 
         public List<ManualImportIdentificationSuggestionResource> DeepIdentifyAudio(List<BookFileResource> resources)
         {
-            var config = BuildConfig();
-
             var result = resources.Select(resource =>
             {
                 if (!IsAudioFile(resource.Path))
@@ -170,20 +171,18 @@ namespace Readarr.Api.V1.BookFiles
                     return DisabledSuggestion("deepAudio", resource.Path, "File extension is not recognized as audio.");
                 }
 
-                if (!config.Enabled || config.ApiKey.IsNullOrWhiteSpace())
-                {
-                    return DisabledSuggestion("deepAudio", resource.Path, "OpenRouter is not configured. Audio deep identify is ready to run once an STT-capable provider is configured.");
-                }
+                var transcription = _audioIntroTranscriptionService.Prepare(resource);
 
                 return new ManualImportIdentificationSuggestionResource
                 {
                     Type = "deepAudio",
-                    Provider = "openrouter-stt-foundation",
-                    Status = "providerReady",
+                    Provider = transcription.Provider,
+                    Status = transcription.Status,
                     Path = resource.Path,
                     RequiresManualConfirmation = true,
-                    Explanation = "Audio file is eligible for manual deep identify. This foundation does not auto-transcribe during scans or import based only on transcript.",
-                    ContextSummary = "Deep identify will use a short beginning audio segment and keep transcript excerpts scoped to triage."
+                    Explanation = transcription.Explanation,
+                    TranscriptExcerpt = transcription.TranscriptExcerpt,
+                    ContextSummary = transcription.ContextSummary
                 };
             }).ToList();
 

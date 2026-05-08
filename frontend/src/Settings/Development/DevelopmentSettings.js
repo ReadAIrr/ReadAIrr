@@ -21,6 +21,11 @@ const logLevelOptions = [
   { key: 'trace', value: 'Trace' }
 ];
 
+const speechToTextProviderOptions = [
+  { key: 'disabled', value: 'Disabled' },
+  { key: 'openai-compatible', value: 'OpenAI-compatible speech-to-text' }
+];
+
 const GOODREADS_METADATA_SOURCE = 'https://api.bookinfo.pro';
 const HARDCOVER_METADATA_SOURCE = 'https://hardcover.bookinfo.pro';
 const LOCAL_METADATA_SOURCE = 'http://rreading-glasses:8788';
@@ -378,7 +383,86 @@ class DevelopmentSettings extends Component {
                   </FormGroup>
 
                   <Alert kind={kinds.INFO}>
-                    AI/STT actions send only selected file path/name, parsed metadata, candidate summary, confidence, and rejection reasons to your configured provider. Transcript snippets are short and kept in triage only.
+                    AI Review sends only selected file path/name, parsed metadata, candidate summary, confidence, and rejection reasons to your configured provider. Suggestions are review-only and never auto-import.
+                  </Alert>
+                </FieldSet>
+
+                <FieldSet legend="Speech-to-Text">
+                  <FormGroup>
+                    <FormLabel>
+                      Provider
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.SELECT}
+                      name="speechToTextProvider"
+                      values={speechToTextProviderOptions}
+                      helpText="Deep Identify Audio is manual-triggered only. Audio is not sent externally unless a speech-to-text provider is configured."
+                      onChange={onInputChange}
+                      {...settings.speechToTextProvider}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Provider API key
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.PASSWORD}
+                      name="speechToTextApiKey"
+                      helpText="Stored server-side and redacted in API responses. This is separate from the OpenRouter chat key."
+                      onChange={onInputChange}
+                      {...settings.speechToTextApiKey}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Provider base URL
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.TEXT}
+                      name="speechToTextBaseUrl"
+                      helpText="Optional OpenAI-compatible speech-to-text endpoint URL."
+                      onChange={onInputChange}
+                      {...settings.speechToTextBaseUrl}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Provider model
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.TEXT}
+                      name="speechToTextModel"
+                      helpText="Provider-specific speech-to-text model name."
+                      onChange={onInputChange}
+                      {...settings.speechToTextModel}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>
+                      Intro window
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.NUMBER}
+                      name="speechToTextIntroSeconds"
+                      min={5}
+                      max={120}
+                      helpText="Maximum beginning segment length, in seconds, reserved for manual deep identification."
+                      onChange={onInputChange}
+                      {...settings.speechToTextIntroSeconds}
+                    />
+                  </FormGroup>
+
+                  <Alert kind={kinds.INFO}>
+                    Deep Identify Audio currently records provider readiness and keeps transcript evidence fields ready for the next extraction pass. It does not transcribe automatically during scans.
                   </Alert>
                 </FieldSet>
 

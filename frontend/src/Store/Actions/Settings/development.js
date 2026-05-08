@@ -124,7 +124,8 @@ export default {
           openRouterApiKey: testData.openRouterApiKey,
           openRouterBaseUrl: testData.openRouterBaseUrl,
           openRouterModel: testData.openRouterModel,
-          openRouterTimeout: testData.openRouterTimeout
+          openRouterTimeout: testData.openRouterTimeout,
+          openRouterMaxFileContext: testData.openRouterMaxFileContext
         })
       }).request;
 

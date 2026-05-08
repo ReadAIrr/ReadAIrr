@@ -54,6 +54,14 @@ namespace Prowlarr.Api.V1.Config
             SharedValidator.RuleFor(c => c.OpenRouterMaxFileContext)
                            .InclusiveBetween(1, 20)
                            .WithMessage("OpenRouter file context limit must be between 1 and 20 files");
+
+            SharedValidator.RuleFor(c => c.SpeechToTextBaseUrl)
+                           .Must(baseUrl => baseUrl.IsNullOrWhiteSpace() || baseUrl.IsValidUrl())
+                           .WithMessage("Speech-to-text base URL must be a valid URL");
+
+            SharedValidator.RuleFor(c => c.SpeechToTextIntroSeconds)
+                           .InclusiveBetween(5, 120)
+                           .WithMessage("Speech-to-text intro window must be between 5 and 120 seconds");
         }
 
         protected override DevelopmentConfigResource GetResourceById(int id)
@@ -76,6 +84,11 @@ namespace Prowlarr.Api.V1.Config
             if (resource.OpenRouterApiKey == DevelopmentConfigResourceMapper.RedactedSecret)
             {
                 resource.OpenRouterApiKey = _configService.OpenRouterApiKey;
+            }
+
+            if (resource.SpeechToTextApiKey == DevelopmentConfigResourceMapper.RedactedSecret)
+            {
+                resource.SpeechToTextApiKey = _configService.SpeechToTextApiKey;
             }
 
             var dictionary = resource.GetType()

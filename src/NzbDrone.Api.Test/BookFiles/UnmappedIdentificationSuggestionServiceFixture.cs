@@ -16,6 +16,7 @@ namespace NzbDrone.Api.Test.BookFiles
     {
         private Mock<IConfigService> _configService;
         private Mock<IHttpClient> _httpClient;
+        private IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private Mock<IUnmappedFileIdentificationSuggestionRepository> _suggestionRepository;
         private UnmappedIdentificationSuggestionService _subject;
 
@@ -30,8 +31,12 @@ namespace NzbDrone.Api.Test.BookFiles
             _configService.SetupGet(x => x.OpenRouterModel).Returns("openai/gpt-4.1-mini");
             _configService.SetupGet(x => x.OpenRouterTimeout).Returns(30);
             _configService.SetupGet(x => x.OpenRouterMaxFileContext).Returns(5);
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("disabled");
+            _configService.SetupGet(x => x.SpeechToTextApiKey).Returns(string.Empty);
+            _configService.SetupGet(x => x.SpeechToTextIntroSeconds).Returns(30);
 
-            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _suggestionRepository.Object, TestLogger);
+            _audioIntroTranscriptionService = new AudioIntroTranscriptionService(_configService.Object);
+            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _audioIntroTranscriptionService, _suggestionRepository.Object, TestLogger);
         }
 
         [Test]
@@ -70,10 +75,27 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
-        public void deep_identify_should_only_mark_audio_files_provider_ready_when_configured()
+        public void deep_identify_should_return_disabled_when_stt_provider_is_disabled()
         {
-            _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
-            _configService.SetupGet(x => x.OpenRouterApiKey).Returns("test-key");
+            var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
+            {
+                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b" },
+                new BookFileResource { Id = 2, Path = "/books/Alice Writer - Cover.jpg" }
+            });
+
+            result.Should().HaveCount(2);
+            result[0].Status.Should().Be("disabled");
+            result[0].RequiresManualConfirmation.Should().BeTrue();
+            result[1].Status.Should().Be("disabled");
+            _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
+            _suggestionRepository.Verify(x => x.Insert(It.IsAny<UnmappedFileIdentificationSuggestion>()), Times.Never);
+        }
+
+        [Test]
+        public void deep_identify_should_mark_audio_provider_ready_when_stt_provider_is_configured()
+        {
+            _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openai-compatible");
+            _configService.SetupGet(x => x.SpeechToTextApiKey).Returns("test-key");
 
             var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
             {
@@ -83,10 +105,11 @@ namespace NzbDrone.Api.Test.BookFiles
 
             result.Should().HaveCount(2);
             result[0].Status.Should().Be("providerReady");
+            result[0].Provider.Should().Be("openai-compatible");
             result[0].RequiresManualConfirmation.Should().BeTrue();
             result[1].Status.Should().Be("disabled");
             _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
-            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "providerReady")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "providerReady" && s.Provider == "openai-compatible")), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
         }
 
