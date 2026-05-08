@@ -127,6 +127,7 @@ export const DELETE_BOOK_FILES = 'bookFiles/deleteBookFiles';
 export const RETRY_UNMAPPED_FILES = 'bookFiles/retryUnmappedFiles';
 export const AI_REVIEW_UNMAPPED_FILES = 'bookFiles/aiReviewUnmappedFiles';
 export const DEEP_IDENTIFY_UNMAPPED_FILES = 'bookFiles/deepIdentifyUnmappedFiles';
+export const CLEAR_UNMAPPED_SUGGESTIONS = 'bookFiles/clearUnmappedSuggestions';
 export const SET_UNMAPPED_FILES_REVIEWED = 'bookFiles/setUnmappedFilesReviewed';
 export const UPDATE_BOOK_FILES = 'bookFiles/updateBookFiles';
 export const SET_BOOK_FILES_SORT = 'bookFiles/setBookFilesSort';
@@ -142,6 +143,7 @@ export const deleteBookFiles = createThunk(DELETE_BOOK_FILES);
 export const retryUnmappedFiles = createThunk(RETRY_UNMAPPED_FILES);
 export const aiReviewUnmappedFiles = createThunk(AI_REVIEW_UNMAPPED_FILES);
 export const deepIdentifyUnmappedFiles = createThunk(DEEP_IDENTIFY_UNMAPPED_FILES);
+export const clearUnmappedSuggestions = createThunk(CLEAR_UNMAPPED_SUGGESTIONS);
 export const setUnmappedFilesReviewed = createThunk(SET_UNMAPPED_FILES_REVIEWED);
 export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
 export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
@@ -358,6 +360,10 @@ export const actionHandlers = handleThunks({
 
   [DEEP_IDENTIFY_UNMAPPED_FILES]: function(getState, payload, dispatch) {
     handleUnmappedSuggestionRequest('/bookFile/unmapped/deep-identify', payload, dispatch);
+  },
+
+  [CLEAR_UNMAPPED_SUGGESTIONS]: function(getState, payload, dispatch) {
+    handleUnmappedSuggestionRequest('/bookFile/unmapped/suggestions/clear', payload, dispatch);
   },
 
   [SET_UNMAPPED_FILES_REVIEWED]: function(getState, payload, dispatch) {

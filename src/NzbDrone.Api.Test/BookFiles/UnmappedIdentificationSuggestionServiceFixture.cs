@@ -4,6 +4,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Test.Common;
 using Prowlarr.Api.V1.Config;
 using Readarr.Api.V1.BookFiles;
@@ -15,6 +16,7 @@ namespace NzbDrone.Api.Test.BookFiles
     {
         private Mock<IConfigService> _configService;
         private Mock<IHttpClient> _httpClient;
+        private Mock<IUnmappedFileIdentificationSuggestionRepository> _suggestionRepository;
         private UnmappedIdentificationSuggestionService _subject;
 
         [SetUp]
@@ -22,13 +24,14 @@ namespace NzbDrone.Api.Test.BookFiles
         {
             _configService = new Mock<IConfigService>();
             _httpClient = new Mock<IHttpClient>();
+            _suggestionRepository = new Mock<IUnmappedFileIdentificationSuggestionRepository>();
 
             _configService.SetupGet(x => x.OpenRouterBaseUrl).Returns("https://openrouter.ai/api/v1");
             _configService.SetupGet(x => x.OpenRouterModel).Returns("openai/gpt-4.1-mini");
             _configService.SetupGet(x => x.OpenRouterTimeout).Returns(30);
             _configService.SetupGet(x => x.OpenRouterMaxFileContext).Returns(5);
 
-            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, TestLogger);
+            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _suggestionRepository.Object, TestLogger);
         }
 
         [Test]
@@ -63,6 +66,7 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].Status.Should().Be("disabled");
             result[0].Type.Should().Be("aiReview");
             _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
+            _suggestionRepository.Verify(x => x.Insert(It.IsAny<UnmappedFileIdentificationSuggestion>()), Times.Never);
         }
 
         [Test]
@@ -82,6 +86,49 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].RequiresManualConfirmation.Should().BeTrue();
             result[1].Status.Should().Be("disabled");
             _httpClient.Verify(x => x.Post(It.IsAny<HttpRequest>()), Times.Never);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "providerReady")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
+        }
+
+        [Test]
+        public void persisted_suggestions_should_be_marked_stale_when_file_identity_changes()
+        {
+            var updated = new global::System.DateTime(2026, 05, 08, 20, 0, 0, global::System.DateTimeKind.Utc);
+
+            _suggestionRepository.Setup(x => x.GetByBookFileIds(It.IsAny<IEnumerable<int>>()))
+                .Returns(new List<UnmappedFileIdentificationSuggestion>
+                {
+                    new UnmappedFileIdentificationSuggestion
+                    {
+                        BookFileId = 1,
+                        Path = "/books/Alice Writer - Hidden.m4b",
+                        Size = 100,
+                        Modified = updated.AddMinutes(-5),
+                        Type = "aiReview",
+                        Provider = "openrouter",
+                        Status = "suggested",
+                        LikelyAuthor = "Alice Writer",
+                        LikelyBook = "Hidden",
+                        RequiresManualConfirmation = true,
+                        Created = updated.AddMinutes(-10),
+                        Updated = updated.AddMinutes(-10)
+                    }
+                });
+
+            var result = _subject.GetPersisted(new List<BookFileResource>
+            {
+                new BookFileResource
+                {
+                    Id = 1,
+                    Path = "/books/Alice Writer - Hidden.m4b",
+                    Size = 100,
+                    Modified = updated
+                }
+            });
+
+            result.Should().ContainSingle();
+            result[0].IsStale.Should().BeTrue();
+            result[0].LikelyAuthor.Should().Be("Alice Writer");
         }
     }
 }

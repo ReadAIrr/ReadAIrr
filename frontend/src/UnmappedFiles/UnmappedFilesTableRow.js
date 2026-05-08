@@ -77,6 +77,10 @@ class UnmappedFilesTableRow extends Component {
     this.props.deepIdentifyUnmappedFile([this.props.id]);
   };
 
+  onClearSuggestionsPress = () => {
+    this.props.clearUnmappedSuggestions([this.props.id]);
+  };
+
   onMarkReviewedPress = () => {
     this.props.setUnmappedFileReviewed([this.props.id], !this.props.reviewed);
   };
@@ -244,7 +248,7 @@ class UnmappedFilesTableRow extends Component {
                   {
                     suggestion &&
                       <div className={styles.suggestionMeta}>
-                        {suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI'}: {suggestion.likelyAuthor || 'Unknown author'} - {suggestion.likelyBook || 'Unknown book'}
+                        {suggestion.type === 'deepAudio' ? 'Deep identify' : 'AI'}{suggestion.isStale ? ' stale' : ''}: {suggestion.likelyAuthor || 'Unknown author'} - {suggestion.likelyBook || suggestion.status}
                       </div>
                   }
                 </VirtualTableRowCell>
@@ -350,6 +354,13 @@ class UnmappedFilesTableRow extends Component {
                   />
 
                   <IconButton
+                    name={icons.CLEAR}
+                    title="Clear suggestions"
+                    isSpinning={isReprocessing}
+                    onPress={this.onClearSuggestionsPress}
+                  />
+
+                  <IconButton
                     name={icons.DELETE}
                     onPress={this.onDeleteFilePress}
                   />
@@ -411,6 +422,7 @@ UnmappedFilesTableRow.propTypes = {
   retryUnmappedFile: PropTypes.func.isRequired,
   aiReviewUnmappedFile: PropTypes.func.isRequired,
   deepIdentifyUnmappedFile: PropTypes.func.isRequired,
+  clearUnmappedSuggestions: PropTypes.func.isRequired,
   setUnmappedFileReviewed: PropTypes.func.isRequired
 };
 

@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withCurrentPage from 'Components/withCurrentPage';
-import { aiReviewUnmappedFiles, deepIdentifyUnmappedFiles, deleteBookFile, deleteBookFiles, fetchBookFiles, retryUnmappedFiles, setBookFilesSort, setBookFilesTableOption, setUnmappedFilesReviewed } from 'Store/Actions/bookFileActions';
+import { aiReviewUnmappedFiles, clearUnmappedSuggestions, deepIdentifyUnmappedFiles, deleteBookFile, deleteBookFiles, fetchBookFiles, retryUnmappedFiles, setBookFilesSort, setBookFilesTableOption, setUnmappedFilesReviewed } from 'Store/Actions/bookFileActions';
 import { executeCommand } from 'Store/Actions/commandActions';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
@@ -83,6 +83,10 @@ function createMapDispatchToProps(dispatch, props) {
       dispatch(deepIdentifyUnmappedFiles({ bookFileIds }));
     },
 
+    onClearSuggestionsPress(bookFileIds) {
+      dispatch(clearUnmappedSuggestions({ bookFileIds }));
+    },
+
     setUnmappedFilesReviewed(bookFileIds, reviewed) {
       dispatch(setUnmappedFilesReviewed({ bookFileIds, reviewed }));
     }
@@ -133,6 +137,7 @@ UnmappedFilesTableConnector.propTypes = {
   onRetryIdentifyPress: PropTypes.func.isRequired,
   onAiReviewPress: PropTypes.func.isRequired,
   onDeepIdentifyPress: PropTypes.func.isRequired,
+  onClearSuggestionsPress: PropTypes.func.isRequired,
   setUnmappedFilesReviewed: PropTypes.func.isRequired
 };
 

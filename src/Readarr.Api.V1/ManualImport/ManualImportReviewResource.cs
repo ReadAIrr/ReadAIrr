@@ -71,6 +71,9 @@ namespace Readarr.Api.V1.ManualImport
         public bool RequiresManualConfirmation { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
+        public bool IsStale { get; set; }
+        public DateTime? Created { get; set; }
+        public DateTime? Updated { get; set; }
     }
 
     public static class ManualImportReviewResourceMapper

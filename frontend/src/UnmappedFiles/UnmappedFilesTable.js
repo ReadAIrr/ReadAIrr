@@ -314,6 +314,10 @@ class UnmappedFilesTable extends Component {
     this.props.onDeepIdentifyPress(this.getSelectedIds());
   };
 
+  onClearSuggestionsPress = () => {
+    this.props.onClearSuggestionsPress(this.getSelectedIds());
+  };
+
   onTriageFilterChange = (triageFilter) => {
     this.setState({ triageFilter });
   };
@@ -329,6 +333,7 @@ class UnmappedFilesTable extends Component {
       onRetryIdentifyPress,
       onAiReviewPress,
       onDeepIdentifyPress,
+      onClearSuggestionsPress,
       setUnmappedFilesReviewed
     } = this.props;
 
@@ -352,6 +357,7 @@ class UnmappedFilesTable extends Component {
           retryUnmappedFile={onRetryIdentifyPress}
           aiReviewUnmappedFile={onAiReviewPress}
           deepIdentifyUnmappedFile={onDeepIdentifyPress}
+          clearUnmappedSuggestions={onClearSuggestionsPress}
           setUnmappedFileReviewed={setUnmappedFilesReviewed}
           {...item}
         />
@@ -378,6 +384,7 @@ class UnmappedFilesTable extends Component {
       onAddMissingAuthorsPress,
       onAiReviewPress,
       onDeepIdentifyPress,
+      onClearSuggestionsPress,
       ...otherProps
     } = this.props;
 
@@ -445,6 +452,13 @@ class UnmappedFilesTable extends Component {
               isDisabled={selectedTrackFileIds.length === 0}
               isSpinning={isSaving}
               onPress={this.onDeepIdentifyPress}
+            />
+            <PageToolbarButton
+              label="Clear Suggestions"
+              iconName={icons.CLEAR}
+              isDisabled={selectedTrackFileIds.length === 0}
+              isSpinning={isSaving}
+              onPress={this.onClearSuggestionsPress}
             />
             <PageToolbarButton
               label={translate('DeleteSelected')}
@@ -599,7 +613,8 @@ UnmappedFilesTable.propTypes = {
   onAddMissingAuthorsPress: PropTypes.func.isRequired,
   onRetryIdentifyPress: PropTypes.func.isRequired,
   onAiReviewPress: PropTypes.func.isRequired,
-  onDeepIdentifyPress: PropTypes.func.isRequired
+  onDeepIdentifyPress: PropTypes.func.isRequired,
+  onClearSuggestionsPress: PropTypes.func.isRequired
 };
 
 export default UnmappedFilesTable;

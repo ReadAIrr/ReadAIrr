@@ -15,6 +15,7 @@ namespace Readarr.Api.V1.BookFiles
         public int BookId { get; set; }
         public string Path { get; set; }
         public long Size { get; set; }
+        public DateTime Modified { get; set; }
         public DateTime DateAdded { get; set; }
         public QualityModel Quality { get; set; }
         public int QualityWeight { get; set; }
@@ -55,6 +56,7 @@ namespace Readarr.Api.V1.BookFiles
                 BookId = model.Edition.Value?.BookId ?? 0,
                 Path = model.Path,
                 Size = model.Size,
+                Modified = model.Modified,
                 DateAdded = model.DateAdded,
                 Quality = model.Quality,
                 QualityWeight = QualityWeight(model.Quality),
@@ -78,6 +80,7 @@ namespace Readarr.Api.V1.BookFiles
                 BookId = model.Edition.Value?.BookId ?? 0,
                 Path = model.Path,
                 Size = model.Size,
+                Modified = model.Modified,
                 DateAdded = model.DateAdded,
                 Quality = model.Quality,
                 QualityWeight = QualityWeight(model.Quality),

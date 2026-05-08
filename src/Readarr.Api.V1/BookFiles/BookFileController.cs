@@ -196,6 +196,17 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(resources);
         }
 
+        [HttpPost("unmapped/suggestions/clear")]
+        public ActionResult<List<BookFileResource>> ClearUnmappedSuggestions([FromBody] BookFileListResource resource)
+        {
+            resource.BookFileIds = resource.BookFileIds ?? new List<int>();
+            var bookFiles = _mediaFileService.Get(resource.BookFileIds).Where(x => x.EditionId == 0).ToList();
+
+            _unmappedIdentificationSuggestionService.Clear(bookFiles.Select(x => x.Id).ToList());
+
+            return Accepted(MapUnmappedToResources(bookFiles));
+        }
+
         [RestDeleteById]
         public void DeleteBookFile(int id)
         {
@@ -242,7 +253,7 @@ namespace Readarr.Api.V1.BookFiles
                                                   .GroupBy(x => x.Path, PathEqualityComparer.Instance)
                                                   .ToDictionary(x => x.Key, x => x.First(), PathEqualityComparer.Instance);
 
-            return files.ConvertAll(file =>
+            var resources = files.ConvertAll(file =>
             {
                 var resource = MapToResource(file);
 
@@ -254,6 +265,10 @@ namespace Readarr.Api.V1.BookFiles
 
                 return resource;
             });
+
+            AddSuggestions(resources, _unmappedIdentificationSuggestionService.GetPersisted(resources));
+
+            return resources;
         }
 
         private static void AddSuggestions(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions)

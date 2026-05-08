@@ -9,6 +9,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.MediaFiles;
 using Prowlarr.Api.V1.Config;
 using Readarr.Api.V1.ManualImport;
 
@@ -19,6 +20,8 @@ namespace Readarr.Api.V1.BookFiles
         OpenRouterConfigTestResource Test(OpenRouterConfigTestResource resource);
         List<ManualImportIdentificationSuggestionResource> ReviewWithAi(List<BookFileResource> resources);
         List<ManualImportIdentificationSuggestionResource> DeepIdentifyAudio(List<BookFileResource> resources);
+        List<ManualImportIdentificationSuggestionResource> GetPersisted(List<BookFileResource> resources);
+        void Clear(List<int> bookFileIds);
     }
 
     public class UnmappedIdentificationSuggestionService : IUnmappedIdentificationSuggestionService
@@ -39,12 +42,17 @@ namespace Readarr.Api.V1.BookFiles
 
         private readonly IConfigService _configService;
         private readonly IHttpClient _httpClient;
+        private readonly IUnmappedFileIdentificationSuggestionRepository _suggestionRepository;
         private readonly Logger _logger;
 
-        public UnmappedIdentificationSuggestionService(IConfigService configService, IHttpClient httpClient, Logger logger)
+        public UnmappedIdentificationSuggestionService(IConfigService configService,
+                                                       IHttpClient httpClient,
+                                                       IUnmappedFileIdentificationSuggestionRepository suggestionRepository,
+                                                       Logger logger)
         {
             _configService = configService;
             _httpClient = httpClient;
+            _suggestionRepository = suggestionRepository;
             _logger = logger;
         }
 
@@ -131,16 +139,23 @@ namespace Readarr.Api.V1.BookFiles
                 var content = ExtractMessageContent(response.Content);
                 var suggestions = ParseSuggestions(content, boundedResources);
 
-                return resources.Select(resource =>
+                var result = resources.Select(resource =>
                 {
                     var suggestion = suggestions.FirstOrDefault(x => PathEquals(x.Path, resource.Path));
-                    return suggestion ?? DisabledSuggestion("aiReview", resource.Path, "AI provider did not return a suggestion for this file.");
+                    return suggestion ?? StatusSuggestion("aiReview", resource.Path, "unavailable", "AI provider did not return a suggestion for this file.");
                 }).ToList();
+
+                Store(resources, result);
+
+                return result;
             }
             catch (Exception ex)
             {
                 _logger.Warn(ex, "AI unmapped review failed");
-                return resources.Select(x => DisabledSuggestion("aiReview", x.Path, ex.Message)).ToList();
+                var result = resources.Select(x => StatusSuggestion("aiReview", x.Path, "failed", ex.Message)).ToList();
+                Store(resources, result);
+
+                return result;
             }
         }
 
@@ -148,7 +163,7 @@ namespace Readarr.Api.V1.BookFiles
         {
             var config = BuildConfig();
 
-            return resources.Select(resource =>
+            var result = resources.Select(resource =>
             {
                 if (!IsAudioFile(resource.Path))
                 {
@@ -171,6 +186,33 @@ namespace Readarr.Api.V1.BookFiles
                     ContextSummary = "Deep identify will use a short beginning audio segment and keep transcript excerpts scoped to triage."
                 };
             }).ToList();
+
+            Store(resources, result);
+
+            return result;
+        }
+
+        public List<ManualImportIdentificationSuggestionResource> GetPersisted(List<BookFileResource> resources)
+        {
+            var byId = resources.ToDictionary(x => x.Id);
+
+            return _suggestionRepository.GetByBookFileIds(byId.Keys)
+                .Select(suggestion =>
+                {
+                    if (!byId.TryGetValue(suggestion.BookFileId, out var resource))
+                    {
+                        return null;
+                    }
+
+                    return ToResource(suggestion, resource);
+                })
+                .Where(x => x != null)
+                .ToList();
+        }
+
+        public void Clear(List<int> bookFileIds)
+        {
+            _suggestionRepository.DeleteByBookFileIds(bookFileIds);
         }
 
         private OpenRouterConfig BuildConfig(OpenRouterConfigTestResource resource = null)
@@ -303,14 +345,85 @@ namespace Readarr.Api.V1.BookFiles
 
         private static ManualImportIdentificationSuggestionResource DisabledSuggestion(string type, string path, string explanation)
         {
+            return StatusSuggestion(type, path, "disabled", explanation);
+        }
+
+        private static ManualImportIdentificationSuggestionResource StatusSuggestion(string type, string path, string status, string explanation)
+        {
             return new ManualImportIdentificationSuggestionResource
             {
                 Type = type,
                 Provider = type == "aiReview" ? "openrouter" : "openrouter-stt-foundation",
-                Status = "disabled",
+                Status = status,
                 Path = path,
                 RequiresManualConfirmation = true,
                 Explanation = explanation
+            };
+        }
+
+        private void Store(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions)
+        {
+            var now = DateTime.UtcNow;
+
+            foreach (var suggestion in suggestions.Where(x => x.Status != "disabled"))
+            {
+                var resource = resources.FirstOrDefault(x => PathEquals(x.Path, suggestion.Path));
+
+                if (resource == null)
+                {
+                    continue;
+                }
+
+                _suggestionRepository.Insert(new UnmappedFileIdentificationSuggestion
+                {
+                    BookFileId = resource.Id,
+                    Path = resource.Path,
+                    Size = resource.Size,
+                    Modified = resource.Modified,
+                    Type = suggestion.Type,
+                    Provider = suggestion.Provider,
+                    Status = suggestion.Status,
+                    LikelyAuthor = suggestion.LikelyAuthor,
+                    LikelyBook = suggestion.LikelyBook,
+                    LikelyEdition = suggestion.LikelyEdition,
+                    Language = suggestion.Language,
+                    Narrator = suggestion.Narrator,
+                    Confidence = suggestion.Confidence,
+                    Explanation = suggestion.Explanation,
+                    RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
+                    TranscriptExcerpt = suggestion.TranscriptExcerpt,
+                    ContextSummary = suggestion.ContextSummary,
+                    Created = now,
+                    Updated = now
+                });
+            }
+        }
+
+        private static ManualImportIdentificationSuggestionResource ToResource(UnmappedFileIdentificationSuggestion suggestion, BookFileResource resource)
+        {
+            var isStale = !PathEquals(suggestion.Path, resource.Path) ||
+                          suggestion.Size != resource.Size ||
+                          suggestion.Modified != resource.Modified;
+
+            return new ManualImportIdentificationSuggestionResource
+            {
+                Type = suggestion.Type,
+                Provider = suggestion.Provider,
+                Status = suggestion.Status,
+                Path = suggestion.Path,
+                LikelyAuthor = suggestion.LikelyAuthor,
+                LikelyBook = suggestion.LikelyBook,
+                LikelyEdition = suggestion.LikelyEdition,
+                Language = suggestion.Language,
+                Narrator = suggestion.Narrator,
+                Confidence = suggestion.Confidence,
+                Explanation = suggestion.Explanation,
+                RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
+                TranscriptExcerpt = suggestion.TranscriptExcerpt,
+                ContextSummary = suggestion.ContextSummary,
+                IsStale = isStale,
+                Created = suggestion.Created,
+                Updated = suggestion.Updated
             };
         }
 
