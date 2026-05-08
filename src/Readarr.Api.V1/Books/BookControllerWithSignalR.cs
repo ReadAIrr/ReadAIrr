@@ -137,7 +137,6 @@ namespace Readarr.Api.V1.Books
                 v.Title.Contains(term) ||
                 v.CleanTitle.Contains(cleanTerm) ||
                 v.ForeignBookId.Contains(term) ||
-                v.ForeignEditionId.Contains(term) ||
                 v.AuthorMetadata.Value.Name.Contains(term) ||
                 v.AuthorMetadata.Value.SortName.Contains(term) ||
                 v.AuthorMetadata.Value.SortNameLastFirst.Contains(term));

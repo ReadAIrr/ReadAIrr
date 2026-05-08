@@ -20,7 +20,6 @@ namespace NzbDrone.Api.Test.Books
         [TestCase("Messiah")]
         [TestCase("dunemessiah")]
         [TestCase("book-123")]
-        [TestCase("edition-456")]
         [TestCase("Frank")]
         [TestCase("Herbert")]
         public void should_match_book_or_author_fields(string term)
