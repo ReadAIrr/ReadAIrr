@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
+using Readarr.Api.V1.BookFiles;
 
 namespace Readarr.Api.V1.ManualImport
 {
@@ -20,6 +21,7 @@ namespace Readarr.Api.V1.ManualImport
         public List<ManualImportReviewReasonResource> Reasons { get; set; }
         public List<ManualImportReviewReasonResource> Hints { get; set; }
         public List<ManualImportIdentificationSuggestionResource> Suggestions { get; set; }
+        public List<ContributorEvidenceResource> ContributorEvidence { get; set; }
     }
 
     public class ManualImportParsedResource

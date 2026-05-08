@@ -1,0 +1,66 @@
+using System.Collections.Generic;
+using System.Linq;
+using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Messaging.Events;
+
+namespace NzbDrone.Core.MediaFiles
+{
+    public interface IContributorEvidenceRepository : IBasicRepository<ContributorEvidence>
+    {
+        List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
+        List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
+        void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources);
+    }
+
+    public class ContributorEvidenceRepository : BasicRepository<ContributorEvidence>, IContributorEvidenceRepository
+    {
+        public ContributorEvidenceRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+
+        public List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds)
+        {
+            var ids = bookFileIds.Distinct().ToList();
+
+            if (!ids.Any())
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            return Query(x => x.BookFileId.HasValue && ids.Contains(x.BookFileId.Value))
+                .OrderBy(x => x.Role)
+                .ThenBy(x => x.DisplayName)
+                .ToList();
+        }
+
+        public List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds)
+        {
+            var ids = editionIds.Distinct().ToList();
+
+            if (!ids.Any())
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            return Query(x => x.EditionId.HasValue && ids.Contains(x.EditionId.Value))
+                .OrderBy(x => x.Role)
+                .ThenBy(x => x.DisplayName)
+                .ToList();
+        }
+
+        public void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources)
+        {
+            var ids = bookFileIds.Distinct().ToList();
+            var sourceList = sources.Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
+
+            if (!ids.Any() || !sourceList.Any())
+            {
+                return;
+            }
+
+            Delete(x => x.BookFileId.HasValue && ids.Contains(x.BookFileId.Value) && sourceList.Contains(x.Source));
+        }
+    }
+}

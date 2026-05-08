@@ -36,6 +36,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IUpgradableSpecification _upgradableSpecification;
         private readonly IUnmappedIdentificationSuggestionService _unmappedIdentificationSuggestionService;
         private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
 
         public BookFileController(IBroadcastSignalRMessage signalRBroadcaster,
                                IMediaFileService mediaFileService,
@@ -46,7 +47,8 @@ namespace Readarr.Api.V1.BookFiles
                                IBookService bookService,
                                IUpgradableSpecification upgradableSpecification,
                                IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService,
-                               IAudioIntroTranscriptionService audioIntroTranscriptionService)
+                               IAudioIntroTranscriptionService audioIntroTranscriptionService,
+                               IContributorEvidenceRepository contributorEvidenceRepository)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -58,6 +60,7 @@ namespace Readarr.Api.V1.BookFiles
             _upgradableSpecification = upgradableSpecification;
             _unmappedIdentificationSuggestionService = unmappedIdentificationSuggestionService;
             _audioIntroTranscriptionService = audioIntroTranscriptionService;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
         }
 
         private BookFileResource MapToResource(BookFile bookFile)
@@ -182,6 +185,7 @@ namespace Readarr.Api.V1.BookFiles
             var suggestions = _unmappedIdentificationSuggestionService.ReviewWithAi(resources);
 
             AddSuggestions(resources, suggestions);
+            AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return Accepted(resources);
         }
@@ -195,6 +199,7 @@ namespace Readarr.Api.V1.BookFiles
             var suggestions = _unmappedIdentificationSuggestionService.DeepIdentifyAudio(resources);
 
             AddSuggestions(resources, suggestions);
+            AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return Accepted(resources);
         }
@@ -303,6 +308,7 @@ namespace Readarr.Api.V1.BookFiles
             });
 
             AddSuggestions(resources, _unmappedIdentificationSuggestionService.GetPersisted(resources));
+            AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return resources;
         }
@@ -321,6 +327,29 @@ namespace Readarr.Api.V1.BookFiles
                 resource.Review.Suggestions ??= new List<ManualImportIdentificationSuggestionResource>();
                 resource.Review.Suggestions.AddRange(suggestions.Where(x => string.Equals(x.Path, resource.Path, global::System.StringComparison.OrdinalIgnoreCase)));
                 ManualImportReviewResourceMapper.ApplySuggestionEvidence(resource.Review);
+            }
+        }
+
+        private static void AddContributorEvidence(List<BookFileResource> resources, List<ContributorEvidence> evidence)
+        {
+            var evidenceByBookFileId = evidence
+                .Where(x => x.BookFileId.HasValue)
+                .GroupBy(x => x.BookFileId.Value)
+                .ToDictionary(x => x.Key, x => x.Select(item => item.ToResource()).ToList());
+
+            foreach (var resource in resources)
+            {
+                if (!evidenceByBookFileId.TryGetValue(resource.Id, out var contributorEvidence))
+                {
+                    contributorEvidence = new List<ContributorEvidenceResource>();
+                }
+
+                resource.ContributorEvidence = contributorEvidence;
+
+                if (resource.Review != null)
+                {
+                    resource.Review.ContributorEvidence = contributorEvidence;
+                }
             }
         }
 

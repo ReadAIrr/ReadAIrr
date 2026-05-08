@@ -177,6 +177,17 @@ function getSuggestionDetails(suggestion) {
   return details;
 }
 
+function getContributorEvidenceDetails(contributorEvidence) {
+  return (contributorEvidence || []).map((item) => {
+    const confidence = item.confidence == null ? '' : ` (${item.confidence}%)`;
+
+    return {
+      label: `${item.role || 'Contributor'} evidence`,
+      detail: `${item.displayName} from ${item.source}${confidence}`
+    };
+  });
+}
+
 function getAudioPreviewUrl(audioPreviewUrl) {
   if (!audioPreviewUrl) {
     return null;
@@ -266,6 +277,7 @@ class UnmappedFilesTableRow extends Component {
       quality,
       reviewed,
       review,
+      contributorEvidence,
       isReprocessing,
       columns,
       isSelected,
@@ -390,6 +402,7 @@ class UnmappedFilesTableRow extends Component {
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
               const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
+              const contributorEvidenceDetails = getContributorEvidenceDetails(review?.contributorEvidence || contributorEvidence);
 
               return (
                 <VirtualTableRowCell
@@ -458,6 +471,13 @@ class UnmappedFilesTableRow extends Component {
                         }
                         position={tooltipPositions.LEFT}
                       />
+                  }
+
+                  {
+                    contributorEvidenceDetails.length > 0 &&
+                      <div className={styles.suggestionMeta}>
+                        {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
+                      </div>
                   }
                 </VirtualTableRowCell>
               );
@@ -622,6 +642,7 @@ UnmappedFilesTableRow.propTypes = {
   dateAdded: PropTypes.string.isRequired,
   reviewed: PropTypes.bool.isRequired,
   review: PropTypes.object,
+  contributorEvidence: PropTypes.arrayOf(PropTypes.object),
   isReprocessing: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   isSelected: PropTypes.bool,

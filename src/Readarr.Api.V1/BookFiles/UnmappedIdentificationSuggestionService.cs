@@ -46,18 +46,21 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IHttpClient _httpClient;
         private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private readonly IUnmappedFileIdentificationSuggestionRepository _suggestionRepository;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly Logger _logger;
 
         public UnmappedIdentificationSuggestionService(IConfigService configService,
                                                        IHttpClient httpClient,
                                                        IAudioIntroTranscriptionService audioIntroTranscriptionService,
                                                        IUnmappedFileIdentificationSuggestionRepository suggestionRepository,
+                                                       IContributorEvidenceRepository contributorEvidenceRepository,
                                                        Logger logger)
         {
             _configService = configService;
             _httpClient = httpClient;
             _audioIntroTranscriptionService = audioIntroTranscriptionService;
             _suggestionRepository = suggestionRepository;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
             _logger = logger;
         }
 
@@ -239,6 +242,7 @@ namespace Readarr.Api.V1.BookFiles
         public void Clear(List<int> bookFileIds)
         {
             _suggestionRepository.DeleteByBookFileIds(bookFileIds);
+            _contributorEvidenceRepository.DeleteByBookFileIdsAndSources(bookFileIds, new[] { "aiReview", "sttTranscript" });
         }
 
         private ManualImportIdentificationSuggestionResource DeepIdentifyResource(BookFileResource resource)
@@ -423,12 +427,40 @@ namespace Readarr.Api.V1.BookFiles
         private void Store(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions, bool includeDisabled = false)
         {
             var now = DateTime.UtcNow;
+            var storableSuggestions = suggestions.Where(x => includeDisabled || x.Status != "disabled").ToList();
+            var resourcesByPath = resources
+                .Where(x => x.Path.IsNotNullOrWhiteSpace())
+                .GroupBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+            var bookFileIds = new List<int>();
+            var sources = new List<string>();
 
-            foreach (var suggestion in suggestions.Where(x => includeDisabled || x.Status != "disabled"))
+            foreach (var suggestion in storableSuggestions)
             {
-                var resource = resources.FirstOrDefault(x => PathEquals(x.Path, suggestion.Path));
+                if (suggestion.Path.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
 
-                if (resource == null)
+                if (!resourcesByPath.TryGetValue(suggestion.Path, out var resource))
+                {
+                    continue;
+                }
+
+                bookFileIds.Add(resource.Id);
+                sources.Add(GetContributorEvidenceSource(suggestion));
+            }
+
+            _contributorEvidenceRepository.DeleteByBookFileIdsAndSources(bookFileIds, sources);
+
+            foreach (var suggestion in storableSuggestions)
+            {
+                if (suggestion.Path.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
+
+                if (!resourcesByPath.TryGetValue(suggestion.Path, out var resource))
                 {
                     continue;
                 }
@@ -461,7 +493,50 @@ namespace Readarr.Api.V1.BookFiles
                     Created = now,
                     Updated = now
                 });
+
+                var contributorEvidence = BuildContributorEvidence(resource, suggestion, now);
+
+                if (contributorEvidence != null)
+                {
+                    _contributorEvidenceRepository.Insert(contributorEvidence);
+                }
             }
+        }
+
+        private static ContributorEvidence BuildContributorEvidence(BookFileResource resource, ManualImportIdentificationSuggestionResource suggestion, DateTime now)
+        {
+            if (suggestion.Narrator.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            return new ContributorEvidence
+            {
+                BookFileId = resource.Id,
+                Role = "narrator",
+                DisplayName = suggestion.Narrator.Trim(),
+                NormalizedName = ContributorEvidence.NormalizeName(suggestion.Narrator),
+                Source = GetContributorEvidenceSource(suggestion),
+                Confidence = suggestion.Confidence,
+                RawValue = suggestion.Narrator,
+                Created = now,
+                Updated = now
+            };
+        }
+
+        private static string GetContributorEvidenceSource(ManualImportIdentificationSuggestionResource suggestion)
+        {
+            if (suggestion.Type == "deepAudio")
+            {
+                return "sttTranscript";
+            }
+
+            if (suggestion.Type == "aiReview")
+            {
+                return "aiReview";
+            }
+
+            return suggestion.Type;
         }
 
         private static ManualImportIdentificationSuggestionResource ToResource(UnmappedFileIdentificationSuggestion suggestion, BookFileResource resource)

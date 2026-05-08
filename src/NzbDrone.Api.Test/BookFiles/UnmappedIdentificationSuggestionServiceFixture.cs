@@ -23,6 +23,7 @@ namespace NzbDrone.Api.Test.BookFiles
         private Mock<IAudioIntroSegmentExtractor> _audioIntroSegmentExtractor;
         private IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private Mock<IUnmappedFileIdentificationSuggestionRepository> _suggestionRepository;
+        private Mock<IContributorEvidenceRepository> _contributorEvidenceRepository;
         private UnmappedIdentificationSuggestionService _subject;
 
         [SetUp]
@@ -31,6 +32,7 @@ namespace NzbDrone.Api.Test.BookFiles
             _configService = new Mock<IConfigService>();
             _httpClient = new Mock<IHttpClient>();
             _suggestionRepository = new Mock<IUnmappedFileIdentificationSuggestionRepository>();
+            _contributorEvidenceRepository = new Mock<IContributorEvidenceRepository>();
 
             _configService.SetupGet(x => x.OpenRouterBaseUrl).Returns("https://openrouter.ai/api/v1");
             _configService.SetupGet(x => x.OpenRouterModel).Returns("openai/gpt-4.1-mini");
@@ -44,7 +46,7 @@ namespace NzbDrone.Api.Test.BookFiles
 
             _audioIntroSegmentExtractor = new Mock<IAudioIntroSegmentExtractor>();
             _audioIntroTranscriptionService = new AudioIntroTranscriptionService(_configService.Object, _httpClient.Object, _audioIntroSegmentExtractor.Object);
-            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _audioIntroTranscriptionService, _suggestionRepository.Object, TestLogger);
+            _subject = new UnmappedIdentificationSuggestionService(_configService.Object, _httpClient.Object, _audioIntroTranscriptionService, _suggestionRepository.Object, _contributorEvidenceRepository.Object, TestLogger);
         }
 
         [Test]
@@ -208,6 +210,7 @@ namespace NzbDrone.Api.Test.BookFiles
             body["input_audio"].Value<string>("data").Should().Be("YXVkaW8gYnl0ZXM=");
             body["input_audio"].Value<string>("format").Should().Be("mp3");
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1")), Times.Once);
+            _contributorEvidenceRepository.Verify(x => x.Insert(It.Is<ContributorEvidence>(e => e.BookFileId == 1 && e.Role == "narrator" && e.DisplayName == "Jane Reader" && e.NormalizedName == "janereader" && e.Source == "sttTranscript")), Times.Once);
         }
 
         [Test]
@@ -245,6 +248,7 @@ namespace NzbDrone.Api.Test.BookFiles
             _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key" && r.Headers.ContentType.StartsWith("multipart/form-data"))), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openai-compatible" && s.Narrator == "Jane Reader")), Times.Once);
             _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 2)), Times.Never);
+            _contributorEvidenceRepository.Verify(x => x.Insert(It.Is<ContributorEvidence>(e => e.BookFileId == 1 && e.Role == "narrator" && e.DisplayName == "Jane Reader" && e.Source == "sttTranscript")), Times.Once);
         }
 
         [Test]

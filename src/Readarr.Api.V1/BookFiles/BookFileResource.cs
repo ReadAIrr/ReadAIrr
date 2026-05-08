@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.MediaFiles;
@@ -23,6 +24,7 @@ namespace Readarr.Api.V1.BookFiles
         public MediaInfoResource MediaInfo { get; set; }
         public bool Reviewed { get; set; }
         public ManualImportReviewResource Review { get; set; }
+        public List<ContributorEvidenceResource> ContributorEvidence { get; set; }
 
         public bool QualityCutoffNotMet { get; set; }
         public ParsedTrackInfo AudioTags { get; set; }
