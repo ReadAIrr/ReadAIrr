@@ -63,7 +63,12 @@ function createMapDispatchToProps(dispatch, props) {
     },
 
     fetchUnmappedFiles(page, options = {}) {
-      dispatch(fetchBookFiles({ unmapped: true, page: sanitizePage(page), refresh: options.refresh === true }));
+      dispatch(fetchBookFiles({
+        unmapped: true,
+        page: sanitizePage(page),
+        term: options.term,
+        refresh: options.refresh === true
+      }));
     },
 
     deleteUnmappedFile(id) {

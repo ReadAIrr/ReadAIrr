@@ -3,6 +3,7 @@ using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Qualities;
@@ -78,6 +79,54 @@ namespace NzbDrone.Core.Test.MediaFiles
             VerifyUnmapped(unmappedfiles);
 
             unmappedfiles.Should().HaveCount(5);
+        }
+
+        [Test]
+        public void get_paged_unmapped_files_should_filter_by_path_term_before_paging()
+        {
+            InsertUnmappedFile(@"/search/GlobalTermBook.m4b".AsOsAgnostic());
+
+            var spec = Subject.GetUnmappedFiles(new PagingSpec<BookFile>
+            {
+                Page = 1,
+                PageSize = 10,
+                SortKey = "path",
+                SortDirection = SortDirection.Ascending
+            }, "GlobalTermBook");
+
+            spec.TotalRecords.Should().Be(1);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Path.Should().Contain("GlobalTermBook");
+        }
+
+        [Test]
+        public void get_paged_unmapped_files_should_include_suggestion_matched_ids()
+        {
+            var suggestionMatchedId = InsertUnmappedFile(@"/search/SuggestionOnlyMatch.m4b".AsOsAgnostic()).Id;
+
+            var spec = Subject.GetUnmappedFiles(new PagingSpec<BookFile>
+            {
+                Page = 1,
+                PageSize = 10,
+                SortKey = "path",
+                SortDirection = SortDirection.Ascending
+            }, "not-in-path", new[] { suggestionMatchedId });
+
+            spec.TotalRecords.Should().Be(1);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Id.Should().Be(suggestionMatchedId);
+        }
+
+        private BookFile InsertUnmappedFile(string path)
+        {
+            var file = Builder<BookFile>.CreateNew()
+                .With(c => c.Id = 0)
+                .With(c => c.Quality = new QualityModel(Quality.MP3))
+                .With(c => c.EditionId = 0)
+                .With(c => c.Path = path)
+                .Build();
+
+            return Db.Insert(file);
         }
 
         [TestCase("C:\\Test\\Path")]

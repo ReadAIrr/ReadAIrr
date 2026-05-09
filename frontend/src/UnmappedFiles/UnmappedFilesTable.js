@@ -48,58 +48,6 @@ const triageFilterLabels = {
   [triageFilterOptions.REVIEWED]: 'Reviewed'
 };
 
-function valueContainsSearchTerm(value, term) {
-  if (value == null) {
-    return false;
-  }
-
-  if (Array.isArray(value)) {
-    return value.some((item) => valueContainsSearchTerm(item, term));
-  }
-
-  if (typeof value === 'object') {
-    return Object.keys(value).some((key) => valueContainsSearchTerm(value[key], term));
-  }
-
-  return value.toString().toLowerCase().includes(term);
-}
-
-function getFileName(path) {
-  if (!path) {
-    return '';
-  }
-
-  return path.substring(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1);
-}
-
-function matchesSearchTerm(item, searchTerm) {
-  const term = searchTerm.trim().toLowerCase();
-
-  if (!term) {
-    return true;
-  }
-
-  const path = item.path || item.relativePath;
-  const review = item.review || {};
-
-  return [
-    path,
-    getFileName(path),
-    item.relativePath,
-    item.fileName,
-    item.parsedBookInfo,
-    item.quality,
-    item.language,
-    review.status,
-    review.reason,
-    review.reasons,
-    review.rejectionReasons,
-    review.suggestions,
-    review.candidate,
-    review.candidates
-  ].some((value) => valueContainsSearchTerm(value, term));
-}
-
 function getDeepIdentifySuggestion(item) {
   return item.review?.suggestions?.find((suggestion) => suggestion.type === 'deepAudio');
 }
@@ -201,7 +149,7 @@ class UnmappedFilesTable extends Component {
       allUnselected: false,
       lastToggled: null,
       selectedState: {},
-      searchTerm: '',
+      searchTerm: props.term || '',
       triageFilter: triageFilterOptions.NEEDS_REVIEW,
       isManualMatchModalOpen: false,
       manualMatchFolder: null
@@ -239,6 +187,12 @@ class UnmappedFilesTable extends Component {
 
     if (hasFinishedDeleting) {
       this.onSelectAllChange({ value: false });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this._searchTimeout) {
+      clearTimeout(this._searchTimeout);
     }
   }
 
@@ -321,15 +275,10 @@ class UnmappedFilesTable extends Component {
 
   getVisibleItems = () => {
     const {
-      searchTerm,
       triageFilter
     } = this.state;
 
     return this.props.items.filter((item) => {
-      if (!matchesSearchTerm(item, searchTerm)) {
-        return false;
-      }
-
       const status = item.review?.status;
       const isReviewed = item.reviewed || status === 'reviewed';
 
@@ -415,6 +364,14 @@ class UnmappedFilesTable extends Component {
 
   onSearchTermChange = (searchTerm) => {
     this.setState({ searchTerm });
+
+    if (this._searchTimeout) {
+      clearTimeout(this._searchTimeout);
+    }
+
+    this._searchTimeout = setTimeout(() => {
+      this.props.fetchUnmappedFiles(1, { term: searchTerm });
+    }, 300);
   };
 
   onRefreshPress = () => {
@@ -524,6 +481,14 @@ class UnmappedFilesTable extends Component {
     const selectedTrackFileIds = this.getSelectedIds();
     const visibleItems = this.getVisibleItems();
     const deepIdentifySummary = getDeepIdentifySummary(items, isDeepIdentifyAudioRunning);
+    let emptyStateMessage = 'Success! My work is done, all files on disk are matched to known books.';
+
+    if (items.length) {
+      emptyStateMessage = 'No loaded unmapped files match the current filter.';
+    } else if (searchTerm) {
+      emptyStateMessage = 'No unmapped files match the current search.';
+    }
+
     this._visibleItems = visibleItems;
 
     return (
@@ -596,7 +561,7 @@ class UnmappedFilesTable extends Component {
             <PageToolbarSearchInput
               name="unmappedFilesSearch"
               value={searchTerm}
-              placeholder="Filter loaded unmapped page"
+              placeholder="Search all unmapped files"
               onChange={this.onSearchTermChange}
             />
 
@@ -664,18 +629,14 @@ class UnmappedFilesTable extends Component {
           {
             isPopulated && !error && !visibleItems.length &&
               <Alert kind={kinds.INFO}>
-                {
-                  items.length ?
-                    'No unmapped files match the current search or filter.' :
-                    'Success! My work is done, all files on disk are matched to known books.'
-                }
+                {emptyStateMessage}
               </Alert>
           }
 
           {
             isPopulated && !error && !!items.length &&
               <Alert kind={kinds.INFO}>
-                This page shows {items.length} loaded unmapped files out of {totalRecords}. Select all, search, filter, sorting, and row actions apply only to this loaded page.
+                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search applies across all unmapped files. Select all, filters, sorting, and row actions apply only to this loaded page.
               </Alert>
           }
 
@@ -755,6 +716,7 @@ UnmappedFilesTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   page: PropTypes.number.isRequired,
   pageSize: PropTypes.number.isRequired,
+  term: PropTypes.string,
   totalPages: PropTypes.number.isRequired,
   totalRecords: PropTypes.number.isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,

@@ -28,6 +28,7 @@ export const defaultState = {
   isPopulated: false,
   page: 1,
   pageSize: 250,
+  term: '',
   totalRecords: 0,
   totalPages: 1,
   sortKey: 'path',
@@ -315,6 +316,7 @@ export const actionHandlers = handleThunks({
     const state = getState()[section];
     const page = sanitizePage(payload.page, state.page || defaultState.page);
     const pageSize = sanitizePage(payload.pageSize, state.pageSize || defaultState.pageSize);
+    const term = payload.term == null ? state.term || defaultState.term : payload.term;
     const refresh = payload.refresh === true;
 
     dispatch(set({ section, isFetching: true }));
@@ -324,6 +326,7 @@ export const actionHandlers = handleThunks({
       data: {
         page,
         pageSize,
+        term,
         refresh
       }
     });
@@ -334,6 +337,7 @@ export const actionHandlers = handleThunks({
         items: data.records || [],
         page: data.page,
         pageSize: data.pageSize,
+        term,
         totalRecords: data.totalRecords,
         totalPages: Math.max(Math.ceil(data.totalRecords / data.pageSize), 1),
         isFetching: false,

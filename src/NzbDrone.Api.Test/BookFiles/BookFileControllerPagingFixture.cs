@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -79,7 +80,7 @@ namespace NzbDrone.Api.Test.BookFiles
         [Test]
         public void paged_unmapped_endpoint_should_clamp_page_and_cap_page_size()
         {
-            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 500)))
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 500), null, It.IsAny<IEnumerable<int>>()))
                 .Returns(new PagingSpec<BookFile>
                 {
                     Page = 1,
@@ -107,7 +108,7 @@ namespace NzbDrone.Api.Test.BookFiles
         [Test]
         public void paged_unmapped_endpoint_should_return_page_records_and_total_count()
         {
-            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 2 && s.PageSize == 25)))
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 2 && s.PageSize == 25), null, It.IsAny<IEnumerable<int>>()))
                 .Returns(new PagingSpec<BookFile>
                 {
                     Page = 2,
@@ -137,6 +138,28 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
+        public void paged_unmapped_endpoint_should_pass_bounded_term_and_suggestion_matches_before_paging()
+        {
+            _unmappedIdentificationSuggestionService.Setup(x => x.GetBookFileIdsMatchingTerm("Kyla Stone"))
+                .Returns(new List<int> { 12, 13 });
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25), "Kyla Stone", It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 12, 13 }))))
+                .Returns(new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 25,
+                    TotalRecords = 1,
+                    Records = new List<BookFile>()
+                });
+
+            var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25 }, false, "  Kyla Stone  ");
+
+            result.Page.Should().Be(1);
+            result.PageSize.Should().Be(25);
+            result.TotalRecords.Should().Be(1);
+            _unmappedIdentificationSuggestionService.Verify(x => x.GetBookFileIdsMatchingTerm("Kyla Stone"), Times.Once);
+        }
+
+        [Test]
         public void existing_full_unmapped_endpoint_should_still_use_full_unmapped_service_path()
         {
             _mediaFileService.Setup(x => x.GetUnmappedFiles())
@@ -146,7 +169,7 @@ namespace NzbDrone.Api.Test.BookFiles
 
             result.Should().BeEmpty();
             _mediaFileService.Verify(x => x.GetUnmappedFiles(), Times.Once);
-            _mediaFileService.Verify(x => x.GetUnmappedFiles(It.IsAny<PagingSpec<BookFile>>()), Times.Never);
+            _mediaFileService.Verify(x => x.GetUnmappedFiles(It.IsAny<PagingSpec<BookFile>>(), It.IsAny<string>(), It.IsAny<IEnumerable<int>>()), Times.Never);
         }
     }
 }

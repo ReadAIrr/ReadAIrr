@@ -24,6 +24,7 @@ namespace Readarr.Api.V1.BookFiles
         List<ManualImportIdentificationSuggestionResource> QueueDeepIdentifyAudio(List<BookFileResource> resources);
         List<ManualImportIdentificationSuggestionResource> ProcessQueuedDeepIdentifyAudio(List<BookFileResource> resources);
         List<ManualImportIdentificationSuggestionResource> GetPersisted(List<BookFileResource> resources);
+        List<int> GetBookFileIdsMatchingTerm(string term);
         void Clear(List<int> bookFileIds);
     }
 
@@ -244,6 +245,11 @@ namespace Readarr.Api.V1.BookFiles
                 })
                 .Where(x => x != null)
                 .ToList();
+        }
+
+        public List<int> GetBookFileIdsMatchingTerm(string term)
+        {
+            return _suggestionRepository.GetBookFileIdsMatchingTerm(term);
         }
 
         public void Clear(List<int> bookFileIds)

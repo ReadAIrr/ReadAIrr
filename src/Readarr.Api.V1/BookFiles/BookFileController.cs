@@ -137,12 +137,13 @@ namespace Readarr.Api.V1.BookFiles
         }
 
         [HttpGet("unmapped/paged")]
-        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging, bool refresh = false)
+        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging, bool refresh = false, string term = null)
         {
             var requestedPage = paging?.Page ?? 1;
             var requestedPageSize = paging?.PageSize ?? MaxUnmappedPageSize;
             var page = global::System.Math.Max(1, requestedPage);
             var pageSize = global::System.Math.Min(MaxUnmappedPageSize, global::System.Math.Max(1, requestedPageSize));
+            term = BoundSearchTerm(term);
 
             var pagingSpec = new PagingSpec<BookFile>
             {
@@ -152,7 +153,8 @@ namespace Readarr.Api.V1.BookFiles
                 SortDirection = SortDirection.Ascending
             };
 
-            var result = _mediaFileService.GetUnmappedFiles(pagingSpec);
+            var suggestionBookFileIds = term == null ? new List<int>() : _unmappedIdentificationSuggestionService.GetBookFileIdsMatchingTerm(term);
+            var result = _mediaFileService.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds);
 
             return new PagingResource<BookFileResource>
             {
@@ -163,6 +165,18 @@ namespace Readarr.Api.V1.BookFiles
                 TotalRecords = result.TotalRecords,
                 Records = MapUnmappedToResources(result.Records, refresh, true)
             };
+        }
+
+        private static string BoundSearchTerm(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return null;
+            }
+
+            term = term.Trim();
+
+            return term.Length > 120 ? term.Substring(0, 120) : term;
         }
 
         [RestPutById]

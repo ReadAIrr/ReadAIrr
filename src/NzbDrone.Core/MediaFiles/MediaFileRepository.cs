@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NzbDrone.Common;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
@@ -15,7 +16,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
-        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec);
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null);
         List<BookFile> GetFilesWithBasePath(string path);
         List<BookFile> GetFileWithPath(List<string> paths);
         BookFile GetFileWithPath(string path);
@@ -90,7 +91,7 @@ namespace NzbDrone.Core.MediaFiles
                                               .Where<BookFile>(t => t.EditionId == 0)).ToList();
         }
 
-        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec)
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null)
         {
             var recordsBuilder = new SqlBuilder(_database.DatabaseType)
                 .Select(typeof(BookFile))
@@ -99,6 +100,24 @@ namespace NzbDrone.Core.MediaFiles
             var countBuilder = new SqlBuilder(_database.DatabaseType)
                 .SelectCount()
                 .Where<BookFile>(t => t.EditionId == 0);
+
+            term = term?.Trim();
+
+            if (term.IsNotNullOrWhiteSpace())
+            {
+                var ids = suggestionBookFileIds?.Distinct().ToList() ?? new List<int>();
+
+                if (ids.Any())
+                {
+                    recordsBuilder.Where<BookFile>(t => t.Path.Contains(term) || ids.Contains(t.Id));
+                    countBuilder.Where<BookFile>(t => t.Path.Contains(term) || ids.Contains(t.Id));
+                }
+                else
+                {
+                    recordsBuilder.Where<BookFile>(t => t.Path.Contains(term));
+                    countBuilder.Where<BookFile>(t => t.Path.Contains(term));
+                }
+            }
 
             pagingSpec.Records = GetPagedRecords(recordsBuilder, pagingSpec, builder => _database.Query<BookFile>(builder));
             pagingSpec.TotalRecords = GetPagedRecordCount(countBuilder, pagingSpec);
