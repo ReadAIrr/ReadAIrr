@@ -34,6 +34,10 @@ namespace NzbDrone.Api.Test.System
             resource.ServiceUrl.Should().Be(MetadataSourceConfig.LocalRReadingGlasses);
             resource.UpdateEndpoint.Should().Be("https://readairr.com/v1/update/{branch}");
             resource.UpdateAvailable.Should().BeFalse();
+            resource.AutomaticMetadataDecisioningEnabled.Should().BeFalse();
+            resource.ConfidenceMode.Should().Be("sourceRolesOnly");
+            resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "localRReadingGlasses" && x.Role == "primary" && x.IsActive && x.ConfidenceWeight == 100);
+            resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "aiReview" && x.Status == "disabled");
             resource.Warnings.Should().BeEmpty();
         }
 
@@ -54,7 +58,36 @@ namespace NzbDrone.Api.Test.System
 
             resource.SourceType.Should().Be("originalReadarr");
             resource.SourceLabel.Should().Contain("Original Readarr");
+            resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "originalReadarr" && x.Role == "primary" && x.IsActive);
             resource.Warnings.Should().Contain(x => x.Contains("legacy compatibility"));
+        }
+
+        [Test]
+        public void should_keep_combined_confidence_stub_inert_when_primary_source_is_unreachable()
+        {
+            var resource = MetadataServiceStatusResourceMapper.ToResource(MetadataSourceConfig.HardcoverHosted,
+                new MetadataSourceHealthResult
+                {
+                    IsHealthy = false,
+                    Message = "Metadata source returned HTTP 503",
+                    StatusCode = 503
+                },
+                null,
+                "No ReadAIrr app update is currently available.",
+                true,
+                "dev",
+                new Version(1, 0, 0));
+
+            resource.AutomaticMetadataDecisioningEnabled.Should().BeFalse();
+            resource.ConfidenceSummary.Should().Contain("matching/import behavior is unchanged");
+            resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "hostedHardcover" &&
+                                                                   x.Role == "primary" &&
+                                                                   x.IsActive &&
+                                                                   !x.IsAvailable &&
+                                                                   x.ConfidenceWeight == 0 &&
+                                                                   x.Status == "unreachable");
+            resource.ConfidenceSignals.Should().Contain(x => x.SourceType == "hostedGoodreads" && x.Status == "notEvaluated");
+            resource.ConfidenceSignals.Should().Contain(x => x.SourceType == "aiReview" && x.Status == "disabled");
         }
 
         [Test]

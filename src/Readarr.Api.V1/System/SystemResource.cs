@@ -80,8 +80,24 @@ namespace Readarr.Api.V1.System
         public string LatestVersion { get; set; }
         public DateTime? LatestReleaseDate { get; set; }
         public string UpdateCheckMessage { get; set; }
+        public string ConfidenceMode { get; set; }
+        public string ConfidenceSummary { get; set; }
+        public bool AutomaticMetadataDecisioningEnabled { get; set; }
+        public List<MetadataSourceConfidenceSignalResource> ConfidenceSignals { get; set; }
         public List<string> Warnings { get; set; }
         public List<string> Checklist { get; set; }
+    }
+
+    public class MetadataSourceConfidenceSignalResource
+    {
+        public string SourceType { get; set; }
+        public string SourceLabel { get; set; }
+        public string Role { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsAvailable { get; set; }
+        public int ConfidenceWeight { get; set; }
+        public string Status { get; set; }
+        public string Explanation { get; set; }
     }
 
     public class PostgresConfigStatusResource
@@ -257,6 +273,7 @@ namespace Readarr.Api.V1.System
             var warnings = new List<string>();
             var readinessState = healthResult.IsHealthy ? "reachable" : "blocked";
             var readinessLabel = healthResult.IsHealthy ? "Metadata service reachable" : "Metadata service unreachable";
+            var confidenceSignals = GetConfidenceSignals(sourceType, healthResult.IsHealthy);
 
             if (sourceType == "originalReadarr")
             {
@@ -293,14 +310,87 @@ namespace Readarr.Api.V1.System
                 LatestVersion = latestUpdate?.Version?.ToString(),
                 LatestReleaseDate = latestUpdate?.ReleaseDate,
                 UpdateCheckMessage = updateCheckMessage,
+                ConfidenceMode = "sourceRolesOnly",
+                ConfidenceSummary = "Confidence foundation is recording source roles only. Automatic metadata decisioning is disabled, so matching/import behavior is unchanged.",
+                AutomaticMetadataDecisioningEnabled = false,
+                ConfidenceSignals = confidenceSignals,
                 Warnings = warnings,
                 Checklist = new List<string>
                 {
                     "Keep the configured metadata source reachable from the ReadAIrr container.",
                     "Use a ReadAIrr-compatible rreading-glasses endpoint for metadata lookups.",
                     "Use ReadAIrr-owned update metadata before upgrading the app.",
+                    "Treat confidence signals as audit evidence only until an explicit metadata policy enables cross-source decisions.",
                     "Upgrade metadata services manually; this page never restarts or mutates services."
                 }
+            };
+        }
+
+        private static List<MetadataSourceConfidenceSignalResource> GetConfidenceSignals(string activeSourceType, bool activeSourceHealthy)
+        {
+            var signals = new List<MetadataSourceConfidenceSignalResource>
+            {
+                ToConfidenceSignal(activeSourceType,
+                    "primary",
+                    true,
+                    activeSourceHealthy,
+                    activeSourceHealthy ? 100 : 0,
+                    activeSourceHealthy ? "reachable" : "unreachable",
+                    "Current configured metadata source. This remains the only source used by normal metadata lookup, matching, and import decisions.")
+            };
+
+            AddReferenceSignal(signals, activeSourceType, "hostedGoodreads");
+            AddReferenceSignal(signals, activeSourceType, "hostedHardcover");
+
+            signals.Add(new MetadataSourceConfidenceSignalResource
+            {
+                SourceType = "aiReview",
+                SourceLabel = "Optional AI review",
+                Role = "futureManualReview",
+                IsActive = false,
+                IsAvailable = false,
+                ConfidenceWeight = 0,
+                Status = "disabled",
+                Explanation = "Reserved for future opt-in review suggestions. This stub never allows AI/STT evidence to auto-import or override metadata."
+            });
+
+            return signals;
+        }
+
+        private static void AddReferenceSignal(List<MetadataSourceConfidenceSignalResource> signals, string activeSourceType, string sourceType)
+        {
+            if (activeSourceType == sourceType)
+            {
+                return;
+            }
+
+            signals.Add(ToConfidenceSignal(sourceType,
+                "futureReference",
+                false,
+                false,
+                0,
+                "notEvaluated",
+                "Known ReadAIrr-compatible metadata source reserved for future cross-source confidence checks. It is not queried by this stub."));
+        }
+
+        private static MetadataSourceConfidenceSignalResource ToConfidenceSignal(string sourceType,
+                                                                                string role,
+                                                                                bool isActive,
+                                                                                bool isAvailable,
+                                                                                int confidenceWeight,
+                                                                                string status,
+                                                                                string explanation)
+        {
+            return new MetadataSourceConfidenceSignalResource
+            {
+                SourceType = sourceType,
+                SourceLabel = GetSourceLabel(sourceType),
+                Role = role,
+                IsActive = isActive,
+                IsAvailable = isAvailable,
+                ConfidenceWeight = confidenceWeight,
+                Status = status,
+                Explanation = explanation
             };
         }
 
@@ -341,6 +431,8 @@ namespace Readarr.Api.V1.System
                     return "rreading-glasses Hardcover hosted";
                 case "originalReadarr":
                     return "Original Readarr metadata compatibility";
+                case "aiReview":
+                    return "Optional AI review";
                 default:
                     return "Custom metadata service";
             }

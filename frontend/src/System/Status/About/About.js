@@ -36,6 +36,20 @@ function getMetadataReadinessKind(readinessState) {
   }
 }
 
+function getConfidenceSignalKind(status) {
+  switch (status) {
+    case 'reachable':
+      return kinds.SUCCESS;
+    case 'unreachable':
+      return kinds.WARNING;
+    case 'disabled':
+    case 'notEvaluated':
+      return kinds.INFO;
+    default:
+      return kinds.DEFAULT;
+  }
+}
+
 class About extends Component {
 
   //
@@ -300,6 +314,39 @@ class About extends Component {
                         <DescriptionListItem
                           title="Response detail"
                           data={metadataServiceStatus.healthDetail}
+                        />
+                    }
+
+                    {
+                      metadataServiceStatus.confidenceSignals?.length > 0 &&
+                        <DescriptionListItem
+                          title="Confidence foundation"
+                          data={
+                            <div>
+                              <div>{metadataServiceStatus.confidenceSummary}</div>
+
+                              <ul className={styles.list}>
+                                {
+                                  metadataServiceStatus.confidenceSignals.map((signal) => {
+                                    return (
+                                      <li key={`${signal.sourceType}-${signal.role}`}>
+                                        <Label kind={getConfidenceSignalKind(signal.status)}>
+                                          {titleCase(signal.status)}
+                                        </Label>
+                                        {' '}
+                                        {signal.sourceLabel} - {titleCase(signal.role)}
+                                        {
+                                          signal.isActive &&
+                                            `, ${signal.confidenceWeight}% active weight`
+                                        }
+                                        . {signal.explanation}
+                                      </li>
+                                    );
+                                  })
+                                }
+                              </ul>
+                            </div>
+                          }
                         />
                     }
 
