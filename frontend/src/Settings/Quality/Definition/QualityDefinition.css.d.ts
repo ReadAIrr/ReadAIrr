@@ -2,8 +2,10 @@
 // Please do not change this file!
 interface CssExports {
   'bar': string;
+  'enforceSizeLimits': string;
   'handle': string;
   'kilobitsPerSecond': string;
+  'preferenceSelect': string;
   'quality': string;
   'qualityDefinition': string;
   'sizeInput': string;

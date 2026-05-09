@@ -60,6 +60,17 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             return remoteBook;
         }
 
+        private void GivenQualitySizePreference(Quality quality, QualitySizePreference sizePreference, double? targetSize = null)
+        {
+            Mocker.GetMock<IQualityDefinitionService>()
+                  .Setup(s => s.Get(quality))
+                  .Returns(new QualityDefinition(quality)
+                  {
+                      SizePreference = sizePreference,
+                      TargetSize = targetSize
+                  });
+        }
+
         private void GivenPreferredDownloadProtocol(DownloadProtocol downloadProtocol)
         {
             Mocker.GetMock<IDelayProfileService>()
@@ -425,6 +436,71 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
 
             var qualifiedReports = Subject.PrioritizeDecisions(decisions);
             qualifiedReports.First().RemoteBook.CustomFormatScore.Should().Be(10);
+        }
+
+        [Test]
+        public void should_keep_default_size_preference_as_noop()
+        {
+            GivenQualitySizePreference(Quality.MP3, QualitySizePreference.NoPreference, 200);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 100.Kilobits());
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 200.Kilobits());
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_prefer_closest_to_quality_target_when_configured()
+        {
+            GivenQualitySizePreference(Quality.MP3, QualitySizePreference.PreferClosestToTarget, 200);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 100.Kilobits());
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 210.Kilobits());
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook2);
+        }
+
+        [Test]
+        public void should_prefer_smaller_quality_target_when_configured()
+        {
+            GivenQualitySizePreference(Quality.MP3, QualitySizePreference.PreferSmaller);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 100.Kilobits());
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 200.Kilobits());
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_not_prefer_size_target_over_quality()
+        {
+            GivenQualitySizePreference(Quality.MP3, QualitySizePreference.PreferClosestToTarget, 200);
+            GivenQualitySizePreference(Quality.FLAC, QualitySizePreference.PreferClosestToTarget, 200);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.FLAC), size: 500.Kilobits());
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 200.Kilobits());
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
         }
 
         [Test]

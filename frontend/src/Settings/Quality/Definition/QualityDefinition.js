@@ -1,7 +1,9 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import ReactSlider from 'react-slider';
+import CheckInput from 'Components/Form/CheckInput';
 import NumberInput from 'Components/Form/NumberInput';
+import SelectInput from 'Components/Form/SelectInput';
 import TextInput from 'Components/Form/TextInput';
 import Label from 'Components/Label';
 import Popover from 'Components/Tooltip/Popover';
@@ -15,6 +17,13 @@ import styles from './QualityDefinition.css';
 const MIN = 0;
 const MAX = 1500;
 const MIN_DISTANCE = 1;
+
+const sizePreferenceOptions = [
+  { key: 0, value: 'No preference' },
+  { key: 1, value: 'Prefer smaller' },
+  { key: 2, value: 'Prefer larger' },
+  { key: 3, value: 'Prefer closest to target' }
+];
 
 const slider = {
   min: MIN,
@@ -107,6 +116,18 @@ class QualityDefinition extends Component {
     });
   };
 
+  onTargetSizeChange = ({ value }) => {
+    this.props.onTargetSizeChange(getValue(value));
+  };
+
+  onSizePreferenceChange = ({ value }) => {
+    this.props.onSizePreferenceChange(value);
+  };
+
+  onEnforceSizeLimitsChange = ({ value }) => {
+    this.props.onEnforceSizeLimitsChange(value);
+  };
+
   //
   // Render
 
@@ -117,6 +138,9 @@ class QualityDefinition extends Component {
       title,
       minSize,
       maxSize,
+      enforceSizeLimits,
+      targetSize,
+      sizePreference,
       advancedSettings,
       onTitleChange
     } = this.props;
@@ -229,6 +253,41 @@ class QualityDefinition extends Component {
                   onChange={this.onMaxSizeChange}
                 />
               </div>
+
+              <div>
+                Target
+
+                <NumberInput
+                  className={styles.sizeInput}
+                  name={`${id}.target`}
+                  value={targetSize || MIN}
+                  min={MIN}
+                  max={MAX}
+                  step={0.1}
+                  isFloat={true}
+                  onChange={this.onTargetSizeChange}
+                />
+              </div>
+
+              <div>
+                <SelectInput
+                  className={styles.preferenceSelect}
+                  name={`${id}.sizePreference`}
+                  value={sizePreference}
+                  values={sizePreferenceOptions}
+                  onChange={this.onSizePreferenceChange}
+                />
+              </div>
+
+              <div className={styles.enforceSizeLimits}>
+                <CheckInput
+                  name={`${id}.enforceSizeLimits`}
+                  value={enforceSizeLimits}
+                  onChange={this.onEnforceSizeLimitsChange}
+                />
+
+                <span>Enforce bounds</span>
+              </div>
             </div>
         }
       </div>
@@ -242,9 +301,15 @@ QualityDefinition.propTypes = {
   title: PropTypes.string.isRequired,
   minSize: PropTypes.number,
   maxSize: PropTypes.number,
+  enforceSizeLimits: PropTypes.bool.isRequired,
+  targetSize: PropTypes.number,
+  sizePreference: PropTypes.number.isRequired,
   advancedSettings: PropTypes.bool.isRequired,
   onTitleChange: PropTypes.func.isRequired,
-  onSizeChange: PropTypes.func.isRequired
+  onSizeChange: PropTypes.func.isRequired,
+  onTargetSizeChange: PropTypes.func.isRequired,
+  onSizePreferenceChange: PropTypes.func.isRequired,
+  onEnforceSizeLimitsChange: PropTypes.func.isRequired
 };
 
 export default QualityDefinition;

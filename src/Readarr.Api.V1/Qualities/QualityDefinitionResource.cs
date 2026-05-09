@@ -15,6 +15,9 @@ namespace Readarr.Api.V1.Qualities
 
         public double? MinSize { get; set; }
         public double? MaxSize { get; set; }
+        public bool EnforceSizeLimits { get; set; }
+        public double? TargetSize { get; set; }
+        public QualitySizePreference SizePreference { get; set; }
     }
 
     public static class QualityDefinitionResourceMapper
@@ -33,7 +36,10 @@ namespace Readarr.Api.V1.Qualities
                 Title = model.Title,
                 Weight = model.Weight,
                 MinSize = model.MinSize,
-                MaxSize = model.MaxSize
+                MaxSize = model.MaxSize,
+                EnforceSizeLimits = model.EnforceSizeLimits,
+                TargetSize = model.TargetSize,
+                SizePreference = model.SizePreference
             };
         }
 
@@ -51,7 +57,10 @@ namespace Readarr.Api.V1.Qualities
                 Title = resource.Title,
                 Weight = resource.Weight,
                 MinSize = resource.MinSize,
-                MaxSize = resource.MaxSize
+                MaxSize = resource.MaxSize,
+                EnforceSizeLimits = resource.EnforceSizeLimits,
+                TargetSize = resource.TargetSize,
+                SizePreference = resource.SizePreference
             };
         }
 

@@ -39,6 +39,18 @@ class QualityDefinitionConnector extends Component {
     }
   };
 
+  onTargetSizeChange = (value) => {
+    this.props.setQualityDefinitionValue({ id: this.props.id, name: 'targetSize', value });
+  };
+
+  onSizePreferenceChange = (value) => {
+    this.props.setQualityDefinitionValue({ id: this.props.id, name: 'sizePreference', value });
+  };
+
+  onEnforceSizeLimitsChange = (value) => {
+    this.props.setQualityDefinitionValue({ id: this.props.id, name: 'enforceSizeLimits', value });
+  };
+
   //
   // Render
 
@@ -48,6 +60,9 @@ class QualityDefinitionConnector extends Component {
         {...this.props}
         onTitleChange={this.onTitleChange}
         onSizeChange={this.onSizeChange}
+        onTargetSizeChange={this.onTargetSizeChange}
+        onSizePreferenceChange={this.onSizePreferenceChange}
+        onEnforceSizeLimitsChange={this.onEnforceSizeLimitsChange}
       />
     );
   }
@@ -57,6 +72,9 @@ QualityDefinitionConnector.propTypes = {
   id: PropTypes.number.isRequired,
   minSize: PropTypes.number,
   maxSize: PropTypes.number,
+  enforceSizeLimits: PropTypes.bool.isRequired,
+  targetSize: PropTypes.number,
+  sizePreference: PropTypes.number.isRequired,
   setQualityDefinitionValue: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };

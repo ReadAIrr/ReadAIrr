@@ -1,4 +1,5 @@
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -21,10 +22,6 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
         public Decision IsSatisfiedBy(RemoteBook subject, SearchCriteriaBase searchCriteria)
         {
-            _logger.Debug("size restriction not implemented");
-            return Decision.Accept();
-
-            /*
             _logger.Debug("Beginning size check for: {0}", subject);
 
             var quality = subject.ParsedBookInfo.Quality.Quality;
@@ -37,7 +34,19 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
             var qualityDefinition = _qualityDefinitionService.Get(quality);
 
-            if (qualityDefinition.MinSize.HasValue)
+            if (qualityDefinition == null)
+            {
+                _logger.Debug("Quality definition is missing, skipping size check");
+                return Decision.Accept();
+            }
+
+            if (!qualityDefinition.EnforceSizeLimits)
+            {
+                _logger.Debug("Quality definition size guardrails are disabled, skipping size check");
+                return Decision.Accept();
+            }
+
+            if (qualityDefinition.MinSize.HasValue && qualityDefinition.MinSize.Value > 0)
             {
                 var minSize = qualityDefinition.MinSize.Value.Kilobits();
 
@@ -67,7 +76,6 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
             _logger.Debug("Item: {0}, meets size constraints", subject);
             return Decision.Accept();
-            */
         }
     }
 }

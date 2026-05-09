@@ -13,14 +13,16 @@ namespace NzbDrone.Core.DecisionEngine
     {
         private readonly IConfigService _configService;
         private readonly IDelayProfileService _delayProfileService;
+        private readonly IQualityDefinitionService _qualityDefinitionService;
 
         public delegate int CompareDelegate(DownloadDecision x, DownloadDecision y);
         public delegate int CompareDelegate<TSubject, TValue>(DownloadDecision x, DownloadDecision y);
 
-        public DownloadDecisionComparer(IConfigService configService, IDelayProfileService delayProfileService)
+        public DownloadDecisionComparer(IConfigService configService, IDelayProfileService delayProfileService, IQualityDefinitionService qualityDefinitionService)
         {
             _configService = configService;
             _delayProfileService = delayProfileService;
+            _qualityDefinitionService = qualityDefinitionService;
         }
 
         public int Compare(DownloadDecision x, DownloadDecision y)
@@ -29,6 +31,7 @@ namespace NzbDrone.Core.DecisionEngine
             {
                 CompareQuality,
                 CompareCustomFormatScore,
+                CompareQualitySizePreference,
                 CompareProtocol,
                 CompareIndexerPriority,
                 ComparePeersIfTorrent,
@@ -79,6 +82,43 @@ namespace NzbDrone.Core.DecisionEngine
         private int CompareCustomFormatScore(DownloadDecision x, DownloadDecision y)
         {
             return CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.CustomFormatScore);
+        }
+
+        private int CompareQualitySizePreference(DownloadDecision x, DownloadDecision y)
+        {
+            if (x.RemoteBook.ParsedBookInfo.Quality.Quality != y.RemoteBook.ParsedBookInfo.Quality.Quality)
+            {
+                return 0;
+            }
+
+            var qualityDefinition = _qualityDefinitionService.Get(x.RemoteBook.ParsedBookInfo.Quality.Quality);
+
+            if (qualityDefinition == null ||
+                qualityDefinition.SizePreference == QualitySizePreference.NoPreference ||
+                x.RemoteBook.Release.Size <= 0 ||
+                y.RemoteBook.Release.Size <= 0)
+            {
+                return 0;
+            }
+
+            if (qualityDefinition.SizePreference == QualitySizePreference.PreferSmaller)
+            {
+                return CompareByReverse(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Release.Size);
+            }
+
+            if (qualityDefinition.SizePreference == QualitySizePreference.PreferLarger)
+            {
+                return CompareBy(x.RemoteBook, y.RemoteBook, remoteBook => remoteBook.Release.Size);
+            }
+
+            if (!qualityDefinition.TargetSize.HasValue || qualityDefinition.TargetSize.Value <= 0)
+            {
+                return 0;
+            }
+
+            var targetSize = qualityDefinition.TargetSize.Value.Kilobits();
+
+            return CompareByReverse(x.RemoteBook, y.RemoteBook, remoteBook => Math.Abs(remoteBook.Release.Size - targetSize));
         }
 
         private int CompareProtocol(DownloadDecision x, DownloadDecision y)
