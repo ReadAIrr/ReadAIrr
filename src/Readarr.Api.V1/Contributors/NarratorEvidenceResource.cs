@@ -16,6 +16,12 @@ namespace Readarr.Api.V1.Contributors
         public int UnmappedFileCount { get; set; }
         public int ManualEvidenceCount { get; set; }
         public int ReviewEvidenceCount { get; set; }
+        public int ProviderEvidenceCount { get; set; }
+        public bool HasProviderConfirmedEvidence { get; set; }
+        public int? HighestConfidence { get; set; }
+        public string ConfidenceLabel { get; set; }
+        public string IdentityStatus { get; set; }
+        public string IdentityStatusReason { get; set; }
         public bool IsCanonicalIdentity { get; set; }
         public string ReviewOnlyReason { get; set; }
         public string CanonicalDisplayName { get; set; }
@@ -133,10 +139,16 @@ namespace Readarr.Api.V1.Contributors
                         }),
                         ManualEvidenceCount = ordered.Count(x => x.Source == "manual"),
                         ReviewEvidenceCount = ordered.Count(x => x.Source != "manual"),
+                        ProviderEvidenceCount = ordered.Count(IsProviderEvidence),
+                        HasProviderConfirmedEvidence = ordered.Any(IsProviderEvidence),
+                        HighestConfidence = GetHighestConfidence(ordered),
+                        ConfidenceLabel = GetConfidenceLabel(ordered),
+                        IdentityStatus = GetIdentityStatus(ordered, groupAliases),
+                        IdentityStatusReason = GetIdentityStatusReason(ordered, groupAliases),
                         IsCanonicalIdentity = groupAliases.Any(),
                         ReviewOnlyReason = groupAliases.Any() ?
-                            "Narrator identity is user-standardized from review evidence. Source evidence is preserved and no provider-confirmed metadata has been written." :
-                            "Narrator identity is currently assembled from manual, AI, or STT review evidence. It is not provider-confirmed canonical metadata yet.",
+                            "Narrator identity is user-standardized from linked evidence. Source evidence is preserved and no metadata or tags have been written automatically." :
+                            "Narrator identity is assembled from available evidence. Provider metadata only counts when the source supplies narrator-like role/name data.",
                         CanonicalDisplayName = canonicalName,
                         CanonicalNormalizedName = group.Key,
                         AliasCount = groupAliases.Count,
@@ -198,6 +210,12 @@ namespace Readarr.Api.V1.Contributors
                 UnmappedFileCount = summary.UnmappedFileCount,
                 ManualEvidenceCount = summary.ManualEvidenceCount,
                 ReviewEvidenceCount = summary.ReviewEvidenceCount,
+                ProviderEvidenceCount = summary.ProviderEvidenceCount,
+                HasProviderConfirmedEvidence = summary.HasProviderConfirmedEvidence,
+                HighestConfidence = summary.HighestConfidence,
+                ConfidenceLabel = summary.ConfidenceLabel,
+                IdentityStatus = summary.IdentityStatus,
+                IdentityStatusReason = summary.IdentityStatusReason,
                 IsCanonicalIdentity = summary.IsCanonicalIdentity,
                 ReviewOnlyReason = summary.ReviewOnlyReason,
                 CanonicalDisplayName = summary.CanonicalDisplayName,
@@ -283,6 +301,85 @@ namespace Readarr.Api.V1.Contributors
                 new NarratorEvidenceBucketCountResource { Bucket = "reviewEvidence", Label = "AI/STT review evidence", Count = evidence.Count(x => x.Source == "aiReview" || x.Source == "sttTranscript") },
                 new NarratorEvidenceBucketCountResource { Bucket = "aliases", Label = "Linked aliases", Count = aliases.Count }
             };
+        }
+
+        private static bool IsProviderEvidence(ContributorEvidence evidence)
+        {
+            return evidence.Source == "providerMetadata";
+        }
+
+        private static string GetConfidenceLabel(List<ContributorEvidence> evidence)
+        {
+            if (evidence.Any(IsProviderEvidence))
+            {
+                return "Provider-confirmed";
+            }
+
+            if (evidence.Any(x => x.Source == "manual"))
+            {
+                return "Manual evidence";
+            }
+
+            var highest = evidence.Where(x => x.Confidence.HasValue).Select(x => x.Confidence.Value).DefaultIfEmpty(0).Max();
+
+            if (highest >= 85)
+            {
+                return "High-confidence review";
+            }
+
+            if (highest >= 60)
+            {
+                return "Medium-confidence review";
+            }
+
+            return "Needs review";
+        }
+
+        private static int? GetHighestConfidence(List<ContributorEvidence> evidence)
+        {
+            var confidenceValues = evidence.Where(x => x.Confidence.HasValue).Select(x => x.Confidence.Value).ToList();
+
+            return confidenceValues.Any() ? confidenceValues.Max() : null;
+        }
+
+        private static string GetIdentityStatus(List<ContributorEvidence> evidence, List<NarratorIdentityLink> aliases)
+        {
+            if (evidence.Any(IsProviderEvidence))
+            {
+                return "Provider confirmed";
+            }
+
+            if (aliases.Any())
+            {
+                return "Linked identity";
+            }
+
+            if (evidence.Any(x => x.Source == "manual"))
+            {
+                return "Manual evidence";
+            }
+
+            return "Review evidence";
+        }
+
+        private static string GetIdentityStatusReason(List<ContributorEvidence> evidence, List<NarratorIdentityLink> aliases)
+        {
+            if (evidence.Any(IsProviderEvidence))
+            {
+                return "At least one metadata source supplied narrator-like role/name data for this identity.";
+            }
+
+            if (aliases.Any())
+            {
+                return "This identity is grouped by user-created narrator alias links.";
+            }
+
+            if (evidence.Any(x => x.Source == "manual"))
+            {
+                return "This identity includes user-entered narrator evidence.";
+            }
+
+            return "This identity is assembled from AI/STT review evidence and still needs human confirmation.";
         }
 
         private class NarratorAliasMap

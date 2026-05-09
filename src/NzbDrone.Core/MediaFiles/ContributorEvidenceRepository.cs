@@ -11,6 +11,7 @@ namespace NzbDrone.Core.MediaFiles
         List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
         List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
         PagingSpec<ContributorEvidence> GetNarratorEvidence(PagingSpec<ContributorEvidence> pagingSpec, string term, string source);
+        List<ContributorEvidence> GetNarratorEvidenceForIdentityIndex(string term, string source);
         List<ContributorEvidence> GetNarratorEvidenceByNames(IEnumerable<string> normalizedNames, string source = null);
         List<ContributorEvidence> GetRecent(int take);
         void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources);
@@ -73,6 +74,23 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return GetPaged(pagingSpec);
+        }
+
+        public List<ContributorEvidence> GetNarratorEvidenceForIdentityIndex(string term, string source)
+        {
+            var cleanTerm = term.IsNotNullOrWhiteSpace() ? term : null;
+            var cleanSource = source.IsNotNullOrWhiteSpace() ? source : null;
+
+            return Query(x => x.Role == "narrator" &&
+                              x.DisplayName != null &&
+                              x.DisplayName != string.Empty &&
+                              (cleanSource == null || x.Source == cleanSource) &&
+                              (cleanTerm == null ||
+                               x.DisplayName.Contains(cleanTerm) ||
+                               x.NormalizedName.Contains(cleanTerm) ||
+                               x.Source.Contains(cleanTerm)))
+                .OrderByDescending(x => x.Updated)
+                .ToList();
         }
 
         public List<ContributorEvidence> GetNarratorEvidenceByNames(IEnumerable<string> normalizedNames, string source = null)

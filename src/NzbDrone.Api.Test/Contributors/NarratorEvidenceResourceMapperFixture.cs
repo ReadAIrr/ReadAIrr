@@ -63,7 +63,7 @@ namespace NzbDrone.Api.Test.Contributors
             result[0].ManualEvidenceCount.Should().Be(1);
             result[0].ReviewEvidenceCount.Should().Be(1);
             result[0].IsCanonicalIdentity.Should().BeFalse();
-            result[0].ReviewOnlyReason.Should().Contain("not provider-confirmed");
+            result[0].ReviewOnlyReason.Should().Contain("Provider metadata only counts");
             result[0].SourceCounts.Should().Contain(x => x.Source == "manual" && x.Count == 1);
             result[0].SourceCounts.Should().Contain(x => x.Source == "sttTranscript" && x.Count == 1);
             result[0].BucketCounts.Should().Contain(x => x.Bucket == "manualEvidence" && x.Count == 1);
@@ -86,6 +86,29 @@ namespace NzbDrone.Api.Test.Contributors
 
             result.Should().HaveCount(1);
             result[0].DisplayName.Should().Be("Robin Voice");
+        }
+
+        [Test]
+        public void should_mark_provider_confirmed_identity_only_for_provider_narrator_evidence()
+        {
+            var now = DateTime.UtcNow;
+            var evidence = new List<ContributorEvidence>
+            {
+                new ContributorEvidence { Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "providerMetadata", Confidence = 90, Updated = now },
+                new ContributorEvidence { Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "manual", Confidence = 100, Updated = now.AddMinutes(-1) },
+                new ContributorEvidence { Role = "author", DisplayName = "Wrong Role", NormalizedName = "wrongrole", Source = "providerMetadata", Confidence = 99, Updated = now }
+            };
+
+            var result = NarratorEvidenceResourceMapper.ToResource(evidence, new List<BookFile>());
+
+            result.Should().ContainSingle();
+            result[0].HasProviderConfirmedEvidence.Should().BeTrue();
+            result[0].ProviderEvidenceCount.Should().Be(1);
+            result[0].IdentityStatus.Should().Be("Provider confirmed");
+            result[0].IdentityStatusReason.Should().Contain("narrator-like role/name");
+            result[0].ConfidenceLabel.Should().Be("Provider-confirmed");
+            result[0].HighestConfidence.Should().Be(100);
+            result[0].ReviewOnlyReason.Should().Contain("Provider metadata only counts");
         }
 
         [Test]

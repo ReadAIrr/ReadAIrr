@@ -6,6 +6,7 @@ interface CssExports {
   'aliasPanel': string;
   'aliasSuggestion': string;
   'aliasSuggestionMeta': string;
+  'confidenceBadge': string;
   'detailPanel': string;
   'detailTitle': string;
   'emptyMessage': string;
@@ -13,6 +14,7 @@ interface CssExports {
   'examples': string;
   'filterButtons': string;
   'identityNote': string;
+  'identityStatus': string;
   'loadMore': string;
   'narratorHeader': string;
   'narratorList': string;
@@ -21,6 +23,8 @@ interface CssExports {
   'narratorRow': string;
   'narratorStat': string;
   'narratorStats': string;
+  'providerBadge': string;
+  'reviewBadge': string;
   'rowActions': string;
   'sourceCount': string;
   'sourceCounts': string;

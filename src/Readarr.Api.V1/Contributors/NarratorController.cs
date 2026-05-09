@@ -27,14 +27,7 @@ namespace Readarr.Api.V1.Contributors
         [HttpGet]
         public List<NarratorEvidenceResource> GetNarratorEvidence([FromQuery] string term = null, [FromQuery] string source = null)
         {
-            var pagingSpec = new PagingSpec<ContributorEvidence>
-            {
-                Page = 1,
-                PageSize = 500,
-                SortKey = "updated",
-                SortDirection = SortDirection.Descending
-            };
-            var evidence = _contributorEvidenceRepository.GetNarratorEvidence(pagingSpec, term?.Trim(), source?.Trim()).Records;
+            var evidence = _contributorEvidenceRepository.GetNarratorEvidenceForIdentityIndex(term?.Trim(), source?.Trim());
             var aliases = _narratorIdentityLinkRepository.All().ToList();
             var bookFileIds = evidence.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
             var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
@@ -46,28 +39,24 @@ namespace Readarr.Api.V1.Contributors
         public PagingResource<NarratorEvidenceResource> GetNarratorEvidencePaged([FromQuery] PagingRequestResource paging, [FromQuery] string term = null, [FromQuery] string source = null)
         {
             var pagingResource = new PagingResource<NarratorEvidenceResource>(paging);
-            var pagingSpec = new PagingSpec<ContributorEvidence>
-            {
-                Page = pagingResource.Page,
-                PageSize = pagingResource.PageSize,
-                SortKey = pagingResource.SortKey ?? "updated",
-                SortDirection = pagingResource.SortDirection == SortDirection.Default ? SortDirection.Descending : pagingResource.SortDirection
-            };
-
-            pagingSpec = _contributorEvidenceRepository.GetNarratorEvidence(pagingSpec, term?.Trim(), source?.Trim());
-
+            var evidence = _contributorEvidenceRepository.GetNarratorEvidenceForIdentityIndex(term?.Trim(), source?.Trim());
             var aliases = _narratorIdentityLinkRepository.All().ToList();
-            var bookFileIds = pagingSpec.Records.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
+            var bookFileIds = evidence.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
             var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
+            var resources = NarratorEvidenceResourceMapper.ToResource(evidence, bookFiles, aliases, term?.Trim(), source?.Trim());
+            var sortDirection = pagingResource.SortKey.IsNullOrWhiteSpace() || pagingResource.SortDirection == SortDirection.Default ? SortDirection.Ascending : pagingResource.SortDirection;
+            var sorted = SortNarrators(resources, pagingResource.SortKey, sortDirection).ToList();
+            var page = pagingResource.Page <= 0 ? 1 : pagingResource.Page;
+            var pageSize = pagingResource.PageSize <= 0 ? 50 : pagingResource.PageSize;
 
             return new PagingResource<NarratorEvidenceResource>
             {
-                Page = pagingSpec.Page,
-                PageSize = pagingSpec.PageSize,
-                SortKey = pagingSpec.SortKey,
-                SortDirection = pagingSpec.SortDirection,
-                TotalRecords = pagingSpec.TotalRecords,
-                Records = NarratorEvidenceResourceMapper.ToResource(pagingSpec.Records, bookFiles, aliases, term?.Trim(), source?.Trim())
+                Page = page,
+                PageSize = pageSize,
+                SortKey = pagingResource.SortKey ?? "displayName",
+                SortDirection = sortDirection,
+                TotalRecords = sorted.Count,
+                Records = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList()
             };
         }
 
@@ -135,6 +124,20 @@ namespace Readarr.Api.V1.Contributors
         public void UnlinkNarratorIdentity(int id)
         {
             _narratorIdentityLinkRepository.Delete(id);
+        }
+
+        private static IEnumerable<NarratorEvidenceResource> SortNarrators(List<NarratorEvidenceResource> resources, string sortKey, SortDirection sortDirection)
+        {
+            var descending = sortDirection == SortDirection.Descending;
+
+            return (sortKey ?? "displayName") switch
+            {
+                "evidenceCount" => descending ? resources.OrderByDescending(x => x.EvidenceCount) : resources.OrderBy(x => x.EvidenceCount),
+                "workCount" => descending ? resources.OrderByDescending(x => x.WorkCount) : resources.OrderBy(x => x.WorkCount),
+                "latestUpdated" or "updated" => descending ? resources.OrderByDescending(x => x.LatestUpdated) : resources.OrderBy(x => x.LatestUpdated),
+                "providerEvidenceCount" => descending ? resources.OrderByDescending(x => x.ProviderEvidenceCount) : resources.OrderBy(x => x.ProviderEvidenceCount),
+                _ => descending ? resources.OrderByDescending(x => x.DisplayName) : resources.OrderBy(x => x.DisplayName)
+            };
         }
     }
 }

@@ -71,6 +71,23 @@ function SourceCounts({ sourceCounts }) {
   );
 }
 
+function IdentityStatus({ item }) {
+  return (
+    <div className={styles.identityStatus}>
+      <span className={item.hasProviderConfirmedEvidence ? styles.providerBadge : styles.reviewBadge}>
+        {item.identityStatus || 'Review evidence'}
+      </span>
+
+      {
+        item.confidenceLabel &&
+          <span className={styles.confidenceBadge}>
+            {item.confidenceLabel}{item.highestConfidence == null ? '' : ` · ${item.highestConfidence}%`}
+          </span>
+      }
+    </div>
+  );
+}
+
 function BucketCounts({ bucketCounts }) {
   if (!bucketCounts?.length) {
     return null;
@@ -127,6 +144,10 @@ NarratorStats.propTypes = {
 
 SourceCounts.propTypes = {
   sourceCounts: PropTypes.arrayOf(PropTypes.object).isRequired
+};
+
+IdentityStatus.propTypes = {
+  item: PropTypes.object.isRequired
 };
 
 BucketCounts.propTypes = {
@@ -244,6 +265,15 @@ function NarratorDetailPanel({
       <div className={styles.identityNote}>
         {detail.reviewOnlyReason}
       </div>
+
+      <IdentityStatus item={detail} />
+
+      {
+        detail.identityStatusReason &&
+          <div className={styles.identityNote}>
+            {detail.identityStatusReason}
+          </div>
+      }
 
       <NarratorStats item={detail} />
       <BucketCounts bucketCounts={detail.bucketCounts} />
@@ -808,7 +838,7 @@ class NarratorEvidenceIndex extends Component {
 
         <PageContentBody>
           <Alert kind={kinds.INFO}>
-            Narrators are shown from review evidence only. This is not canonical provider-confirmed metadata yet.
+            Narrators are grouped by identity from manual, provider, STT, and AI review evidence. Provider confirmation is shown only when metadata supplied narrator-like role/name data; this page does not write tags or metadata.
           </Alert>
 
           <div className={styles.filterButtons}>
@@ -865,6 +895,8 @@ class NarratorEvidenceIndex extends Component {
                             <div className={styles.narratorMeta}>
                               {item.evidenceCount} evidence item{item.evidenceCount === 1 ? '' : 's'}
                             </div>
+
+                            <IdentityStatus item={item} />
                           </div>
 
                           <SourceCounts sourceCounts={item.sourceCounts || []} />
@@ -873,6 +905,13 @@ class NarratorEvidenceIndex extends Component {
                         <div className={styles.identityNote}>
                           {item.reviewOnlyReason}
                         </div>
+
+                        {
+                          item.identityStatusReason &&
+                            <div className={styles.identityNote}>
+                              {item.identityStatusReason}
+                            </div>
+                        }
 
                         <NarratorStats item={item} />
                         <BucketCounts bucketCounts={item.bucketCounts} />

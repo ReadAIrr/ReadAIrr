@@ -37,14 +37,7 @@ namespace NzbDrone.Api.Test.Contributors
         [Test]
         public void paged_list_should_use_query_scoped_narrator_evidence_read()
         {
-            var evidence = new PagingSpec<ContributorEvidence>
-            {
-                Page = 2,
-                PageSize = 25,
-                SortKey = "updated",
-                SortDirection = SortDirection.Descending,
-                TotalRecords = 40,
-                Records = new List<ContributorEvidence>
+            var evidence = new List<ContributorEvidence>
                 {
                     new ContributorEvidence
                     {
@@ -56,10 +49,9 @@ namespace NzbDrone.Api.Test.Contributors
                         Source = "manual",
                         Updated = DateTime.UtcNow
                     }
-                }
-            };
+                };
 
-            _contributorEvidenceRepository.Setup(x => x.GetNarratorEvidence(It.IsAny<PagingSpec<ContributorEvidence>>(), "jane", "manual"))
+            _contributorEvidenceRepository.Setup(x => x.GetNarratorEvidenceForIdentityIndex("jane", "manual"))
                 .Returns(evidence);
             _narratorIdentityLinkRepository.Setup(x => x.All())
                 .Returns(new List<NarratorIdentityLink>().AsQueryable());
@@ -70,10 +62,35 @@ namespace NzbDrone.Api.Test.Contributors
 
             result.Page.Should().Be(2);
             result.PageSize.Should().Be(25);
-            result.TotalRecords.Should().Be(40);
-            result.Records.Should().ContainSingle(x => x.DisplayName == "Jane Reader");
+            result.TotalRecords.Should().Be(1);
+            result.Records.Should().BeEmpty();
             _contributorEvidenceRepository.Verify(x => x.All(), Times.Never);
-            _contributorEvidenceRepository.Verify(x => x.GetNarratorEvidence(It.Is<PagingSpec<ContributorEvidence>>(p => p.Page == 2 && p.PageSize == 25), "jane", "manual"), Times.Once);
+            _contributorEvidenceRepository.Verify(x => x.GetNarratorEvidenceForIdentityIndex("jane", "manual"), Times.Once);
+        }
+
+        [Test]
+        public void paged_list_should_page_grouped_narrator_identities_not_raw_evidence_rows()
+        {
+            var now = DateTime.UtcNow;
+            var evidence = new List<ContributorEvidence>
+            {
+                new ContributorEvidence { Id = 1, Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "manual", Updated = now },
+                new ContributorEvidence { Id = 2, Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "sttTranscript", Updated = now.AddMinutes(-1) },
+                new ContributorEvidence { Id = 3, Role = "narrator", DisplayName = "Robin Voice", NormalizedName = "robinvoice", Source = "providerMetadata", Updated = now.AddMinutes(-2) }
+            };
+
+            _contributorEvidenceRepository.Setup(x => x.GetNarratorEvidenceForIdentityIndex(null, null))
+                .Returns(evidence);
+            _narratorIdentityLinkRepository.Setup(x => x.All())
+                .Returns(new List<NarratorIdentityLink>().AsQueryable());
+
+            var result = _subject.GetNarratorEvidencePaged(new PagingRequestResource { Page = 1, PageSize = 1 }, null, null);
+
+            result.TotalRecords.Should().Be(2);
+            result.Records.Should().ContainSingle();
+            result.Records[0].DisplayName.Should().Be("Jane Reader");
+            result.Records[0].EvidenceCount.Should().Be(2);
+            result.Records[0].HasProviderConfirmedEvidence.Should().BeFalse();
         }
 
         [Test]

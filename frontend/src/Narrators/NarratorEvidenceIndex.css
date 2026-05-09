@@ -46,6 +46,32 @@
   font-size: 12px;
 }
 
+.identityStatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.providerBadge,
+.reviewBadge,
+.confidenceBadge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.providerBadge {
+  border: 1px solid var(--successColor);
+  color: var(--successColor);
+}
+
+.reviewBadge,
+.confidenceBadge {
+  border: 1px solid var(--borderColor);
+  color: var(--textSecondaryColor);
+}
+
 .narratorStats {
   display: flex;
   flex-wrap: wrap;
