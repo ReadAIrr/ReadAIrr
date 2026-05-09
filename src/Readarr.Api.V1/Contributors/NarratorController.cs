@@ -76,6 +76,11 @@ namespace Readarr.Api.V1.Contributors
             }
 
             var existing = _narratorIdentityLinkRepository.FindByAlias(aliasNormalizedName);
+            if (existing != null)
+            {
+                return BadRequest("This narrator identity is already linked. Unlink it before creating a different link.");
+            }
+
             var model = existing ?? new NarratorIdentityLink();
             model.CanonicalName = canonicalName;
             model.CanonicalNormalizedName = canonicalNormalizedName;
@@ -84,9 +89,7 @@ namespace Readarr.Api.V1.Contributors
             model.RelationshipType = resource.RelationshipType.IsNotNullOrWhiteSpace() ? resource.RelationshipType.Trim() : "alias";
             model.DisplayPreference = resource.DisplayPreference.IsNotNullOrWhiteSpace() ? resource.DisplayPreference.Trim() : "canonical";
 
-            return existing == null ?
-                _narratorIdentityLinkRepository.Insert(model).ToResource() :
-                _narratorIdentityLinkRepository.Update(model).ToResource();
+            return _narratorIdentityLinkRepository.Insert(model).ToResource();
         }
 
         [HttpDelete("aliases/{id:int}")]

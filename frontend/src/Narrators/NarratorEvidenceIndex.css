@@ -137,6 +137,15 @@
   min-width: 240px;
 }
 
+.aliasSuggestion {
+  line-height: 1.3;
+}
+
+.aliasSuggestionMeta {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
 .workRow {
   padding: 8px;
   border: 1px solid var(--borderColor);

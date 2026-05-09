@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
-import TextInput from 'Components/Form/TextInput';
+import AutoSuggestInput from 'Components/Form/AutoSuggestInput';
+import SelectInput from 'Components/Form/SelectInput';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -20,6 +21,20 @@ const SOURCE_FILTERS = [
   { key: 'aiReview', label: 'AI Review' },
   { key: 'sttTranscript', label: 'STT transcript' }
 ];
+
+const RELATIONSHIP_TYPE_OPTIONS = [
+  { key: 'alias', value: 'Alias' }
+];
+
+const DISPLAY_PREFERENCE_OPTIONS = [
+  { key: 'canonical', value: 'Preferred name' },
+  { key: 'alias', value: 'Evidence name' },
+  { key: 'both', value: 'Both' }
+];
+
+function normalizeName(value) {
+  return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
 
 function getSourceLabel(source) {
   switch (source) {
@@ -154,9 +169,19 @@ function NarratorDetailPanel({
   isFetching,
   error,
   aliasCanonicalName,
+  aliasCanonicalNormalizedName,
+  aliasRelationshipType,
+  aliasDisplayPreference,
+  aliasSuggestions,
+  aliasValidationMessage,
   isSavingAlias,
   aliasError,
   onAliasCanonicalNameChange,
+  onAliasSuggestionsFetchRequested,
+  onAliasSuggestionsClearRequested,
+  onAliasSuggestionSelected,
+  onAliasRelationshipTypeChange,
+  onAliasDisplayPreferenceChange,
   onSaveAliasPress,
   onDeleteAliasPress
 }) {
@@ -198,7 +223,7 @@ function NarratorDetailPanel({
         </div>
 
         <div className={styles.identityNote}>
-          Link this narrator evidence name to a preferred display name. This only changes narrator evidence grouping and can be reversed.
+          Link this narrator evidence name to an existing preferred narrator identity. This only changes narrator evidence grouping and can be reversed.
         </div>
 
         {
@@ -225,26 +250,63 @@ function NarratorDetailPanel({
         }
 
         <div className={styles.aliasEditor}>
-          <TextInput
+          <AutoSuggestInput
             name="aliasCanonicalName"
             value={aliasCanonicalName}
-            placeholder="Preferred narrator name"
+            placeholder="Search existing narrator identity"
+            suggestions={aliasSuggestions}
+            getSuggestionValue={(item) => item.displayName}
+            renderSuggestion={(item) => {
+              return (
+                <div className={styles.aliasSuggestion}>
+                  <div>{item.displayName}</div>
+                  <div className={styles.aliasSuggestionMeta}>
+                    {item.evidenceCount} evidence item{item.evidenceCount === 1 ? '' : 's'} · {item.workCount} work{item.workCount === 1 ? '' : 's'}
+                  </div>
+                </div>
+              );
+            }}
             onChange={onAliasCanonicalNameChange}
+            onInputBlur={() => {}}
+            onSuggestionsFetchRequested={onAliasSuggestionsFetchRequested}
+            onSuggestionsClearRequested={onAliasSuggestionsClearRequested}
+            onSuggestionSelected={onAliasSuggestionSelected}
+          />
+
+          <SelectInput
+            name="aliasRelationshipType"
+            value={aliasRelationshipType}
+            values={RELATIONSHIP_TYPE_OPTIONS}
+            onChange={onAliasRelationshipTypeChange}
+          />
+
+          <SelectInput
+            name="aliasDisplayPreference"
+            value={aliasDisplayPreference}
+            values={DISPLAY_PREFERENCE_OPTIONS}
+            onChange={onAliasDisplayPreferenceChange}
           />
 
           <Button
             kind={kinds.PRIMARY}
-            isDisabled={isSavingAlias || !aliasCanonicalName || aliasCanonicalName === detail.displayName}
+            isDisabled={isSavingAlias || !aliasCanonicalNormalizedName}
             onPress={onSaveAliasPress}
           >
-            Standardize Current Name
+            Link to Selected Narrator
           </Button>
         </div>
 
         {
+          aliasValidationMessage &&
+            <Alert kind={kinds.WARNING}>
+              {aliasValidationMessage}
+            </Alert>
+        }
+
+        {
           aliasError &&
             <Alert kind={kinds.DANGER}>
-              Unable to save narrator alias.
+              {aliasError.responseJSON?.message || aliasError.responseText || 'Unable to save narrator alias.'}
             </Alert>
         }
       </div>
@@ -302,9 +364,19 @@ NarratorDetailPanel.propTypes = {
   error: PropTypes.object,
   isFetching: PropTypes.bool.isRequired,
   aliasCanonicalName: PropTypes.string.isRequired,
+  aliasCanonicalNormalizedName: PropTypes.string.isRequired,
+  aliasRelationshipType: PropTypes.string.isRequired,
+  aliasDisplayPreference: PropTypes.string.isRequired,
+  aliasSuggestions: PropTypes.arrayOf(PropTypes.object).isRequired,
+  aliasValidationMessage: PropTypes.string,
   isSavingAlias: PropTypes.bool.isRequired,
   aliasError: PropTypes.object,
   onAliasCanonicalNameChange: PropTypes.func.isRequired,
+  onAliasSuggestionsFetchRequested: PropTypes.func.isRequired,
+  onAliasSuggestionsClearRequested: PropTypes.func.isRequired,
+  onAliasSuggestionSelected: PropTypes.func.isRequired,
+  onAliasRelationshipTypeChange: PropTypes.func.isRequired,
+  onAliasDisplayPreferenceChange: PropTypes.func.isRequired,
   onSaveAliasPress: PropTypes.func.isRequired,
   onDeleteAliasPress: PropTypes.func.isRequired
 };
@@ -317,6 +389,7 @@ class NarratorEvidenceIndex extends Component {
       isFetching: true,
       error: null,
       items: [],
+      narratorOptions: [],
       searchTerm: '',
       source: '',
       selectedNarrator: null,
@@ -324,6 +397,11 @@ class NarratorEvidenceIndex extends Component {
       detailError: null,
       detail: null,
       aliasCanonicalName: '',
+      aliasCanonicalNormalizedName: '',
+      aliasRelationshipType: 'alias',
+      aliasDisplayPreference: 'canonical',
+      aliasSuggestions: [],
+      aliasValidationMessage: '',
       isSavingAlias: false,
       aliasError: null
     };
@@ -334,6 +412,7 @@ class NarratorEvidenceIndex extends Component {
 
   componentDidMount() {
     this.fetchNarrators();
+    this.fetchNarratorOptions();
   }
 
   componentWillUnmount() {
@@ -383,6 +462,18 @@ class NarratorEvidenceIndex extends Component {
       this.setState({
         isFetching: false,
         error: xhr.aborted ? null : xhr
+      });
+    });
+  };
+
+  fetchNarratorOptions = () => {
+    const { request } = createAjaxRequest({
+      url: '/narrator'
+    });
+
+    request.done((narratorOptions) => {
+      this.setState({
+        narratorOptions
       });
     });
   };
@@ -441,7 +532,13 @@ class NarratorEvidenceIndex extends Component {
         isFetchingDetail: false,
         detailError: null,
         detail,
-        aliasCanonicalName: detail.canonicalDisplayName || detail.displayName || ''
+        aliasCanonicalName: '',
+        aliasCanonicalNormalizedName: '',
+        aliasRelationshipType: 'alias',
+        aliasDisplayPreference: 'canonical',
+        aliasSuggestions: [],
+        aliasValidationMessage: '',
+        aliasError: null
       });
     });
 
@@ -454,19 +551,90 @@ class NarratorEvidenceIndex extends Component {
   };
 
   onAliasCanonicalNameChange = ({ value }) => {
+    const {
+      aliasCanonicalNormalizedName,
+      narratorOptions
+    } = this.state;
+
+    const selected = narratorOptions.find((item) => item.normalizedName === aliasCanonicalNormalizedName);
+
     this.setState({
       aliasCanonicalName: value,
+      aliasCanonicalNormalizedName: selected?.displayName === value ? aliasCanonicalNormalizedName : '',
+      aliasValidationMessage: '',
       aliasError: null
     });
+  };
+
+  onAliasSuggestionsFetchRequested = ({ value }) => {
+    const {
+      detail,
+      narratorOptions
+    } = this.state;
+
+    const normalizedValue = normalizeName(value);
+    const currentNormalizedName = detail?.normalizedName;
+
+    const aliasSuggestions = narratorOptions
+      .filter((item) => {
+        return item.normalizedName !== currentNormalizedName &&
+          item.displayName !== detail?.displayName &&
+          (
+            !normalizedValue ||
+            normalizeName(item.displayName).includes(normalizedValue) ||
+            normalizeName(item.canonicalDisplayName).includes(normalizedValue)
+          );
+      })
+      .slice(0, 12);
+
+    this.setState({ aliasSuggestions });
+  };
+
+  onAliasSuggestionsClearRequested = () => {
+    this.setState({ aliasSuggestions: [] });
+  };
+
+  onAliasSuggestionSelected = (event, { suggestion }) => {
+    this.setState({
+      aliasCanonicalName: suggestion.displayName,
+      aliasCanonicalNormalizedName: suggestion.normalizedName,
+      aliasValidationMessage: '',
+      aliasError: null
+    });
+  };
+
+  onAliasRelationshipTypeChange = ({ value }) => {
+    this.setState({ aliasRelationshipType: value });
+  };
+
+  onAliasDisplayPreferenceChange = ({ value }) => {
+    this.setState({ aliasDisplayPreference: value });
   };
 
   onSaveAliasPress = () => {
     const {
       aliasCanonicalName,
+      aliasCanonicalNormalizedName,
+      aliasRelationshipType,
+      aliasDisplayPreference,
       detail
     } = this.state;
 
-    if (!detail || !aliasCanonicalName || aliasCanonicalName === detail.displayName) {
+    if (!detail) {
+      return;
+    }
+
+    if (!aliasCanonicalNormalizedName) {
+      this.setState({
+        aliasValidationMessage: 'Select an existing narrator from the picker before linking.'
+      });
+      return;
+    }
+
+    if (aliasCanonicalNormalizedName === detail.normalizedName) {
+      this.setState({
+        aliasValidationMessage: 'A narrator identity cannot be linked to itself.'
+      });
       return;
     }
 
@@ -482,8 +650,8 @@ class NarratorEvidenceIndex extends Component {
       data: JSON.stringify({
         canonicalName: aliasCanonicalName,
         aliasName: detail.displayName,
-        relationshipType: 'alias',
-        displayPreference: 'canonical'
+        relationshipType: aliasRelationshipType,
+        displayPreference: aliasDisplayPreference
       })
     });
 
@@ -494,6 +662,7 @@ class NarratorEvidenceIndex extends Component {
         detail: null
       }, () => {
         this.fetchNarrators();
+        this.fetchNarratorOptions();
         this.onDetailPress(alias.canonicalNormalizedName);
       });
     });
@@ -528,6 +697,7 @@ class NarratorEvidenceIndex extends Component {
         detail: null
       }, () => {
         this.fetchNarrators();
+        this.fetchNarratorOptions();
 
         if (detail?.normalizedName) {
           this.onDetailPress(detail.normalizedName);
@@ -555,6 +725,11 @@ class NarratorEvidenceIndex extends Component {
       detailError,
       detail,
       aliasCanonicalName,
+      aliasCanonicalNormalizedName,
+      aliasRelationshipType,
+      aliasDisplayPreference,
+      aliasSuggestions,
+      aliasValidationMessage,
       isSavingAlias,
       aliasError
     } = this.state;
@@ -666,9 +841,19 @@ class NarratorEvidenceIndex extends Component {
                               error={detailError}
                               isFetching={isFetchingDetail}
                               aliasCanonicalName={aliasCanonicalName}
+                              aliasCanonicalNormalizedName={aliasCanonicalNormalizedName}
+                              aliasRelationshipType={aliasRelationshipType}
+                              aliasDisplayPreference={aliasDisplayPreference}
+                              aliasSuggestions={aliasSuggestions}
+                              aliasValidationMessage={aliasValidationMessage}
                               isSavingAlias={isSavingAlias}
                               aliasError={aliasError}
                               onAliasCanonicalNameChange={this.onAliasCanonicalNameChange}
+                              onAliasSuggestionsFetchRequested={this.onAliasSuggestionsFetchRequested}
+                              onAliasSuggestionsClearRequested={this.onAliasSuggestionsClearRequested}
+                              onAliasSuggestionSelected={this.onAliasSuggestionSelected}
+                              onAliasRelationshipTypeChange={this.onAliasRelationshipTypeChange}
+                              onAliasDisplayPreferenceChange={this.onAliasDisplayPreferenceChange}
                               onSaveAliasPress={this.onSaveAliasPress}
                               onDeleteAliasPress={this.onDeleteAliasPress}
                             />

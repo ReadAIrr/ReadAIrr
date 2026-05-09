@@ -4,6 +4,8 @@ interface CssExports {
   'aliasEditor': string;
   'aliasList': string;
   'aliasPanel': string;
+  'aliasSuggestion': string;
+  'aliasSuggestionMeta': string;
   'detailPanel': string;
   'detailTitle': string;
   'emptyMessage': string;
