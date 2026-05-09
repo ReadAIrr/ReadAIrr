@@ -129,6 +129,8 @@ class RetagPreviewModalContent extends Component {
                           id={item.bookFileId}
                           path={item.path}
                           changes={item.changes}
+                          isBlocked={item.isBlocked}
+                          status={item.status}
                           isSelected={selectedState[item.bookFileId]}
                           onSelectedChange={this.onSelectedChange}
                         />

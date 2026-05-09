@@ -18,3 +18,8 @@
 .path {
   margin-left: 10px;
 }
+
+.warning {
+  color: var(--warningColor);
+  font-weight: bold;
+}

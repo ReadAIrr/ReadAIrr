@@ -19,6 +19,8 @@ namespace Readarr.Api.V1.Books
         public int BookFileId { get; set; }
         public string Path { get; set; }
         public List<TagDifference> Changes { get; set; }
+        public bool IsBlocked { get; set; }
+        public string Status { get; set; }
     }
 
     public static class RetagTrackResourceMapper
@@ -37,6 +39,8 @@ namespace Readarr.Api.V1.Books
                 TrackNumbers = model.TrackNumbers.ToList(),
                 BookFileId = model.BookFileId,
                 Path = model.Path,
+                IsBlocked = model.IsBlocked,
+                Status = model.Status,
                 Changes = model.Changes.Select(x => new TagDifference
                 {
                     Field = x.Key,

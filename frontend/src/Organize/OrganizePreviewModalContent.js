@@ -134,6 +134,8 @@ class OrganizePreviewModalContent extends Component {
                           id={item.bookFileId}
                           existingPath={item.existingPath}
                           newPath={item.newPath}
+                          isBlocked={item.isBlocked}
+                          status={item.status}
                           isSelected={selectedState[item.bookFileId]}
                           onSelectedChange={this.onSelectedChange}
                         />

@@ -10,5 +10,7 @@ namespace NzbDrone.Core.MediaFiles
         public int BookFileId { get; set; }
         public string ExistingPath { get; set; }
         public string NewPath { get; set; }
+        public bool IsBlocked { get; set; }
+        public string Status { get; set; }
     }
 }

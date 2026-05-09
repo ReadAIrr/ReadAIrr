@@ -5,6 +5,8 @@ interface CssExports {
   'path': string;
   'row': string;
   'selectedContainer': string;
+  'warning': string;
+  'warningText': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

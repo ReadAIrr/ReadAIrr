@@ -9,6 +9,7 @@ using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaFiles
 {
@@ -107,6 +108,26 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMediaFileService>()
                   .Verify(v => v.Update(It.IsAny<BookFile>()), Times.Exactly(2));
+        }
+
+        [Test]
+        public void should_not_rename_incomplete_multi_file_audiobook_sets()
+        {
+            GivenTrackFiles();
+
+            Mocker.GetMock<IMultiFileBookFileCompletenessService>()
+                  .Setup(s => s.GetIssue(It.IsAny<List<BookFile>>()))
+                  .Returns(MultiFileBookFileCompletenessIssue.FromMessage("Incomplete audiobook part set"));
+
+            Subject.Execute(new RenameFilesCommand(_author.Id, new List<int> { 1 }));
+
+            Mocker.GetMock<IMoveBookFiles>()
+                  .Verify(v => v.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<Author>()), Times.Never());
+
+            Mocker.GetMock<IMediaFileService>()
+                  .Verify(v => v.Update(It.IsAny<BookFile>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(2);
         }
 
         [Test]

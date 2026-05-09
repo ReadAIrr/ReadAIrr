@@ -11,5 +11,7 @@ namespace NzbDrone.Core.MediaFiles
         public int BookFileId { get; set; }
         public string Path { get; set; }
         public Dictionary<string, Tuple<string, string>> Changes { get; set; }
+        public bool IsBlocked { get; set; }
+        public string Status { get; set; }
     }
 }

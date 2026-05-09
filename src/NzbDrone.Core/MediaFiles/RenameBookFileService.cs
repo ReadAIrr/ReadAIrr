@@ -29,6 +29,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IEventAggregator _eventAggregator;
         private readonly IBuildFileNames _filenameBuilder;
         private readonly IDiskProvider _diskProvider;
+        private readonly IMultiFileBookFileCompletenessService _multiFileCompletenessService;
         private readonly Logger _logger;
 
         public RenameBookFileService(IAuthorService authorService,
@@ -37,6 +38,7 @@ namespace NzbDrone.Core.MediaFiles
                                         IEventAggregator eventAggregator,
                                         IBuildFileNames filenameBuilder,
                                         IDiskProvider diskProvider,
+                                        IMultiFileBookFileCompletenessService multiFileCompletenessService,
                                         Logger logger)
         {
             _authorService = authorService;
@@ -45,6 +47,7 @@ namespace NzbDrone.Core.MediaFiles
             _eventAggregator = eventAggregator;
             _filenameBuilder = filenameBuilder;
             _diskProvider = diskProvider;
+            _multiFileCompletenessService = multiFileCompletenessService;
             _logger = logger;
         }
 
@@ -73,11 +76,30 @@ namespace NzbDrone.Core.MediaFiles
         private IEnumerable<RenameBookFilePreview> GetPreviews(Author author, List<BookFile> files)
         {
             var counts = files.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => g.Count());
+            var completenessIssues = files.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => _multiFileCompletenessService.GetIssue(g.ToList()));
 
             // Don't rename Calibre files
             foreach (var f in files.Where(x => x.CalibreId == 0))
             {
                 var file = f;
+                var completenessIssue = completenessIssues[file.EditionId];
+
+                if (completenessIssue != null)
+                {
+                    yield return new RenameBookFilePreview
+                    {
+                        AuthorId = author.Id,
+                        BookId = file.Edition.Value?.Id ?? 0,
+                        BookFileId = file.Id,
+                        ExistingPath = file.Path,
+                        NewPath = file.Path,
+                        IsBlocked = true,
+                        Status = completenessIssue.Message
+                    };
+
+                    continue;
+                }
+
                 file.PartCount = counts[file.EditionId];
 
                 var book = file.Edition.Value;
@@ -115,12 +137,20 @@ namespace NzbDrone.Core.MediaFiles
         {
             var allFiles = _mediaFileService.GetFilesByAuthor(author.Id);
             var counts = allFiles.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => g.Count());
+            var completenessIssues = allFiles.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => _multiFileCompletenessService.GetIssue(g.ToList()));
             var renamed = new List<RenamedBookFile>();
 
             // Don't rename Calibre files
             foreach (var bookFile in bookFiles.Where(x => x.CalibreId == 0))
             {
                 var previousPath = bookFile.Path;
+
+                if (completenessIssues.TryGetValue(bookFile.EditionId, out var completenessIssue) && completenessIssue != null)
+                {
+                    _logger.Warn("Skipping rename for incomplete audiobook part set: {0}. {1}", bookFile, completenessIssue.Message);
+                    continue;
+                }
+
                 bookFile.PartCount = counts[bookFile.EditionId];
 
                 try

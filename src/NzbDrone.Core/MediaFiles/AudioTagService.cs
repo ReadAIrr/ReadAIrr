@@ -36,6 +36,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IAuthorService _authorService;
         private readonly IMapCoversToLocal _mediaCoverService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IMultiFileBookFileCompletenessService _multiFileCompletenessService;
         private readonly Logger _logger;
 
         public AudioTagService(IConfigService configService,
@@ -45,6 +46,7 @@ namespace NzbDrone.Core.MediaFiles
                                IAuthorService authorService,
                                IMapCoversToLocal mediaCoverService,
                                IEventAggregator eventAggregator,
+                               IMultiFileBookFileCompletenessService multiFileCompletenessService,
                                Logger logger)
         {
             _configService = configService;
@@ -54,6 +56,7 @@ namespace NzbDrone.Core.MediaFiles
             _authorService = authorService;
             _mediaCoverService = mediaCoverService;
             _eventAggregator = eventAggregator;
+            _multiFileCompletenessService = multiFileCompletenessService;
             _logger = logger;
         }
 
@@ -169,6 +172,13 @@ namespace NzbDrone.Core.MediaFiles
                 }
             }
 
+            var completenessIssue = _multiFileCompletenessService.GetIssue(trackfile.Edition.Value.BookFiles.Value);
+            if (completenessIssue != null)
+            {
+                _logger.Warn("Skipping audio tag write for incomplete audiobook part set: {0}. {1}", trackfile, completenessIssue.Message);
+                return;
+            }
+
             var newTags = GetTrackMetadata(trackfile);
             var path = trackfile.Path;
 
@@ -237,13 +247,32 @@ namespace NzbDrone.Core.MediaFiles
 
         private IEnumerable<RetagBookFilePreview> GetPreviews(List<BookFile> files)
         {
-            foreach (var f in files.Where(x => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(x.Path))).OrderBy(x => x.Edition.Value.Title))
+            var audioFiles = files.Where(x => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(x.Path))).ToList();
+            var completenessIssues = audioFiles.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => _multiFileCompletenessService.GetIssue(g.ToList()));
+
+            foreach (var f in audioFiles.OrderBy(x => x.Edition.Value.Title))
             {
                 var file = f;
 
                 if (f.Edition.Value == null)
                 {
                     _logger.Warn($"File {f} is not linked to any books");
+                    continue;
+                }
+
+                if (completenessIssues.TryGetValue(f.EditionId, out var completenessIssue) && completenessIssue != null)
+                {
+                    yield return new RetagBookFilePreview
+                    {
+                        AuthorId = file.Author.Value.Id,
+                        BookId = file.Edition.Value.Id,
+                        BookFileId = file.Id,
+                        Path = file.Path,
+                        Changes = new Dictionary<string, Tuple<string, string>>(),
+                        IsBlocked = true,
+                        Status = completenessIssue.Message
+                    };
+
                     continue;
                 }
 
@@ -289,10 +318,17 @@ namespace NzbDrone.Core.MediaFiles
             {
                 var bookFiles = _mediaFileService.GetFilesByAuthor(author.Id);
                 var audioFiles = bookFiles.Where(x => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(x.Path))).ToList();
+                var completenessIssues = audioFiles.GroupBy(x => x.EditionId).ToDictionary(g => g.Key, g => _multiFileCompletenessService.GetIssue(g.ToList()));
 
                 _logger.ProgressInfo("Re-tagging all audio files for author: {0}", author.Name);
                 foreach (var file in audioFiles)
                 {
+                    if (completenessIssues.TryGetValue(file.EditionId, out var completenessIssue) && completenessIssue != null)
+                    {
+                        _logger.Warn("Skipping audio retag for incomplete audiobook part set: {0}. {1}", file, completenessIssue.Message);
+                        continue;
+                    }
+
                     WriteTags(file, false, force: true);
                 }
 

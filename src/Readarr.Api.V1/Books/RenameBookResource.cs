@@ -11,6 +11,8 @@ namespace Readarr.Api.V1.Books
         public int BookFileId { get; set; }
         public string ExistingPath { get; set; }
         public string NewPath { get; set; }
+        public bool IsBlocked { get; set; }
+        public string Status { get; set; }
     }
 
     public static class RenameBookResourceMapper
@@ -28,7 +30,9 @@ namespace Readarr.Api.V1.Books
                 BookId = model.BookId,
                 BookFileId = model.BookFileId,
                 ExistingPath = model.ExistingPath,
-                NewPath = model.NewPath
+                NewPath = model.NewPath,
+                IsBlocked = model.IsBlocked,
+                Status = model.Status
             };
         }
 

@@ -4,7 +4,7 @@ import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import CheckInput from 'Components/Form/CheckInput';
 import Icon from 'Components/Icon';
-import { icons } from 'Helpers/Props';
+import { icons, kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import styles from './RetagPreviewRow.css';
 
@@ -32,10 +32,11 @@ class RetagPreviewRow extends Component {
   componentDidMount() {
     const {
       id,
+      isBlocked,
       onSelectedChange
     } = this.props;
 
-    onSelectedChange({ id, value: true });
+    onSelectedChange({ id, value: !isBlocked });
   }
 
   //
@@ -58,6 +59,8 @@ class RetagPreviewRow extends Component {
       id,
       path,
       changes,
+      isBlocked,
+      status,
       isSelected
     } = this.props;
 
@@ -66,7 +69,8 @@ class RetagPreviewRow extends Component {
         <CheckInput
           containerClassName={styles.selectedContainer}
           name={id.toString()}
-          value={isSelected}
+          value={isBlocked ? false : isSelected}
+          isDisabled={isBlocked}
           onChange={this.onSelectedChange}
         />
 
@@ -74,6 +78,20 @@ class RetagPreviewRow extends Component {
           <span className={styles.path}>
             {path}
           </span>
+
+          {
+            isBlocked &&
+              <div className={styles.warning}>
+                <Icon
+                  name={icons.WARNING}
+                  kind={kinds.WARNING}
+                />
+
+                <span className={styles.warningText}>
+                  {status}
+                </span>
+              </div>
+          }
 
           <DescriptionList>
             {
@@ -98,8 +116,14 @@ RetagPreviewRow.propTypes = {
   id: PropTypes.number.isRequired,
   path: PropTypes.string.isRequired,
   changes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isBlocked: PropTypes.bool.isRequired,
+  status: PropTypes.string,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired
+};
+
+RetagPreviewRow.defaultProps = {
+  status: null
 };
 
 export default RetagPreviewRow;

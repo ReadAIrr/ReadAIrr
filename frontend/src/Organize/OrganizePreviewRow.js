@@ -13,10 +13,11 @@ class OrganizePreviewRow extends Component {
   componentDidMount() {
     const {
       id,
+      isBlocked,
       onSelectedChange
     } = this.props;
 
-    onSelectedChange({ id, value: true });
+    onSelectedChange({ id, value: !isBlocked });
   }
 
   //
@@ -39,6 +40,8 @@ class OrganizePreviewRow extends Component {
       id,
       existingPath,
       newPath,
+      isBlocked,
+      status,
       isSelected
     } = this.props;
 
@@ -47,11 +50,26 @@ class OrganizePreviewRow extends Component {
         <CheckInput
           containerClassName={styles.selectedContainer}
           name={id.toString()}
-          value={isSelected}
+          value={isBlocked ? false : isSelected}
+          isDisabled={isBlocked}
           onChange={this.onSelectedChange}
         />
 
         <div>
+          {
+            isBlocked &&
+              <div className={styles.warning}>
+                <Icon
+                  name={icons.WARNING}
+                  kind={kinds.WARNING}
+                />
+
+                <span className={styles.path}>
+                  {status}
+                </span>
+              </div>
+          }
+
           <div>
             <Icon
               name={icons.SUBTRACT}
@@ -63,16 +81,19 @@ class OrganizePreviewRow extends Component {
             </span>
           </div>
 
-          <div>
-            <Icon
-              name={icons.ADD}
-              kind={kinds.SUCCESS}
-            />
+          {
+            !isBlocked &&
+              <div>
+                <Icon
+                  name={icons.ADD}
+                  kind={kinds.SUCCESS}
+                />
 
-            <span className={styles.path}>
-              {newPath}
-            </span>
-          </div>
+                <span className={styles.path}>
+                  {newPath}
+                </span>
+              </div>
+          }
         </div>
       </div>
     );
@@ -83,8 +104,14 @@ OrganizePreviewRow.propTypes = {
   id: PropTypes.number.isRequired,
   existingPath: PropTypes.string.isRequired,
   newPath: PropTypes.string.isRequired,
+  isBlocked: PropTypes.bool.isRequired,
+  status: PropTypes.string,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired
+};
+
+OrganizePreviewRow.defaultProps = {
+  status: null
 };
 
 export default OrganizePreviewRow;
