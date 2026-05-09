@@ -371,6 +371,51 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_use_provider_conflict_summary_for_bulk_template_warning()
+        {
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByBookFileIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.Id }))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Id = 8,
+                        BookFileId = _bookFile.Id,
+                        Role = "narrator",
+                        DisplayName = "Manual Evidence Narrator",
+                        Source = "manual",
+                        Updated = DateTime.UtcNow
+                    }
+                });
+
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByEditionIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.EditionId }))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Id = 9,
+                        EditionId = _bookFile.EditionId,
+                        Role = "narrator",
+                        DisplayName = "Provider Metadata Narrator",
+                        Source = "providerMetadata",
+                        Confidence = 95,
+                        Updated = DateTime.UtcNow
+                    }
+                });
+
+            var result = Subject.PreviewTemplate(new AudioTagTemplateRequest
+            {
+                BookFileIds = new List<int> { _bookFile.Id },
+                Template = "readarr"
+            });
+
+            result.Warning.Should().Contain("provider narrator metadata");
+            result.Warning.Should().NotContain("incomplete audiobook part set");
+            result.Files.Single().Warning.Should().Contain("Provider narrator metadata");
+        }
+
+        [Test]
         public void should_ignore_low_confidence_review_narrator_evidence_for_suggested_performer()
         {
             Mocker.GetMock<IContributorEvidenceRepository>()

@@ -486,9 +486,19 @@ namespace NzbDrone.Core.MediaFiles
 
         private static string GetBulkWarning(List<AudioTagEditPreview> files)
         {
-            if (files.Any(x => x.Warning.IsNotNullOrWhiteSpace()))
+            if (files.Any(x => x.Warning.IsNotNullOrWhiteSpace() && x.Warning.Contains("incomplete audiobook part set")))
             {
                 return "One or more files belong to an incomplete audiobook part set. Track counts are preserved for those files.";
+            }
+
+            if (files.Any(x => x.EvidenceWarnings != null && x.EvidenceWarnings.Any()))
+            {
+                return "One or more files have provider narrator metadata that conflicts with other narrator evidence. Review the per-file warnings before writing performer tags.";
+            }
+
+            if (files.Any(x => x.Warning.IsNotNullOrWhiteSpace()))
+            {
+                return "One or more files have warnings. Review the per-file details before writing tags.";
             }
 
             if (files.Any(x => x.WriteWarnings != null && x.WriteWarnings.Any()))
