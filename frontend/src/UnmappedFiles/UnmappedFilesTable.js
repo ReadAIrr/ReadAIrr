@@ -417,6 +417,10 @@ class UnmappedFilesTable extends Component {
     this.setState({ searchTerm });
   };
 
+  onRefreshPress = () => {
+    this.props.fetchUnmappedFiles();
+  };
+
   onFirstPagePress = () => {
     this.props.fetchUnmappedFiles(1);
   };
@@ -632,7 +636,7 @@ class UnmappedFilesTable extends Component {
               label={translate('Refresh')}
               iconName={icons.REFRESH}
               isSpinning={isFetching}
-              onPress={fetchUnmappedFiles}
+              onPress={this.onRefreshPress}
             />
 
             <TableOptionsModalWrapper

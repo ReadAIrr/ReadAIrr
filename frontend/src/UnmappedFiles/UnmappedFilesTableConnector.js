@@ -45,6 +45,14 @@ function createMapStateToProps() {
 }
 
 function createMapDispatchToProps(dispatch, props) {
+  function sanitizePage(page) {
+    if (typeof page !== 'number') {
+      return undefined;
+    }
+
+    return Math.max(1, page);
+  }
+
   return {
     onTableOptionChange(payload) {
       dispatch(setBookFilesTableOption(payload));
@@ -55,7 +63,7 @@ function createMapDispatchToProps(dispatch, props) {
     },
 
     fetchUnmappedFiles(page) {
-      dispatch(fetchBookFiles({ unmapped: true, page }));
+      dispatch(fetchBookFiles({ unmapped: true, page: sanitizePage(page) }));
     },
 
     deleteUnmappedFile(id) {

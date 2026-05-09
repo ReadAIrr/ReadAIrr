@@ -175,6 +175,12 @@ export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
 const deleteBookFileHelper = createRemoveItemHandler(section, '/bookFile');
 const fetchBookFilesHandler = createFetchHandler(section, '/bookFile');
 
+function sanitizePage(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value) ?
+    Math.max(1, Math.floor(value)) :
+    fallback;
+}
+
 function handleUnmappedSuggestionRequest(url, payload, dispatch) {
   const {
     bookFileIds
@@ -307,8 +313,8 @@ export const actionHandlers = handleThunks({
     }
 
     const state = getState()[section];
-    const page = payload.page || state.page || defaultState.page;
-    const pageSize = payload.pageSize || state.pageSize || defaultState.pageSize;
+    const page = sanitizePage(payload.page, state.page || defaultState.page);
+    const pageSize = sanitizePage(payload.pageSize, state.pageSize || defaultState.pageSize);
 
     dispatch(set({ section, isFetching: true }));
 
