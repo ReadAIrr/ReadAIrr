@@ -75,13 +75,17 @@ namespace NzbDrone.Api.Test.ManualImport
                     }
                 });
 
-            var result = _subject.GetMediaFilesPaged(new PagingRequestResource
-            {
-                Page = 2,
-                PageSize = 25,
-                SortKey = "path",
-                SortDirection = SortDirection.Descending
-            }, "/downloads/books", null, null);
+            var result = _subject.GetMediaFilesPaged(
+                new PagingRequestResource
+                {
+                    Page = 2,
+                    PageSize = 25,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Descending
+                },
+                "/downloads/books",
+                null,
+                null);
 
             result.Page.Should().Be(2);
             result.PageSize.Should().Be(25);

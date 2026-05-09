@@ -5,7 +5,6 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
-using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
@@ -42,12 +41,17 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             GivenSelectedFiles("/books/a.mp3", "/books/b.mp3", "/books/c.mp3");
 
-            var result = Subject.GetMediaFilesPage(new List<string>
-            {
-                "/books/a.mp3",
-                "/books/b.mp3",
-                "/books/c.mp3"
-            }, null, false, 0, ManualImportService.MaxReviewPageSize + 50);
+            var result = Subject.GetMediaFilesPage(
+                new List<string>
+                {
+                    "/books/a.mp3",
+                    "/books/b.mp3",
+                    "/books/c.mp3"
+                },
+                null,
+                false,
+                0,
+                ManualImportService.MaxReviewPageSize + 50);
 
             result.Page.Should().Be(1);
             result.PageSize.Should().Be(ManualImportService.MaxReviewPageSize);
@@ -60,14 +64,19 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             GivenSelectedFiles("/books/a.mp3", "/books/b.mp3", "/books/c.mp3", "/books/d.mp3", "/books/e.mp3");
 
-            var result = Subject.GetMediaFilesPage(new List<string>
-            {
-                "/books/a.mp3",
-                "/books/b.mp3",
-                "/books/c.mp3",
-                "/books/d.mp3",
-                "/books/e.mp3"
-            }, null, false, 2, 2);
+            var result = Subject.GetMediaFilesPage(
+                new List<string>
+                {
+                    "/books/a.mp3",
+                    "/books/b.mp3",
+                    "/books/c.mp3",
+                    "/books/d.mp3",
+                    "/books/e.mp3"
+                },
+                null,
+                false,
+                2,
+                2);
 
             result.Page.Should().Be(2);
             result.PageSize.Should().Be(2);
@@ -94,12 +103,15 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             GivenSelectedFiles("/books/a.mp3", "/books/b.mp3", "/books/c.mp3");
 
-            var result = Subject.GetMediaFiles(new List<string>
-            {
-                "/books/a.mp3",
-                "/books/b.mp3",
-                "/books/c.mp3"
-            }, null, false);
+            var result = Subject.GetMediaFiles(
+                new List<string>
+                {
+                    "/books/a.mp3",
+                    "/books/b.mp3",
+                    "/books/c.mp3"
+                },
+                null,
+                false);
 
             result.Select(x => x.Path).Should().Equal("/books/a.mp3", "/books/b.mp3", "/books/c.mp3");
         }
