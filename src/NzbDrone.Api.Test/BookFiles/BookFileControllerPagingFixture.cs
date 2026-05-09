@@ -103,8 +103,8 @@ namespace NzbDrone.Api.Test.BookFiles
             result.Page.Should().Be(1);
             result.PageSize.Should().Be(500);
             result.TotalRecords.Should().Be(0);
-            result.SortKey.Should().BeNull();
-            result.SortDirection.Should().Be(SortDirection.Default);
+            result.SortKey.Should().Be("path");
+            result.SortDirection.Should().Be(SortDirection.Descending);
             result.Records.Should().BeEmpty();
         }
 
@@ -177,6 +177,45 @@ namespace NzbDrone.Api.Test.BookFiles
             var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25 }, false, null, " reviewed ");
 
             result.TotalRecords.Should().Be(2);
+        }
+
+        [Test]
+        public void paged_unmapped_endpoint_should_pass_supported_sort_before_paging()
+        {
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25 && s.SortKey == nameof(BookFile.Size) && s.SortDirection == SortDirection.Descending), null, It.IsAny<IEnumerable<int>>(), null, It.IsAny<IEnumerable<int>>()))
+                .Returns(new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 25,
+                    SortKey = nameof(BookFile.Size),
+                    SortDirection = SortDirection.Descending,
+                    TotalRecords = 2,
+                    Records = new List<BookFile>()
+                });
+
+            var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25, SortKey = "size", SortDirection = SortDirection.Descending });
+
+            result.SortKey.Should().Be("size");
+            result.SortDirection.Should().Be(SortDirection.Descending);
+            result.TotalRecords.Should().Be(2);
+        }
+
+        [Test]
+        public void paged_unmapped_endpoint_should_fallback_unsupported_sort_to_path()
+        {
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.SortKey == nameof(BookFile.Path) && s.SortDirection == SortDirection.Ascending), null, It.IsAny<IEnumerable<int>>(), null, It.IsAny<IEnumerable<int>>()))
+                .Returns(new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 25,
+                    TotalRecords = 0,
+                    Records = new List<BookFile>()
+                });
+
+            var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25, SortKey = "confidence", SortDirection = SortDirection.Default });
+
+            result.SortKey.Should().Be("path");
+            result.SortDirection.Should().Be(SortDirection.Ascending);
         }
 
         [Test]

@@ -59,7 +59,7 @@ function createMapDispatchToProps(dispatch, props) {
     },
 
     onSortPress(sortKey) {
-      dispatch(setBookFilesSort({ sortKey }));
+      dispatch(setBookFilesSort({ sortKey, unmapped: true }));
     },
 
     fetchUnmappedFiles(page, options = {}) {

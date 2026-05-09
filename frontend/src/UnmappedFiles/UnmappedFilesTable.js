@@ -48,6 +48,12 @@ const triageFilterLabels = {
   [triageFilterOptions.REVIEWED]: 'Reviewed (all pages)'
 };
 
+const globalSortColumns = [
+  'path',
+  'size',
+  'dateAdded'
+];
+
 function isServerTriageFilter(triageFilter) {
   return triageFilter === triageFilterOptions.NEEDS_REVIEW ||
     triageFilter === triageFilterOptions.LOW_CONFIDENCE ||
@@ -55,6 +61,19 @@ function isServerTriageFilter(triageFilter) {
     triageFilter === triageFilterOptions.NO_EDITION ||
     triageFilter === triageFilterOptions.METADATA_MISMATCH ||
     triageFilter === triageFilterOptions.REVIEWED;
+}
+
+function getUnmappedColumns(columns) {
+  return columns.map((column) => {
+    if (!column.isSortable) {
+      return column;
+    }
+
+    return {
+      ...column,
+      isSortable: globalSortColumns.includes(column.name)
+    };
+  });
 }
 
 function getDeepIdentifySuggestion(item) {
@@ -488,6 +507,7 @@ class UnmappedFilesTable extends Component {
       triageFilter
     } = this.state;
 
+    const unmappedColumns = getUnmappedColumns(columns);
     const selectedTrackFileIds = this.getSelectedIds();
     const visibleItems = this.getVisibleItems();
     const deepIdentifySummary = getDeepIdentifySummary(items, isDeepIdentifyAudioRunning);
@@ -650,7 +670,7 @@ class UnmappedFilesTable extends Component {
           {
             isPopulated && !error && !!items.length &&
               <Alert kind={kinds.INFO}>
-                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search and triage filters apply across all unmapped files when backed by current review snapshots. Select all, sorting, and row actions apply only to this loaded page.
+                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search and triage filters apply across all unmapped files when backed by current review snapshots. Path, Size, and Date Added sorting also apply across all unmapped files. Review-derived columns, select all, and row actions apply only to this loaded page.
               </Alert>
           }
 
@@ -665,7 +685,7 @@ class UnmappedFilesTable extends Component {
             isPopulated && !error && !!visibleItems.length && scroller &&
               <VirtualTable
                 items={visibleItems}
-                columns={columns}
+                columns={unmappedColumns}
                 scroller={scroller}
                 isSmallScreen={false}
                 overscanRowCount={10}
@@ -673,7 +693,7 @@ class UnmappedFilesTable extends Component {
                 rowRenderer={this.rowRenderer}
                 header={
                   <UnmappedFilesTableHeader
-                    columns={columns}
+                    columns={unmappedColumns}
                     sortKey={sortKey}
                     sortDirection={sortDirection}
                     onTableOptionChange={onTableOptionChange}

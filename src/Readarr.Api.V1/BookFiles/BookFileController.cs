@@ -148,13 +148,16 @@ namespace Readarr.Api.V1.BookFiles
             var pageSize = global::System.Math.Min(MaxUnmappedPageSize, global::System.Math.Max(1, requestedPageSize));
             term = BoundSearchTerm(term);
             triageFilter = BoundTriageFilter(triageFilter);
+            var requestedSortKey = BoundUnmappedResourceSortKey(paging?.SortKey);
+            var modelSortKey = MapUnmappedSortKey(requestedSortKey);
+            var sortDirection = BoundSortDirection(paging?.SortDirection);
 
             var pagingSpec = new PagingSpec<BookFile>
             {
                 Page = page,
                 PageSize = pageSize,
-                SortKey = nameof(BookFile.Path),
-                SortDirection = SortDirection.Ascending
+                SortKey = modelSortKey,
+                SortDirection = sortDirection
             };
 
             var suggestionBookFileIds = term == null ? new List<int>() : _unmappedIdentificationSuggestionService.GetBookFileIdsMatchingTerm(term);
@@ -165,8 +168,8 @@ namespace Readarr.Api.V1.BookFiles
             {
                 Page = result.Page,
                 PageSize = result.PageSize,
-                SortKey = null,
-                SortDirection = SortDirection.Default,
+                SortKey = requestedSortKey,
+                SortDirection = sortDirection,
                 TotalRecords = result.TotalRecords,
                 Records = MapUnmappedToResources(result.Records, refresh, true)
             };
@@ -213,6 +216,49 @@ namespace Readarr.Api.V1.BookFiles
                    triageFilter == "noCandidate" ||
                    triageFilter == "noEdition" ||
                    triageFilter == "metadataMismatch";
+        }
+
+        private static string BoundUnmappedResourceSortKey(string sortKey)
+        {
+            if (string.IsNullOrWhiteSpace(sortKey))
+            {
+                return "path";
+            }
+
+            switch (sortKey.Trim())
+            {
+                case "path":
+                case "size":
+                case "dateAdded":
+                case "modified":
+                case "reviewed":
+                    return sortKey.Trim();
+                default:
+                    return "path";
+            }
+        }
+
+        private static string MapUnmappedSortKey(string sortKey)
+        {
+            switch (sortKey)
+            {
+                case "size":
+                    return nameof(BookFile.Size);
+                case "dateAdded":
+                    return nameof(BookFile.DateAdded);
+                case "modified":
+                    return nameof(BookFile.Modified);
+                case "reviewed":
+                    return nameof(BookFile.Reviewed);
+                case "path":
+                default:
+                    return nameof(BookFile.Path);
+            }
+        }
+
+        private static SortDirection BoundSortDirection(SortDirection? sortDirection)
+        {
+            return sortDirection == SortDirection.Descending ? SortDirection.Descending : SortDirection.Ascending;
         }
 
         [RestPutById]

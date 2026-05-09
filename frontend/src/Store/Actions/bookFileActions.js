@@ -12,7 +12,6 @@ import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
 import createRemoveItemHandler from './Creators/createRemoveItemHandler';
 import createClearReducer from './Creators/Reducers/createClearReducer';
-import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
 import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptionReducer';
 
 //
@@ -167,7 +166,7 @@ export const clearUnmappedSuggestions = createThunk(CLEAR_UNMAPPED_SUGGESTIONS);
 export const setUnmappedContributorEvidence = createThunk(SET_UNMAPPED_CONTRIBUTOR_EVIDENCE);
 export const setUnmappedFilesReviewed = createThunk(SET_UNMAPPED_FILES_REVIEWED);
 export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
-export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
+export const setBookFilesSort = createThunk(SET_BOOK_FILES_SORT);
 export const setBookFilesTableOption = createAction(SET_BOOK_FILES_TABLE_OPTION);
 export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
 
@@ -176,6 +175,11 @@ export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
 
 const deleteBookFileHelper = createRemoveItemHandler(section, '/bookFile');
 const fetchBookFilesHandler = createFetchHandler(section, '/bookFile');
+const globalUnmappedSortKeys = [
+  'path',
+  'size',
+  'dateAdded'
+];
 
 function sanitizePage(value, fallback) {
   return typeof value === 'number' && Number.isFinite(value) ?
@@ -238,6 +242,10 @@ function handleUnmappedSuggestionRequest(url, payload, dispatch) {
       })
     ]));
   });
+}
+
+function getGlobalUnmappedSortKey(sortKey) {
+  return globalUnmappedSortKeys.includes(sortKey) ? sortKey : defaultState.sortKey;
 }
 
 function handleBulkDeepIdentifyRequest(payload, dispatch) {
@@ -319,6 +327,8 @@ export const actionHandlers = handleThunks({
     const pageSize = sanitizePage(payload.pageSize, state.pageSize || defaultState.pageSize);
     const term = payload.term == null ? state.term || defaultState.term : payload.term;
     const triageFilter = payload.triageFilter == null ? state.triageFilter || defaultState.triageFilter : payload.triageFilter;
+    const sortKey = getGlobalUnmappedSortKey(payload.sortKey || state.sortKey || defaultState.sortKey);
+    const sortDirection = payload.sortDirection || state.sortDirection || defaultState.sortDirection;
     const refresh = payload.refresh === true;
 
     dispatch(set({ section, isFetching: true }));
@@ -330,6 +340,8 @@ export const actionHandlers = handleThunks({
         pageSize,
         term,
         triageFilter,
+        sortKey,
+        sortDirection,
         refresh
       }
     });
@@ -342,6 +354,8 @@ export const actionHandlers = handleThunks({
         pageSize: data.pageSize,
         term,
         triageFilter,
+        sortKey: data.sortKey || sortKey,
+        sortDirection: data.sortDirection || sortDirection,
         totalRecords: data.totalRecords,
         totalPages: Math.max(Math.ceil(data.totalRecords / data.pageSize), 1),
         isFetching: false,
@@ -668,6 +682,28 @@ export const actionHandlers = handleThunks({
         saveError: xhr
       }));
     });
+  },
+
+  [SET_BOOK_FILES_SORT]: function(getState, payload, dispatch) {
+    const state = getState()[section];
+    const sortKey = payload.sortKey || state.sortKey || defaultState.sortKey;
+    let sortDirection = payload.sortDirection;
+
+    if (!sortDirection) {
+      if (sortKey === state.sortKey) {
+        sortDirection = state.sortDirection === sortDirections.ASCENDING ?
+          sortDirections.DESCENDING :
+          sortDirections.ASCENDING;
+      } else {
+        sortDirection = state.sortDirection || defaultState.sortDirection;
+      }
+    }
+
+    dispatch(set({ section, sortKey, sortDirection }));
+
+    if (payload.unmapped) {
+      dispatch(fetchBookFiles({ unmapped: true, page: 1, sortKey, sortDirection }));
+    }
   }
 });
 
@@ -675,7 +711,6 @@ export const actionHandlers = handleThunks({
 // Reducers
 
 export const reducers = createHandleActions({
-  [SET_BOOK_FILES_SORT]: createSetClientSideCollectionSortReducer(section),
   [SET_BOOK_FILES_TABLE_OPTION]: createSetTableOptionReducer(section),
 
   [CLEAR_BOOK_FILES]: createClearReducer(section, {

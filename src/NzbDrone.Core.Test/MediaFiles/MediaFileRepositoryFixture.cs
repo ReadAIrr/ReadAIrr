@@ -167,6 +167,27 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void get_paged_unmapped_files_should_apply_sort_before_paging()
+        {
+            InsertUnmappedFile(@"/sort/SmallMatch.m4b".AsOsAgnostic(), false, 10);
+            InsertUnmappedFile(@"/sort/LargeMatch.m4b".AsOsAgnostic(), false, 500);
+
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 1,
+                    SortKey = nameof(BookFile.Size),
+                    SortDirection = SortDirection.Descending
+                },
+                "Match");
+
+            spec.TotalRecords.Should().Be(2);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Path.Should().Contain("LargeMatch");
+        }
+
+        [Test]
         public void get_paged_unmapped_files_should_filter_snapshot_backed_reason_ids_before_paging()
         {
             var lowConfidenceFile = InsertUnmappedFile(@"/snapshot/LowConfidenceMatch.m4b".AsOsAgnostic());
@@ -212,13 +233,14 @@ namespace NzbDrone.Core.Test.MediaFiles
             spec.Records.Should().BeEmpty();
         }
 
-        private BookFile InsertUnmappedFile(string path, bool reviewed = false)
+        private BookFile InsertUnmappedFile(string path, bool reviewed = false, long size = 1)
         {
             var file = Builder<BookFile>.CreateNew()
                 .With(c => c.Id = 0)
                 .With(c => c.Quality = new QualityModel(Quality.MP3))
                 .With(c => c.EditionId = 0)
                 .With(c => c.Path = path)
+                .With(c => c.Size = size)
                 .With(c => c.Reviewed = reviewed)
                 .Build();
 
