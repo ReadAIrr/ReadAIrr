@@ -26,7 +26,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
-        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null);
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null);
         List<IFileInfo> FilterUnchangedFiles(List<IFileInfo> files, FilterFilesType filter);
         BookFile Get(int id);
         List<BookFile> Get(IEnumerable<int> ids);
@@ -204,9 +204,9 @@ namespace NzbDrone.Core.MediaFiles
             return _mediaFileRepository.GetUnmappedFiles();
         }
 
-        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null)
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null)
         {
-            return _mediaFileRepository.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds);
+            return _mediaFileRepository.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds, triageFilter);
         }
 
         public void UpdateMediaInfo(List<BookFile> bookFiles)

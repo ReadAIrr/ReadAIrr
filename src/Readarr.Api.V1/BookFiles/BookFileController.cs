@@ -137,13 +137,14 @@ namespace Readarr.Api.V1.BookFiles
         }
 
         [HttpGet("unmapped/paged")]
-        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging, bool refresh = false, string term = null)
+        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging, bool refresh = false, string term = null, string triageFilter = null)
         {
             var requestedPage = paging?.Page ?? 1;
             var requestedPageSize = paging?.PageSize ?? MaxUnmappedPageSize;
             var page = global::System.Math.Max(1, requestedPage);
             var pageSize = global::System.Math.Min(MaxUnmappedPageSize, global::System.Math.Max(1, requestedPageSize));
             term = BoundSearchTerm(term);
+            triageFilter = BoundTriageFilter(triageFilter);
 
             var pagingSpec = new PagingSpec<BookFile>
             {
@@ -154,7 +155,7 @@ namespace Readarr.Api.V1.BookFiles
             };
 
             var suggestionBookFileIds = term == null ? new List<int>() : _unmappedIdentificationSuggestionService.GetBookFileIdsMatchingTerm(term);
-            var result = _mediaFileService.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds);
+            var result = _mediaFileService.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds, triageFilter);
 
             return new PagingResource<BookFileResource>
             {
@@ -177,6 +178,25 @@ namespace Readarr.Api.V1.BookFiles
             term = term.Trim();
 
             return term.Length > 120 ? term.Substring(0, 120) : term;
+        }
+
+        private static string BoundTriageFilter(string triageFilter)
+        {
+            if (string.IsNullOrWhiteSpace(triageFilter))
+            {
+                return null;
+            }
+
+            triageFilter = triageFilter.Trim();
+
+            switch (triageFilter)
+            {
+                case "needsReview":
+                case "reviewed":
+                    return triageFilter;
+                default:
+                    return null;
+            }
         }
 
         [RestPutById]

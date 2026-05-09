@@ -120,13 +120,60 @@ namespace NzbDrone.Core.Test.MediaFiles
             spec.Records[0].Id.Should().Be(suggestionMatchedId);
         }
 
-        private BookFile InsertUnmappedFile(string path)
+        [Test]
+        public void get_paged_unmapped_files_should_filter_reviewed_state_before_paging()
+        {
+            InsertUnmappedFile(@"/reviewed/ReviewedMatch.m4b".AsOsAgnostic(), true);
+            InsertUnmappedFile(@"/reviewed/NeedsReviewMatch.m4b".AsOsAgnostic(), false);
+
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 10,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Ascending
+                },
+                "Match",
+                null,
+                "reviewed");
+
+            spec.TotalRecords.Should().Be(1);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Path.Should().Contain("ReviewedMatch");
+        }
+
+        [Test]
+        public void get_paged_unmapped_files_should_filter_needs_review_state_before_paging()
+        {
+            InsertUnmappedFile(@"/reviewed/ReviewedMatch.m4b".AsOsAgnostic(), true);
+            InsertUnmappedFile(@"/reviewed/NeedsReviewMatch.m4b".AsOsAgnostic(), false);
+
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 10,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Ascending
+                },
+                "Match",
+                null,
+                "needsReview");
+
+            spec.TotalRecords.Should().Be(1);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Path.Should().Contain("NeedsReviewMatch");
+        }
+
+        private BookFile InsertUnmappedFile(string path, bool reviewed = false)
         {
             var file = Builder<BookFile>.CreateNew()
                 .With(c => c.Id = 0)
                 .With(c => c.Quality = new QualityModel(Quality.MP3))
                 .With(c => c.EditionId = 0)
                 .With(c => c.Path = path)
+                .With(c => c.Reviewed = reviewed)
                 .Build();
 
             return Db.Insert(file);

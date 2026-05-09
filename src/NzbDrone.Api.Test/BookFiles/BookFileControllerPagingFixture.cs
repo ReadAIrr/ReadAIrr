@@ -80,7 +80,7 @@ namespace NzbDrone.Api.Test.BookFiles
         [Test]
         public void paged_unmapped_endpoint_should_clamp_page_and_cap_page_size()
         {
-            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 500), null, It.IsAny<IEnumerable<int>>()))
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 500), null, It.IsAny<IEnumerable<int>>(), null))
                 .Returns(new PagingSpec<BookFile>
                 {
                     Page = 1,
@@ -108,7 +108,7 @@ namespace NzbDrone.Api.Test.BookFiles
         [Test]
         public void paged_unmapped_endpoint_should_return_page_records_and_total_count()
         {
-            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 2 && s.PageSize == 25), null, It.IsAny<IEnumerable<int>>()))
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 2 && s.PageSize == 25), null, It.IsAny<IEnumerable<int>>(), null))
                 .Returns(new PagingSpec<BookFile>
                 {
                     Page = 2,
@@ -142,7 +142,7 @@ namespace NzbDrone.Api.Test.BookFiles
         {
             _unmappedIdentificationSuggestionService.Setup(x => x.GetBookFileIdsMatchingTerm("Kyla Stone"))
                 .Returns(new List<int> { 12, 13 });
-            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25), "Kyla Stone", It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 12, 13 }))))
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25), "Kyla Stone", It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 12, 13 })), null))
                 .Returns(new PagingSpec<BookFile>
                 {
                     Page = 1,
@@ -160,6 +160,40 @@ namespace NzbDrone.Api.Test.BookFiles
         }
 
         [Test]
+        public void paged_unmapped_endpoint_should_pass_supported_triage_filter_before_paging()
+        {
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25), null, It.IsAny<IEnumerable<int>>(), "reviewed"))
+                .Returns(new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 25,
+                    TotalRecords = 2,
+                    Records = new List<BookFile>()
+                });
+
+            var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25 }, false, null, " reviewed ");
+
+            result.TotalRecords.Should().Be(2);
+        }
+
+        [Test]
+        public void paged_unmapped_endpoint_should_ignore_loaded_page_only_triage_filters()
+        {
+            _mediaFileService.Setup(x => x.GetUnmappedFiles(It.Is<PagingSpec<BookFile>>(s => s.Page == 1 && s.PageSize == 25), null, It.IsAny<IEnumerable<int>>(), null))
+                .Returns(new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 25,
+                    TotalRecords = 3,
+                    Records = new List<BookFile>()
+                });
+
+            var result = _subject.GetUnmappedFilesPaged(new PagingRequestResource { Page = 1, PageSize = 25 }, false, null, "lowConfidence");
+
+            result.TotalRecords.Should().Be(3);
+        }
+
+        [Test]
         public void existing_full_unmapped_endpoint_should_still_use_full_unmapped_service_path()
         {
             _mediaFileService.Setup(x => x.GetUnmappedFiles())
@@ -169,7 +203,7 @@ namespace NzbDrone.Api.Test.BookFiles
 
             result.Should().BeEmpty();
             _mediaFileService.Verify(x => x.GetUnmappedFiles(), Times.Once);
-            _mediaFileService.Verify(x => x.GetUnmappedFiles(It.IsAny<PagingSpec<BookFile>>(), It.IsAny<string>(), It.IsAny<IEnumerable<int>>()), Times.Never);
+            _mediaFileService.Verify(x => x.GetUnmappedFiles(It.IsAny<PagingSpec<BookFile>>(), It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<string>()), Times.Never);
         }
     }
 }

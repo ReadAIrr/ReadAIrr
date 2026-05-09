@@ -67,6 +67,7 @@ function createMapDispatchToProps(dispatch, props) {
         unmapped: true,
         page: sanitizePage(page),
         term: options.term,
+        triageFilter: options.triageFilter,
         refresh: options.refresh === true
       }));
     },

@@ -16,7 +16,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
-        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null);
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null);
         List<BookFile> GetFilesWithBasePath(string path);
         List<BookFile> GetFileWithPath(List<string> paths);
         BookFile GetFileWithPath(string path);
@@ -91,7 +91,7 @@ namespace NzbDrone.Core.MediaFiles
                                               .Where<BookFile>(t => t.EditionId == 0)).ToList();
         }
 
-        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null)
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null)
         {
             var recordsBuilder = new SqlBuilder(_database.DatabaseType)
                 .Select(typeof(BookFile))
@@ -117,6 +117,17 @@ namespace NzbDrone.Core.MediaFiles
                     recordsBuilder.Where<BookFile>(t => t.Path.Contains(term));
                     countBuilder.Where<BookFile>(t => t.Path.Contains(term));
                 }
+            }
+
+            if (triageFilter == "needsReview")
+            {
+                recordsBuilder.Where<BookFile>(t => t.Reviewed == false);
+                countBuilder.Where<BookFile>(t => t.Reviewed == false);
+            }
+            else if (triageFilter == "reviewed")
+            {
+                recordsBuilder.Where<BookFile>(t => t.Reviewed == true);
+                countBuilder.Where<BookFile>(t => t.Reviewed == true);
             }
 
             pagingSpec.Records = GetPagedRecords(recordsBuilder, pagingSpec, builder => _database.Query<BookFile>(builder));

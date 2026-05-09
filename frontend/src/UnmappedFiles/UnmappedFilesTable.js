@@ -40,13 +40,18 @@ const triageFilterOptions = {
 
 const triageFilterLabels = {
   [triageFilterOptions.ALL]: 'All unmapped',
-  [triageFilterOptions.NEEDS_REVIEW]: 'Needs review',
-  [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence',
-  [triageFilterOptions.NO_CANDIDATE]: 'No candidate',
-  [triageFilterOptions.NO_EDITION]: 'No edition',
-  [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch',
-  [triageFilterOptions.REVIEWED]: 'Reviewed'
+  [triageFilterOptions.NEEDS_REVIEW]: 'Needs review (all pages)',
+  [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence (loaded page)',
+  [triageFilterOptions.NO_CANDIDATE]: 'No candidate (loaded page)',
+  [triageFilterOptions.NO_EDITION]: 'No edition (loaded page)',
+  [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch (loaded page)',
+  [triageFilterOptions.REVIEWED]: 'Reviewed (all pages)'
 };
+
+function isServerTriageFilter(triageFilter) {
+  return triageFilter === triageFilterOptions.NEEDS_REVIEW ||
+    triageFilter === triageFilterOptions.REVIEWED;
+}
 
 function getDeepIdentifySuggestion(item) {
   return item.review?.suggestions?.find((suggestion) => suggestion.type === 'deepAudio');
@@ -150,7 +155,7 @@ class UnmappedFilesTable extends Component {
       lastToggled: null,
       selectedState: {},
       searchTerm: props.term || '',
-      triageFilter: triageFilterOptions.NEEDS_REVIEW,
+      triageFilter: props.triageFilter || triageFilterOptions.NEEDS_REVIEW,
       isManualMatchModalOpen: false,
       manualMatchFolder: null
     };
@@ -360,6 +365,7 @@ class UnmappedFilesTable extends Component {
 
   onTriageFilterChange = (triageFilter) => {
     this.setState({ triageFilter });
+    this.props.fetchUnmappedFiles(1, { triageFilter });
   };
 
   onSearchTermChange = (searchTerm) => {
@@ -485,8 +491,12 @@ class UnmappedFilesTable extends Component {
 
     if (items.length) {
       emptyStateMessage = 'No loaded unmapped files match the current filter.';
+    } else if (searchTerm && isServerTriageFilter(triageFilter)) {
+      emptyStateMessage = 'No unmapped files match the current search or all-pages filter.';
     } else if (searchTerm) {
       emptyStateMessage = 'No unmapped files match the current search.';
+    } else if (isServerTriageFilter(triageFilter)) {
+      emptyStateMessage = 'No unmapped files match the current all-pages filter.';
     }
 
     this._visibleItems = visibleItems;
@@ -636,7 +646,7 @@ class UnmappedFilesTable extends Component {
           {
             isPopulated && !error && !!items.length &&
               <Alert kind={kinds.INFO}>
-                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search applies across all unmapped files. Select all, filters, sorting, and row actions apply only to this loaded page.
+                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search, Needs review, and Reviewed apply across all unmapped files. Other triage filters, select all, sorting, and row actions apply only to this loaded page.
               </Alert>
           }
 
@@ -717,6 +727,7 @@ UnmappedFilesTable.propTypes = {
   page: PropTypes.number.isRequired,
   pageSize: PropTypes.number.isRequired,
   term: PropTypes.string,
+  triageFilter: PropTypes.string,
   totalPages: PropTypes.number.isRequired,
   totalRecords: PropTypes.number.isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
