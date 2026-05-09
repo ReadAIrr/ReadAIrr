@@ -3,22 +3,33 @@
 interface CssExports {
   'actionButton': string;
   'actionButtonIcon': string;
+  'actions': string;
+  'actionsHeaderCell': string;
   'author': string;
+  'authorHeaderCell': string;
   'bookCount': string;
   'bookType': string;
   'bookTypeLabel': string;
   'books': string;
+  'cell': string;
   'completeness': string;
   'footer': string;
   'header': string;
+  'headerCell': string;
   'left': string;
   'monitored': string;
+  'monitoredHeaderCell': string;
   'position': string;
+  'positionHeaderCell': string;
   'reason': string;
+  'reasonHeaderCell': string;
   'seriesTitle': string;
   'status': string;
+  'statusHeaderCell': string;
   'summary': string;
+  'tableContainer': string;
   'title': string;
+  'titleHeaderCell': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

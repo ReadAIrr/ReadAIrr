@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useState } from 'react';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import BookSearchCellConnector from 'Book/BookSearchCellConnector';
 import BookTitleLink from 'Book/BookTitleLink';
@@ -12,10 +12,11 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import MonitorToggleButton from 'Components/MonitorToggleButton';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import TableRowCell from 'Components/Table/Cells/TableRowCell';
-import Table from 'Components/Table/Table';
-import TableBody from 'Components/Table/TableBody';
-import TableRow from 'Components/Table/TableRow';
+import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
+import VirtualTable from 'Components/Table/VirtualTable';
+import VirtualTableHeader from 'Components/Table/VirtualTableHeader';
+import VirtualTableHeaderCell from 'Components/Table/VirtualTableHeaderCell';
+import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import styles from './SeriesDetails.css';
@@ -97,6 +98,43 @@ SeriesBookStatus.propTypes = {
   book: PropTypes.object.isRequired
 };
 
+function getColumnClassName(name, isHeader = false) {
+  const suffix = isHeader ? 'HeaderCell' : '';
+
+  return styles[`${name}${suffix}`] || styles.cell;
+}
+
+function SeriesBookTableHeader() {
+  return (
+    <VirtualTableHeader>
+      {
+        columns.map((column) => {
+          const {
+            name,
+            label,
+            columnLabel,
+            isVisible
+          } = column;
+
+          if (!isVisible) {
+            return null;
+          }
+
+          return (
+            <VirtualTableHeaderCell
+              key={name}
+              name={name}
+              className={getColumnClassName(name, true)}
+            >
+              {columnLabel || label || ''}
+            </VirtualTableHeaderCell>
+          );
+        })
+      }
+    </VirtualTableHeader>
+  );
+}
+
 function SeriesBookRow(props) {
   const {
     book,
@@ -108,49 +146,51 @@ function SeriesBookRow(props) {
   };
 
   return (
-    <TableRow>
-      <TableRowCell className={styles.monitored}>
+    <>
+      <VirtualTableRowCell className={styles.monitored}>
         <MonitorToggleButton
           monitored={book.monitored}
           isDisabled={!book.authorMonitored}
           isSaving={false}
           onPress={onMonitorPress}
         />
-      </TableRowCell>
+      </VirtualTableRowCell>
 
-      <TableRowCell className={styles.position}>
+      <VirtualTableRowCell className={styles.position}>
         {book.position || ''}
-      </TableRowCell>
+      </VirtualTableRowCell>
 
-      <TableRowCell className={styles.title}>
+      <VirtualTableRowCell className={styles.title}>
         <BookTitleLink
           titleSlug={book.titleSlug}
           title={book.title}
         />
-      </TableRowCell>
+      </VirtualTableRowCell>
 
-      <TableRowCell className={styles.author}>
+      <VirtualTableRowCell className={styles.author}>
         <AuthorNameLink
           titleSlug={book.authorTitleSlug}
           authorName={book.authorName}
         />
-      </TableRowCell>
+      </VirtualTableRowCell>
 
-      <TableRowCell className={styles.status}>
+      <VirtualTableRowCell className={styles.status}>
         <SeriesBookStatus book={book} />
-      </TableRowCell>
+      </VirtualTableRowCell>
 
-      <TableRowCell className={styles.reason}>
+      <VirtualTableRowCell className={styles.reason}>
         {book.hasFile ? '' : book.missingReason || ''}
-      </TableRowCell>
+      </VirtualTableRowCell>
 
       <BookSearchCellConnector
+        className={styles.actions}
+        component={VirtualTableRowCell}
         bookId={book.id}
         authorId={book.authorId}
         bookTitle={book.title}
         authorName={book.authorName}
       />
-    </TableRow>
+    </>
   );
 }
 
@@ -160,6 +200,7 @@ SeriesBookRow.propTypes = {
 };
 
 function SeriesDetails(props) {
+  const [scroller, setScroller] = useState(null);
   const {
     isFetching,
     error,
@@ -174,10 +215,25 @@ function SeriesDetails(props) {
   const completeness = item?.completeness || {};
   const isMonitored = books.length > 0 && books.every((book) => book.monitored);
   const searchableBooks = books.filter((book) => book.monitored && book.authorMonitored);
+  const rowRenderer = ({ key, rowIndex, style }) => {
+    const book = books[rowIndex];
+
+    return (
+      <VirtualTableRow
+        key={key}
+        style={style}
+      >
+        <SeriesBookRow
+          book={book}
+          onMonitorBookPress={onMonitorBookPress}
+        />
+      </VirtualTableRow>
+    );
+  };
 
   return (
     <PageContent title={item?.title || 'Series'}>
-      <PageContentBody>
+      <PageContentBody registerScroller={setScroller}>
         {
           isFetching &&
             <LoadingIndicator />
@@ -260,26 +316,20 @@ function SeriesDetails(props) {
                 </div>
               </div>
 
-              <div className={styles.books}>
-                <Table
-                  columns={columns}
-                  horizontalScroll={true}
-                >
-                  <TableBody>
-                    {
-                      books.map((book) => {
-                        return (
-                          <SeriesBookRow
-                            key={book.id}
-                            book={book}
-                            onMonitorBookPress={onMonitorBookPress}
-                          />
-                        );
-                      })
-                    }
-                  </TableBody>
-                </Table>
-              </div>
+              {
+                scroller &&
+                  <div className={styles.books}>
+                    <VirtualTable
+                      className={styles.tableContainer}
+                      items={books}
+                      scroller={scroller}
+                      isSmallScreen={false}
+                      rowHeight={42}
+                      rowRenderer={rowRenderer}
+                      header={<SeriesBookTableHeader />}
+                    />
+                  </div>
+              }
 
               <div className={styles.footer}>
                 <Icon

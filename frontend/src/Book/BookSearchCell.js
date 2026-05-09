@@ -39,13 +39,15 @@ class BookSearchCell extends Component {
       bookId,
       bookTitle,
       authorName,
+      className,
+      component: Cell,
       isSearching,
       onSearchPress,
       ...otherProps
     } = this.props;
 
     return (
-      <TableRowCell className={styles.BookSearchCell}>
+      <Cell className={className}>
         <SpinnerIconButton
           name={icons.SEARCH}
           isSpinning={isSearching}
@@ -66,7 +68,7 @@ class BookSearchCell extends Component {
           {...otherProps}
         />
 
-      </TableRowCell>
+      </Cell>
     );
   }
 }
@@ -76,8 +78,15 @@ BookSearchCell.propTypes = {
   authorId: PropTypes.number.isRequired,
   bookTitle: PropTypes.string.isRequired,
   authorName: PropTypes.string.isRequired,
+  className: PropTypes.string,
+  component: PropTypes.elementType,
   isSearching: PropTypes.bool.isRequired,
   onSearchPress: PropTypes.func.isRequired
+};
+
+BookSearchCell.defaultProps = {
+  className: styles.BookSearchCell,
+  component: TableRowCell
 };
 
 export default BookSearchCell;

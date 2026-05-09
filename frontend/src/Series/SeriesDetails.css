@@ -85,37 +85,93 @@
   border-top: 1px solid var(--borderColor);
 }
 
-.monitored {
-  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+.tableContainer {
+  composes: tableContainer from '~Components/Table/VirtualTable.css';
+}
 
-  width: 42px;
+.cell {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+}
+
+.headerCell {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+}
+
+.monitored {
+  composes: cell;
+
+  flex: 0 0 42px;
+}
+
+.monitoredHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 42px;
 }
 
 .position,
 .status {
-  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+  composes: cell;
 
-  width: 100px;
+  flex: 0 0 100px;
+}
+
+.positionHeaderCell,
+.statusHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 100px;
 }
 
 .title {
-  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+  composes: cell;
 
-  min-width: 220px;
+  flex: 1 0 220px;
+}
+
+.titleHeaderCell {
+  composes: headerCell;
+
+  flex: 1 0 220px;
 }
 
 .author {
-  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+  composes: cell;
 
-  min-width: 180px;
+  flex: 0 1 180px;
+}
+
+.authorHeaderCell {
+  composes: headerCell;
+
+  flex: 0 1 180px;
 }
 
 .reason {
-  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+  composes: cell;
 
-  min-width: 260px;
+  flex: 1 1 260px;
   color: var(--textSecondaryColor);
   font-size: 12px;
+}
+
+.reasonHeaderCell {
+  composes: headerCell;
+
+  flex: 1 1 260px;
+}
+
+.actions {
+  composes: cell;
+
+  flex: 0 0 70px;
+  white-space: nowrap;
+}
+
+.actionsHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 70px;
 }
 
 .footer {
