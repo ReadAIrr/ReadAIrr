@@ -23,7 +23,7 @@ import SelectEditionModal from 'InteractiveImport/Edition/SelectEditionModal';
 import SelectIndexerFlagsModal from 'InteractiveImport/IndexerFlags/SelectIndexerFlagsModal';
 import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectReleaseGroupModal from 'InteractiveImport/ReleaseGroup/SelectReleaseGroupModal';
-import { buildAddSearchUrl, getAuthorContext, getBookContext, getCleanAuthorCandidate, getCleanBookCandidate } from 'UnmappedFiles/unmappedAddSearchUtils';
+import { buildAddSearchLinks } from 'UnmappedFiles/unmappedAddSearchUtils';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -121,6 +121,24 @@ const replaceExistingFilesOptions = {
   DELETE: 'delete'
 };
 
+function getNarratorEvidence(contributorEvidence, source) {
+  return (contributorEvidence || []).find((item) => {
+    return item.role === 'narrator' &&
+      item.displayName &&
+      (!source || item.source === source);
+  });
+}
+
+function hasNarratorEvidence(contributorEvidence, displayName) {
+  const normalized = displayName.trim().toLowerCase();
+
+  return (contributorEvidence || []).some((item) => {
+    return item.role === 'narrator' &&
+      item.displayName &&
+      item.displayName.trim().toLowerCase() === normalized;
+  });
+}
+
 class InteractiveImportModalContent extends Component {
 
   //
@@ -138,8 +156,13 @@ class InteractiveImportModalContent extends Component {
       selectModalOpen: null,
       booksImported: [],
       isConfirmImportModalOpen: false,
-      inconsistentBookReleases: false
+      inconsistentBookReleases: false,
+      acceptedNarratorEvidenceKey: null
     };
+  }
+
+  componentDidMount() {
+    this.applyAcceptedNarratorEvidence();
   }
 
   componentDidUpdate(prevProps) {
@@ -156,6 +179,14 @@ class InteractiveImportModalContent extends Component {
     if (inconsistent !== this.state.inconsistentBookReleases) {
       this.setState({ inconsistentBookReleases: inconsistent });
     }
+
+    if (
+      prevProps.acceptedSuggestion !== this.props.acceptedSuggestion ||
+      prevProps.acceptedPath !== this.props.acceptedPath ||
+      prevProps.items !== this.props.items
+    ) {
+      this.applyAcceptedNarratorEvidence();
+    }
   }
 
   //
@@ -163,6 +194,47 @@ class InteractiveImportModalContent extends Component {
 
   getSelectedIds = () => {
     return getSelectedIds(this.state.selectedState);
+  };
+
+  applyAcceptedNarratorEvidence = () => {
+    const {
+      acceptedSuggestion,
+      acceptedPath,
+      items,
+      onSetContributorEvidencePress
+    } = this.props;
+
+    const displayName = acceptedSuggestion?.narrator?.trim();
+
+    if (!displayName || !acceptedPath) {
+      return;
+    }
+
+    const acceptedItem = items.find((item) => item.path === acceptedPath);
+    const review = acceptedItem?.review || {};
+    const bookFileId = review.bookFileId;
+    const contributorEvidence = review.contributorEvidence || [];
+    const key = `${acceptedPath}|${bookFileId || 0}|${displayName}`;
+
+    if (
+      !acceptedItem ||
+      !bookFileId ||
+      !review.canEditContributorEvidence ||
+      this.state.acceptedNarratorEvidenceKey === key ||
+      getNarratorEvidence(contributorEvidence, 'manual') ||
+      hasNarratorEvidence(contributorEvidence, displayName)
+    ) {
+      return;
+    }
+
+    this.setState({ acceptedNarratorEvidenceKey: key });
+
+    onSetContributorEvidencePress({
+      id: acceptedItem.id,
+      bookFileId,
+      role: 'narrator',
+      displayName
+    });
   };
 
   //
@@ -323,24 +395,9 @@ class InteractiveImportModalContent extends Component {
     const allColumns = _.cloneDeep(COLUMNS);
     const acceptedItem = acceptedPath ? items.find((item) => item.path === acceptedPath) : null;
     const acceptedReview = acceptedItem?.review;
-    const acceptedAuthorCandidate = getCleanAuthorCandidate(acceptedReview, acceptedSuggestion);
-    const acceptedBookCandidate = getCleanBookCandidate(acceptedReview, acceptedSuggestion);
-    const acceptedBookContext = getBookContext(acceptedReview, acceptedSuggestion);
-    const acceptedAuthorContext = getAuthorContext(acceptedReview, acceptedSuggestion);
-    const acceptedNarratorContext = acceptedSuggestion?.narrator;
-    const acceptedAddAuthorUrl = acceptedAuthorCandidate ? buildAddSearchUrl({
-      term: acceptedAuthorCandidate,
-      contextType: 'author',
-      contextBook: acceptedBookContext,
-      contextNarrator: acceptedNarratorContext
-    }) : null;
-    const acceptedAddBookUrl = acceptedBookCandidate ? buildAddSearchUrl({
-      term: [acceptedBookCandidate, acceptedAuthorContext].filter(Boolean).join(' '),
-      contextType: 'book',
-      contextBook: acceptedBookCandidate,
-      contextAuthor: acceptedAuthorContext,
-      contextNarrator: acceptedNarratorContext
-    }) : null;
+    const acceptedAddLinks = buildAddSearchLinks(acceptedReview, acceptedSuggestion, acceptedItem?.contributorEvidence);
+    const acceptedAddAuthorUrl = acceptedAddLinks.addAuthorUrl;
+    const acceptedAddBookUrl = acceptedAddLinks.addBookUrl;
     const columns = allColumns.map((column) => {
       const showIndexerFlags = items.some((item) => item.indexerFlags);
 

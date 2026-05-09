@@ -37,8 +37,9 @@ import InteractiveImportRowCellPlaceholder from './InteractiveImportRowCellPlace
 import { getManualImportDecision } from './manualImportReviewContext';
 import styles from './InteractiveImportRow.css';
 
-function getManualNarratorEvidence(contributorEvidence) {
-  return (contributorEvidence || []).find((item) => item.role === 'narrator' && item.source === 'manual');
+function getPreferredNarratorEvidence(contributorEvidence) {
+  return (contributorEvidence || []).find((item) => item.role === 'narrator' && item.source === 'manual') ||
+    (contributorEvidence || []).find((item) => item.role === 'narrator');
 }
 
 class InteractiveImportRow extends Component {
@@ -188,11 +189,11 @@ class InteractiveImportRow extends Component {
   };
 
   onContributorEvidencePress = () => {
-    const manualEvidence = getManualNarratorEvidence(this.props.review?.contributorEvidence);
+    const narratorEvidence = getPreferredNarratorEvidence(this.props.review?.contributorEvidence);
 
     this.setState({
       isContributorEvidenceModalOpen: true,
-      contributorDisplayName: manualEvidence?.displayName || ''
+      contributorDisplayName: narratorEvidence?.displayName || ''
     });
   };
 

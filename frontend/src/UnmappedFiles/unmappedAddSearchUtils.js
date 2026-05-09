@@ -139,3 +139,40 @@ export function buildAddSearchUrl({ term, contextType, contextBook, contextAutho
 
   return `/add/search?${params.join('&')}`;
 }
+
+function getNarratorContext(review, suggestion, contributorEvidence) {
+  const evidence = [
+    ...(review?.contributorEvidence || []),
+    ...(contributorEvidence || [])
+  ];
+
+  return suggestion?.narrator ||
+    evidence.find((item) => item.role === 'narrator')?.displayName ||
+    '';
+}
+
+export function buildAddSearchLinks(review, suggestion, contributorEvidence) {
+  const addAuthorCandidate = getCleanAuthorCandidate(review, suggestion);
+  const addBookCandidate = getCleanBookCandidate(review, suggestion);
+  const bookContext = getBookContext(review, suggestion);
+  const authorContext = getAuthorContext(review, suggestion);
+  const narratorContext = getNarratorContext(review, suggestion, contributorEvidence);
+
+  return {
+    addAuthorCandidate,
+    addBookCandidate,
+    addAuthorUrl: addAuthorCandidate ? buildAddSearchUrl({
+      term: addAuthorCandidate,
+      contextType: 'author',
+      contextBook: bookContext,
+      contextNarrator: narratorContext
+    }) : null,
+    addBookUrl: addBookCandidate ? buildAddSearchUrl({
+      term: [addBookCandidate, authorContext].filter(Boolean).join(' '),
+      contextType: 'book',
+      contextBook: addBookCandidate,
+      contextAuthor: authorContext,
+      contextNarrator: narratorContext
+    }) : null
+  };
+}

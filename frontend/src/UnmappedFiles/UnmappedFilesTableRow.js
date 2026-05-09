@@ -24,7 +24,7 @@ import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import { buildAddSearchUrl, getAuthorContext, getBookContext, getCleanAuthorCandidate, getCleanBookCandidate } from './unmappedAddSearchUtils';
+import { buildAddSearchLinks } from './unmappedAddSearchUtils';
 import styles from './UnmappedFilesTableRow.css';
 
 function getStatusKind(status) {
@@ -441,24 +441,9 @@ class UnmappedFilesTableRow extends Component {
 
     const reviewSuggestion = getReviewSuggestion(review);
     const reviewAudioPreviewUrl = getAudioPreviewUrl(reviewSuggestion?.audioPreviewUrl);
-    const addAuthorCandidate = getCleanAuthorCandidate(review, reviewSuggestion);
-    const addBookCandidate = getCleanBookCandidate(review, reviewSuggestion);
-    const bookContext = getBookContext(review, reviewSuggestion);
-    const authorContext = getAuthorContext(review, reviewSuggestion);
-    const narratorContext = reviewSuggestion?.narrator || getManualNarratorValue(review?.contributorEvidence || contributorEvidence);
-    const addAuthorUrl = addAuthorCandidate ? buildAddSearchUrl({
-      term: addAuthorCandidate,
-      contextType: 'author',
-      contextBook: bookContext,
-      contextNarrator: narratorContext
-    }) : null;
-    const addBookUrl = addBookCandidate ? buildAddSearchUrl({
-      term: [addBookCandidate, authorContext].filter(Boolean).join(' '),
-      contextType: 'book',
-      contextBook: addBookCandidate,
-      contextAuthor: authorContext,
-      contextNarrator: narratorContext
-    }) : null;
+    const reviewAddLinks = buildAddSearchLinks(review, reviewSuggestion, contributorEvidence);
+    const addAuthorUrl = reviewAddLinks.addAuthorUrl;
+    const addBookUrl = reviewAddLinks.addBookUrl;
 
     return (
       <>
@@ -578,6 +563,7 @@ class UnmappedFilesTableRow extends Component {
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
               const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
               const contributorEvidenceDetails = getContributorEvidenceDetails(review?.contributorEvidence || contributorEvidence);
+              const candidateAddLinks = buildAddSearchLinks(review, suggestion, contributorEvidence);
 
               return (
                 <VirtualTableRowCell
@@ -667,20 +653,20 @@ class UnmappedFilesTableRow extends Component {
                       }
 
                       {
-                        addAuthorUrl &&
+                        candidateAddLinks.addAuthorUrl &&
                           <Link
                             className={styles.inlineAction}
-                            to={addAuthorUrl}
+                            to={candidateAddLinks.addAuthorUrl}
                           >
                             Add Author
                           </Link>
                       }
 
                       {
-                        addBookUrl &&
+                        candidateAddLinks.addBookUrl &&
                           <Link
                             className={styles.inlineAction}
-                            to={addBookUrl}
+                            to={candidateAddLinks.addBookUrl}
                           >
                             Add Book
                           </Link>
