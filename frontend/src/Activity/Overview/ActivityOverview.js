@@ -34,7 +34,9 @@ const filters = [
   { key: 'command', label: 'Commands' },
   { key: 'queue', label: 'Queue' },
   { key: 'health', label: 'Health' },
-  { key: 'log', label: 'Warnings' }
+  { key: 'log', label: 'Warnings' },
+  { key: 'identification', label: 'Identification' },
+  { key: 'contributor', label: 'Contributor Evidence' }
 ];
 
 class ActivityOverview extends Component {

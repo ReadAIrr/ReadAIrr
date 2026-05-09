@@ -4,6 +4,7 @@ using NUnit.Framework;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Instrumentation;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using Readarr.Api.V1.Activity;
 
@@ -106,6 +107,87 @@ namespace NzbDrone.Api.Test.Activity
             resource.Status.Should().Be("error");
             resource.Time.Should().Be(now);
             resource.IsCurrentState.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_map_unmapped_identification_without_raw_transcript_or_full_path()
+        {
+            var resource = ActivityResourceMapper.FromUnmappedIdentificationSuggestion(new UnmappedFileIdentificationSuggestion
+            {
+                Id = 8,
+                BookFileId = 99,
+                Path = "/library/private/Author/Book/file.m4b",
+                Type = "deepAudio",
+                Provider = "OpenRouter",
+                Status = "transcriptCaptured",
+                Stage = "sttComplete",
+                LikelyAuthor = "Jane Author",
+                LikelyBook = "Example Book",
+                Narrator = "Jane Reader",
+                Confidence = 87,
+                Explanation = "Matched intro clues",
+                Transcript = "Raw transcript should never appear",
+                TranscriptExcerpt = "Transcript excerpt should never appear",
+                ProviderResponseExcerpt = "Provider body should never appear",
+                Updated = new DateTime(2026, 5, 9, 4, 0, 0, DateTimeKind.Utc)
+            });
+
+            resource.Id.Should().Be("unmapped-identification-8");
+            resource.Category.Should().Be("identification");
+            resource.Level.Should().Be("info");
+            resource.Status.Should().Be("transcriptCaptured");
+            resource.Source.Should().Be("OpenRouter");
+            resource.Title.Should().Be("Example Book - Jane Author");
+            resource.Message.Should().Contain("87% confidence");
+            resource.Message.Should().Contain("Matched intro clues");
+            resource.RelatedId.Should().Be("99");
+            resource.Message.Should().NotContain("/library/private");
+            resource.Message.Should().NotContain("Raw transcript");
+            resource.Message.Should().NotContain("Provider body");
+        }
+
+        [Test]
+        public void should_map_running_unmapped_identification_as_current_state()
+        {
+            var resource = ActivityResourceMapper.FromUnmappedIdentificationSuggestion(new UnmappedFileIdentificationSuggestion
+            {
+                Id = 9,
+                BookFileId = 100,
+                Path = "/library/private/unknown.mp3",
+                Status = "extracting",
+                Updated = new DateTime(2026, 5, 9, 4, 5, 0, DateTimeKind.Utc)
+            });
+
+            resource.Category.Should().Be("identification");
+            resource.Level.Should().Be("info");
+            resource.Status.Should().Be("extracting");
+            resource.Title.Should().Be("unknown.mp3");
+            resource.IsCurrentState.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_map_contributor_evidence_without_raw_value()
+        {
+            var resource = ActivityResourceMapper.FromContributorEvidence(new ContributorEvidence
+            {
+                Id = 3,
+                BookFileId = 44,
+                Role = "narrator",
+                DisplayName = "Jane Reader",
+                Source = "sttTranscript",
+                Confidence = 91,
+                RawValue = "Raw narrator evidence should stay out of activity",
+                Updated = new DateTime(2026, 5, 9, 4, 10, 0, DateTimeKind.Utc)
+            });
+
+            resource.Id.Should().Be("contributor-evidence-3");
+            resource.Category.Should().Be("contributor");
+            resource.Status.Should().Be("recorded");
+            resource.Title.Should().Be("Jane Reader - narrator");
+            resource.Message.Should().Contain("Source sttTranscript");
+            resource.Message.Should().Contain("91% confidence");
+            resource.Message.Should().NotContain("Raw narrator evidence");
+            resource.RelatedId.Should().Be("44");
         }
     }
 }

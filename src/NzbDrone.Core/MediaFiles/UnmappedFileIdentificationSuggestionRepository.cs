@@ -8,6 +8,7 @@ namespace NzbDrone.Core.MediaFiles
     public interface IUnmappedFileIdentificationSuggestionRepository : IBasicRepository<UnmappedFileIdentificationSuggestion>
     {
         List<UnmappedFileIdentificationSuggestion> GetByBookFileIds(IEnumerable<int> bookFileIds);
+        List<UnmappedFileIdentificationSuggestion> GetRecent(int take);
         void DeleteByBookFileIds(IEnumerable<int> bookFileIds);
     }
 
@@ -30,6 +31,24 @@ namespace NzbDrone.Core.MediaFiles
             return Query(x => ids.Contains(x.BookFileId))
                 .OrderByDescending(x => x.Updated)
                 .ToList();
+        }
+
+        public List<UnmappedFileIdentificationSuggestion> GetRecent(int take)
+        {
+            if (take <= 0)
+            {
+                return new List<UnmappedFileIdentificationSuggestion>();
+            }
+
+            var spec = new PagingSpec<UnmappedFileIdentificationSuggestion>
+            {
+                Page = 1,
+                PageSize = take,
+                SortKey = "updated",
+                SortDirection = SortDirection.Descending
+            };
+
+            return GetPaged(spec).Records;
         }
 
         public void DeleteByBookFileIds(IEnumerable<int> bookFileIds)

@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Instrumentation;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using Readarr.Http;
 
@@ -154,6 +156,59 @@ namespace Readarr.Api.V1.Activity
             };
         }
 
+        public static ActivityResource FromUnmappedIdentificationSuggestion(UnmappedFileIdentificationSuggestion model)
+        {
+            var title = JoinParts(model.LikelyBook, model.LikelyAuthor);
+
+            if (title.IsNullOrWhiteSpace())
+            {
+                title = SafeFileName(model.Path);
+            }
+
+            if (title.IsNullOrWhiteSpace())
+            {
+                title = "Unmapped identification";
+            }
+
+            return new ActivityResource
+            {
+                Id = $"unmapped-identification-{model.Id}",
+                Time = model.Updated != default ? model.Updated : model.Created,
+                Category = "identification",
+                Type = model.Type.IsNotNullOrWhiteSpace() ? model.Type : "unmappedIdentification",
+                Level = LevelFromIdentificationStatus(model.Status),
+                Status = NormalizeStatus(model.Status),
+                Source = model.Provider.IsNotNullOrWhiteSpace() ? model.Provider : "Unmapped Identification",
+                Title = title,
+                Message = Redact(Truncate(IdentificationMessage(model))),
+                Entity = JoinParts(model.LikelyEdition, model.Language, model.Narrator),
+                RelatedId = model.BookFileId > 0 ? model.BookFileId.ToString() : null,
+                IsCurrentState = IsIdentificationInProgress(model.Status)
+            };
+        }
+
+        public static ActivityResource FromContributorEvidence(ContributorEvidence model)
+        {
+            var role = model.Role.IsNotNullOrWhiteSpace() ? model.Role.SplitCamelCase().ToLowerInvariant() : "contributor";
+            var displayName = model.DisplayName.IsNotNullOrWhiteSpace() ? model.DisplayName : model.NormalizedName;
+            var source = model.Source.IsNotNullOrWhiteSpace() ? model.Source : "Contributor Evidence";
+
+            return new ActivityResource
+            {
+                Id = $"contributor-evidence-{model.Id}",
+                Time = model.Updated != default ? model.Updated : model.Created,
+                Category = "contributor",
+                Type = role,
+                Level = "info",
+                Status = "recorded",
+                Source = source,
+                Title = JoinParts(displayName, role),
+                Message = Redact(Truncate(ContributorEvidenceMessage(model))),
+                RelatedId = model.BookFileId?.ToString() ?? model.EditionId?.ToString(),
+                IsCurrentState = false
+            };
+        }
+
         public static bool Matches(ActivityResource resource, string term, string category, string level, string status, DateTime? start, DateTime? end)
         {
             if (category.IsNotNullOrWhiteSpace() && !string.Equals(resource.Category, category, StringComparison.InvariantCultureIgnoreCase))
@@ -269,6 +324,109 @@ namespace Readarr.Api.V1.Activity
             }
 
             return level.ToLowerInvariant() == "warn" ? "warning" : level.ToLowerInvariant();
+        }
+
+        private static string LevelFromIdentificationStatus(string status)
+        {
+            switch (NormalizeStatus(status))
+            {
+                case "failed":
+                case "error":
+                    return "error";
+                case "disabled":
+                case "skipped":
+                case "stale":
+                case "noCandidate":
+                case "lowConfidence":
+                    return "warning";
+                default:
+                    return "info";
+            }
+        }
+
+        private static string NormalizeStatus(string status)
+        {
+            if (status.IsNullOrWhiteSpace())
+            {
+                return "unknown";
+            }
+
+            return status.Trim().FirstCharToLower();
+        }
+
+        private static bool IsIdentificationInProgress(string status)
+        {
+            switch (NormalizeStatus(status))
+            {
+                case "queued":
+                case "running":
+                case "extracting":
+                case "transcribing":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static string IdentificationMessage(UnmappedFileIdentificationSuggestion model)
+        {
+            var parts = new List<string>();
+
+            if (model.Status.IsNotNullOrWhiteSpace())
+            {
+                parts.Add(model.Status.SplitCamelCase());
+            }
+
+            if (model.Stage.IsNotNullOrWhiteSpace())
+            {
+                parts.Add($"stage {model.Stage.SplitCamelCase()}");
+            }
+
+            if (model.Confidence.HasValue)
+            {
+                parts.Add($"{model.Confidence.Value}% confidence");
+            }
+
+            if (model.Explanation.IsNotNullOrWhiteSpace())
+            {
+                parts.Add(model.Explanation);
+            }
+
+            return string.Join("; ", parts);
+        }
+
+        private static string ContributorEvidenceMessage(ContributorEvidence model)
+        {
+            var parts = new List<string>();
+
+            if (model.Source.IsNotNullOrWhiteSpace())
+            {
+                parts.Add($"Source {model.Source}");
+            }
+
+            if (model.Confidence.HasValue)
+            {
+                parts.Add($"{model.Confidence.Value}% confidence");
+            }
+
+            return string.Join("; ", parts);
+        }
+
+        private static string SafeFileName(string path)
+        {
+            if (path.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            try
+            {
+                return Path.GetFileName(path);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static bool Contains(string value, string term)

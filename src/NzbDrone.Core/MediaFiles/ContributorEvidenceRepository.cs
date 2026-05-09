@@ -10,6 +10,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
         List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
+        List<ContributorEvidence> GetRecent(int take);
         void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources);
         void DeleteByBookFileIdSourceAndRole(int bookFileId, string source, string role);
     }
@@ -49,6 +50,24 @@ namespace NzbDrone.Core.MediaFiles
                 .OrderBy(x => x.Role)
                 .ThenBy(x => x.DisplayName)
                 .ToList();
+        }
+
+        public List<ContributorEvidence> GetRecent(int take)
+        {
+            if (take <= 0)
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            var spec = new PagingSpec<ContributorEvidence>
+            {
+                Page = 1,
+                PageSize = take,
+                SortKey = "updated",
+                SortDirection = SortDirection.Descending
+            };
+
+            return GetPaged(spec).Records;
         }
 
         public void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources)

@@ -7,6 +7,7 @@ using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Instrumentation;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Queue;
 using Readarr.Http;
@@ -25,13 +26,17 @@ namespace Readarr.Api.V1.Activity
         private readonly IHealthCheckService _healthCheckService;
         private readonly IQueueService _queueService;
         private readonly IPendingReleaseService _pendingReleaseService;
+        private readonly IUnmappedFileIdentificationSuggestionRepository _unmappedIdentificationSuggestionRepository;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
 
         public ActivityController(IHistoryService historyService,
                                   ILogService logService,
                                   IManageCommandQueue commandQueueManager,
                                   IHealthCheckService healthCheckService,
                                   IQueueService queueService,
-                                  IPendingReleaseService pendingReleaseService)
+                                  IPendingReleaseService pendingReleaseService,
+                                  IUnmappedFileIdentificationSuggestionRepository unmappedIdentificationSuggestionRepository,
+                                  IContributorEvidenceRepository contributorEvidenceRepository)
         {
             _historyService = historyService;
             _logService = logService;
@@ -39,6 +44,8 @@ namespace Readarr.Api.V1.Activity
             _healthCheckService = healthCheckService;
             _queueService = queueService;
             _pendingReleaseService = pendingReleaseService;
+            _unmappedIdentificationSuggestionRepository = unmappedIdentificationSuggestionRepository;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
         }
 
         [HttpGet]
@@ -90,6 +97,18 @@ namespace Readarr.Api.V1.Activity
                 activity.AddRange(GetWarningLogs(sourceTake).Select(ActivityResourceMapper.FromLog));
             }
 
+            if (IncludeCategory(category, "identification"))
+            {
+                activity.AddRange(_unmappedIdentificationSuggestionRepository.GetRecent(sourceTake)
+                    .Select(ActivityResourceMapper.FromUnmappedIdentificationSuggestion));
+            }
+
+            if (IncludeCategory(category, "contributor"))
+            {
+                activity.AddRange(_contributorEvidenceRepository.GetRecent(sourceTake)
+                    .Select(ActivityResourceMapper.FromContributorEvidence));
+            }
+
             var filtered = activity
                 .Where(x => ActivityResourceMapper.Matches(x, term, category, level, status, start, end));
 
@@ -111,16 +130,19 @@ namespace Readarr.Api.V1.Activity
                     "Command queue state",
                     "Current queue and pending releases",
                     "Current non-OK health checks",
-                    "Recent warning/error/fatal log records"
+                    "Recent warning/error/fatal log records",
+                    "Recent unmapped AI/STT identification review states",
+                    "Recent contributor/narrator evidence updates"
                 },
                 DeferredSources = new List<string>
                 {
                     "Raw log file streaming",
                     "Full command request bodies",
                     "External telemetry",
-                    "Unpersisted browser-only UI events"
+                    "Unpersisted browser-only UI events",
+                    "Raw transcripts, intro audio URLs, provider payloads, and full local file paths"
                 },
-                SafetyNote = "Activity is read-only, bounded, and redacts common secret-bearing query/header values. It does not expose raw log files or command bodies."
+                SafetyNote = "Activity is read-only, bounded, and redacts common secret-bearing query/header values. AI/STT rows show only review status and concise clues, not raw transcripts, provider payloads, audio URLs, or full paths."
             };
         }
 
