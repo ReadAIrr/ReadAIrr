@@ -25,7 +25,6 @@ module.exports = {
           return Object.assign(acc, reload(vars));
         }, {})
     }],
-    'postcss-color-function',
     'postcss-nested'
   ]
 };

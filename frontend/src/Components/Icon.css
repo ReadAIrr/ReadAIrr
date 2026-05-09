@@ -14,7 +14,7 @@
   color: var(--infoColor);
 
   &:global(.darken) {
-    color: color(var(--infoColor) shade(30%));
+    color: color-mix(in srgb, var(--infoColor) 70%, black);
   }
 }
 
@@ -22,7 +22,7 @@
   color: var(--pink);
 
   &:global(.darken) {
-    color: color(var(--pink) shade(30%));
+    color: color-mix(in srgb, var(--pink) 70%, black);
   }
 }
 
