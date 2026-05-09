@@ -4,6 +4,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { fetchStatus } from 'Store/Actions/systemActions';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import About from './About';
 
 function createMapStateToProps() {
@@ -26,12 +27,51 @@ const mapDispatchToProps = {
 
 class AboutConnector extends Component {
 
+  constructor(props, context) {
+    super(props, context);
+
+    this.state = {
+      isFetchingMetadataServiceStatus: false,
+      metadataServiceStatus: null,
+      metadataServiceStatusError: null
+    };
+  }
+
   //
   // Lifecycle
 
   componentDidMount() {
     this.props.fetchStatus();
+    this.fetchMetadataServiceStatus();
   }
+
+  fetchMetadataServiceStatus = () => {
+    this.setState({
+      isFetchingMetadataServiceStatus: true,
+      metadataServiceStatusError: null
+    });
+
+    const { request } = createAjaxRequest({
+      url: '/system/metadata',
+      method: 'GET',
+      dataType: 'json'
+    });
+
+    request.done((data) => {
+      this.setState({
+        isFetchingMetadataServiceStatus: false,
+        metadataServiceStatus: data,
+        metadataServiceStatusError: null
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        isFetchingMetadataServiceStatus: false,
+        metadataServiceStatusError: xhr
+      });
+    });
+  };
 
   //
   // Render
@@ -40,6 +80,7 @@ class AboutConnector extends Component {
     return (
       <About
         {...this.props}
+        {...this.state}
       />
     );
   }

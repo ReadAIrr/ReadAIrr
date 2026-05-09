@@ -25,6 +25,17 @@ function getReadinessKind(readinessState) {
   }
 }
 
+function getMetadataReadinessKind(readinessState) {
+  switch (readinessState) {
+    case 'reachable':
+      return kinds.SUCCESS;
+    case 'blocked':
+      return kinds.WARNING;
+    default:
+      return kinds.INFO;
+  }
+}
+
 class About extends Component {
 
   //
@@ -47,7 +58,10 @@ class About extends Component {
       startTime,
       timeFormat,
       longDateFormat,
-      databaseStatus
+      databaseStatus,
+      metadataServiceStatus,
+      isFetchingMetadataServiceStatus,
+      metadataServiceStatusError
     } = this.props;
     const postgres = databaseStatus?.postgres || {};
 
@@ -226,6 +240,123 @@ class About extends Component {
               </DescriptionList>
             </FieldSet>
         }
+
+        {
+          (metadataServiceStatus || isFetchingMetadataServiceStatus || metadataServiceStatusError) &&
+            <FieldSet legend="Metadata Service">
+              {
+                isFetchingMetadataServiceStatus &&
+                  <DescriptionList className={styles.descriptionList}>
+                    <DescriptionListItem
+                      title="Status"
+                      data="Checking metadata service and ReadAIrr update metadata..."
+                    />
+                  </DescriptionList>
+              }
+
+              {
+                metadataServiceStatusError &&
+                  <DescriptionList className={styles.descriptionList}>
+                    <DescriptionListItem
+                      title="Status"
+                      data={
+                        <Label kind={kinds.WARNING}>
+                          Metadata service status unavailable
+                        </Label>
+                      }
+                    />
+                  </DescriptionList>
+              }
+
+              {
+                metadataServiceStatus &&
+                  <DescriptionList className={styles.descriptionList}>
+                    <DescriptionListItem
+                      title="Source"
+                      data={`${metadataServiceStatus.sourceLabel} (${metadataServiceStatus.sourceType})`}
+                    />
+
+                    <DescriptionListItem
+                      title="Endpoint"
+                      data={metadataServiceStatus.serviceUrl}
+                    />
+
+                    <DescriptionListItem
+                      title="Health"
+                      data={
+                        <Label kind={getMetadataReadinessKind(metadataServiceStatus.readinessState)}>
+                          {metadataServiceStatus.readinessLabel}
+                        </Label>
+                      }
+                    />
+
+                    <DescriptionListItem
+                      title="Health detail"
+                      data={`${metadataServiceStatus.healthMessage}${metadataServiceStatus.statusCode ? ` (HTTP ${metadataServiceStatus.statusCode})` : ''}${metadataServiceStatus.responseTimeMs ? ` in ${metadataServiceStatus.responseTimeMs} ms` : ''}`}
+                    />
+
+                    {
+                      metadataServiceStatus.healthDetail &&
+                        <DescriptionListItem
+                          title="Response detail"
+                          data={metadataServiceStatus.healthDetail}
+                        />
+                    }
+
+                    <DescriptionListItem
+                      title="Update metadata"
+                      data={`${metadataServiceStatus.updateEndpoint} on ${metadataServiceStatus.updateBranch}`}
+                    />
+
+                    <DescriptionListItem
+                      title="App update"
+                      data={
+                        metadataServiceStatus.updateAvailable ?
+                          `Update ${metadataServiceStatus.latestVersion} available from ${metadataServiceStatus.currentVersion}` :
+                          metadataServiceStatus.updateCheckMessage
+                      }
+                    />
+
+                    {
+                      metadataServiceStatus.warnings?.length > 0 &&
+                        <DescriptionListItem
+                          title="Warnings"
+                          data={
+                            <ul className={styles.list}>
+                              {
+                                metadataServiceStatus.warnings.map((warning, index) => {
+                                  return (
+                                    <li key={index}>
+                                      {warning}
+                                    </li>
+                                  );
+                                })
+                              }
+                            </ul>
+                          }
+                        />
+                    }
+
+                    <DescriptionListItem
+                      title="Checklist"
+                      data={
+                        <ol className={styles.list}>
+                          {
+                            metadataServiceStatus.checklist.map((item, index) => {
+                              return (
+                                <li key={index}>
+                                  {item}
+                                </li>
+                              );
+                            })
+                          }
+                        </ol>
+                      }
+                    />
+                  </DescriptionList>
+              }
+            </FieldSet>
+        }
       </>
     );
   }
@@ -248,7 +379,10 @@ About.propTypes = {
   startTime: PropTypes.string.isRequired,
   timeFormat: PropTypes.string.isRequired,
   longDateFormat: PropTypes.string.isRequired,
-  databaseStatus: PropTypes.object
+  databaseStatus: PropTypes.object,
+  metadataServiceStatus: PropTypes.object,
+  isFetchingMetadataServiceStatus: PropTypes.bool.isRequired,
+  metadataServiceStatusError: PropTypes.object
 };
 
 export default About;

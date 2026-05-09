@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Update;
 
 namespace Readarr.Api.V1.System
@@ -54,6 +56,30 @@ namespace Readarr.Api.V1.System
         public long? SqliteSizeBytes { get; set; }
         public string SqliteSizeLabel { get; set; }
         public PostgresConfigStatusResource Postgres { get; set; }
+        public List<string> Warnings { get; set; }
+        public List<string> Checklist { get; set; }
+    }
+
+    public class MetadataServiceStatusResource
+    {
+        public string MetadataSource { get; set; }
+        public string SourceLabel { get; set; }
+        public string SourceType { get; set; }
+        public string ServiceUrl { get; set; }
+        public string ReadinessState { get; set; }
+        public string ReadinessLabel { get; set; }
+        public bool IsReachable { get; set; }
+        public string HealthMessage { get; set; }
+        public string HealthDetail { get; set; }
+        public int? StatusCode { get; set; }
+        public double ResponseTimeMs { get; set; }
+        public string UpdateEndpoint { get; set; }
+        public string UpdateBranch { get; set; }
+        public string CurrentVersion { get; set; }
+        public bool? UpdateAvailable { get; set; }
+        public string LatestVersion { get; set; }
+        public DateTime? LatestReleaseDate { get; set; }
+        public string UpdateCheckMessage { get; set; }
         public List<string> Warnings { get; set; }
         public List<string> Checklist { get; set; }
     }
@@ -212,6 +238,144 @@ namespace Readarr.Api.V1.System
             }
 
             return $"{value:0.##} {units[unit]}";
+        }
+    }
+
+    public static class MetadataServiceStatusResourceMapper
+    {
+        public static MetadataServiceStatusResource ToResource(string configuredMetadataSource,
+                                                               MetadataSourceHealthResult healthResult,
+                                                               UpdatePackage latestUpdate,
+                                                               string updateCheckMessage,
+                                                               bool updateCheckSucceeded,
+                                                               string branch,
+                                                               Version currentVersion)
+        {
+            var metadataSource = configuredMetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.LocalRReadingGlasses : configuredMetadataSource;
+            var redactedMetadataSource = RedactUrl(metadataSource);
+            var sourceType = GetSourceType(metadataSource);
+            var warnings = new List<string>();
+            var readinessState = healthResult.IsHealthy ? "reachable" : "blocked";
+            var readinessLabel = healthResult.IsHealthy ? "Metadata service reachable" : "Metadata service unreachable";
+
+            if (sourceType == "originalReadarr")
+            {
+                warnings.Add("Original Readarr metadata is legacy compatibility mode. Prefer a ReadAIrr-compatible rreading-glasses endpoint.");
+            }
+
+            if (!healthResult.IsHealthy && healthResult.Message.IsNotNullOrWhiteSpace())
+            {
+                warnings.Add(healthResult.Message);
+            }
+
+            if (latestUpdate != null && latestUpdate.Version > currentVersion)
+            {
+                warnings.Add($"ReadAIrr update {latestUpdate.Version} is available for branch {latestUpdate.Branch ?? branch}.");
+            }
+
+            return new MetadataServiceStatusResource
+            {
+                MetadataSource = metadataSource,
+                SourceLabel = GetSourceLabel(sourceType),
+                SourceType = sourceType,
+                ServiceUrl = redactedMetadataSource,
+                ReadinessState = readinessState,
+                ReadinessLabel = readinessLabel,
+                IsReachable = healthResult.IsHealthy,
+                HealthMessage = healthResult.Message,
+                HealthDetail = RedactText(healthResult.Detail, metadataSource, redactedMetadataSource),
+                StatusCode = healthResult.StatusCode,
+                ResponseTimeMs = healthResult.ResponseTimeMs,
+                UpdateEndpoint = "https://readairr.com/v1/update/{branch}",
+                UpdateBranch = branch,
+                CurrentVersion = currentVersion.ToString(),
+                UpdateAvailable = updateCheckSucceeded ? latestUpdate != null && latestUpdate.Version > currentVersion : null,
+                LatestVersion = latestUpdate?.Version?.ToString(),
+                LatestReleaseDate = latestUpdate?.ReleaseDate,
+                UpdateCheckMessage = updateCheckMessage,
+                Warnings = warnings,
+                Checklist = new List<string>
+                {
+                    "Keep the configured metadata source reachable from the ReadAIrr container.",
+                    "Use a ReadAIrr-compatible rreading-glasses endpoint for metadata lookups.",
+                    "Use ReadAIrr-owned update metadata before upgrading the app.",
+                    "Upgrade metadata services manually; this page never restarts or mutates services."
+                }
+            };
+        }
+
+        private static string GetSourceType(string metadataSource)
+        {
+            if (MetadataSourceConfig.IsOriginalReadarr(metadataSource))
+            {
+                return "originalReadarr";
+            }
+
+            if (metadataSource.Equals(MetadataSourceConfig.LocalRReadingGlasses))
+            {
+                return "localRReadingGlasses";
+            }
+
+            if (metadataSource.Equals(MetadataSourceConfig.GoodreadsHosted))
+            {
+                return "hostedGoodreads";
+            }
+
+            if (metadataSource.Equals(MetadataSourceConfig.HardcoverHosted))
+            {
+                return "hostedHardcover";
+            }
+
+            return "custom";
+        }
+
+        private static string GetSourceLabel(string sourceType)
+        {
+            switch (sourceType)
+            {
+                case "localRReadingGlasses":
+                    return "Automatic self-hosted rreading-glasses";
+                case "hostedGoodreads":
+                    return "rreading-glasses Goodreads hosted";
+                case "hostedHardcover":
+                    return "rreading-glasses Hardcover hosted";
+                case "originalReadarr":
+                    return "Original Readarr metadata compatibility";
+                default:
+                    return "Custom metadata service";
+            }
+        }
+
+        private static string RedactUrl(string value)
+        {
+            if (MetadataSourceConfig.IsOriginalReadarr(value) || value.IsNullOrWhiteSpace())
+            {
+                return value;
+            }
+
+            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            {
+                return value;
+            }
+
+            var builder = new UriBuilder(uri)
+            {
+                UserName = uri.UserInfo.IsNullOrWhiteSpace() ? string.Empty : "redacted",
+                Password = string.Empty,
+                Query = string.Empty
+            };
+
+            return builder.Uri.ToString().TrimEnd('/');
+        }
+
+        private static string RedactText(string value, string rawSource, string redactedSource)
+        {
+            if (value.IsNullOrWhiteSpace() || rawSource.IsNullOrWhiteSpace())
+            {
+                return value;
+            }
+
+            return value.Replace(rawSource, redactedSource);
         }
     }
 }

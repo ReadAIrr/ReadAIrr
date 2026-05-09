@@ -11,6 +11,8 @@ using NzbDrone.Core.Backup;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.Update;
 using Readarr.Http;
 using Readarr.Http.Validation;
 
@@ -24,10 +26,13 @@ namespace Readarr.Api.V1.System
         private readonly IPlatformInfo _platformInfo;
         private readonly IOsInfo _osInfo;
         private readonly IConfigFileProvider _configFileProvider;
+        private readonly IConfigService _configService;
         private readonly IMainDatabase _database;
         private readonly IBackupService _backupService;
         private readonly ILifecycleService _lifecycleService;
         private readonly IDeploymentInfoProvider _deploymentInfoProvider;
+        private readonly IMetadataSourceHealthService _metadataSourceHealthService;
+        private readonly IUpdatePackageProvider _updatePackageProvider;
         private readonly EndpointDataSource _endpointData;
         private readonly DfaGraphWriter _graphWriter;
         private readonly DuplicateEndpointDetector _detector;
@@ -37,10 +42,13 @@ namespace Readarr.Api.V1.System
                                 IPlatformInfo platformInfo,
                                 IOsInfo osInfo,
                                 IConfigFileProvider configFileProvider,
+                                IConfigService configService,
                                 IMainDatabase database,
                                 IBackupService backupService,
                                 ILifecycleService lifecycleService,
                                 IDeploymentInfoProvider deploymentInfoProvider,
+                                IMetadataSourceHealthService metadataSourceHealthService,
+                                IUpdatePackageProvider updatePackageProvider,
                                 EndpointDataSource endpoints,
                                 DfaGraphWriter graphWriter,
                                 DuplicateEndpointDetector detector)
@@ -50,10 +58,13 @@ namespace Readarr.Api.V1.System
             _platformInfo = platformInfo;
             _osInfo = osInfo;
             _configFileProvider = configFileProvider;
+            _configService = configService;
             _database = database;
             _backupService = backupService;
             _lifecycleService = lifecycleService;
             _deploymentInfoProvider = deploymentInfoProvider;
+            _metadataSourceHealthService = metadataSourceHealthService;
+            _updatePackageProvider = updatePackageProvider;
             _endpointData = endpoints;
             _graphWriter = graphWriter;
             _detector = detector;
@@ -103,6 +114,12 @@ namespace Readarr.Api.V1.System
         public DatabaseStatusResource GetDatabaseStatus()
         {
             return GetDatabaseStatusResource();
+        }
+
+        [HttpGet("metadata")]
+        public MetadataServiceStatusResource GetMetadataServiceStatus()
+        {
+            return GetMetadataServiceStatusResource();
         }
 
         [HttpGet("routes")]
@@ -198,6 +215,54 @@ namespace Readarr.Api.V1.System
             {
                 return false;
             }
+        }
+
+        private MetadataServiceStatusResource GetMetadataServiceStatusResource()
+        {
+            var metadataSource = _configService.MetadataSource;
+            var branch = _configFileProvider.Branch;
+            MetadataSourceHealthResult healthResult;
+            UpdatePackage latestUpdate = null;
+            var updateCheckSucceeded = true;
+            var updateCheckMessage = "ReadAIrr update metadata checked successfully.";
+
+            try
+            {
+                healthResult = _metadataSourceHealthService.Test(metadataSource);
+            }
+            catch (global::System.Exception ex)
+            {
+                healthResult = new MetadataSourceHealthResult
+                {
+                    MetadataSource = metadataSource,
+                    IsHealthy = false,
+                    Message = "Metadata source health check failed",
+                    Detail = ex.GetType().Name
+                };
+            }
+
+            try
+            {
+                latestUpdate = _updatePackageProvider.GetLatestUpdate(branch, BuildInfo.Version);
+
+                if (latestUpdate == null)
+                {
+                    updateCheckMessage = "No ReadAIrr app update is currently available.";
+                }
+            }
+            catch (global::System.Exception ex)
+            {
+                updateCheckSucceeded = false;
+                updateCheckMessage = $"ReadAIrr update metadata check failed: {ex.GetType().Name}";
+            }
+
+            return MetadataServiceStatusResourceMapper.ToResource(metadataSource,
+                healthResult,
+                latestUpdate,
+                updateCheckMessage,
+                updateCheckSucceeded,
+                branch,
+                BuildInfo.Version);
         }
 
         [HttpPost("shutdown")]
