@@ -27,8 +27,8 @@ namespace Readarr.Api.V1.ManualImport
 
     public class ManualImportReviewSessionCache : IManualImportReviewSessionCache
     {
-        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(2);
         private const int MaxEntries = 32;
+        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(2);
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new ConcurrentDictionary<string, CacheEntry>();
         private readonly object _cleanupLock = new object();
