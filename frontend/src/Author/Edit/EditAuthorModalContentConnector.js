@@ -75,13 +75,30 @@ const mapDispatchToProps = {
 };
 
 class EditAuthorModalContentConnector extends Component {
+  constructor(props, context) {
+    super(props, context);
+
+    this.state = {
+      identitySuggestions: [],
+      isFetchingIdentitySuggestions: false,
+      identitySuggestionsError: null
+    };
+  }
 
   //
   // Lifecycle
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidMount() {
+    this.fetchAuthorIdentitySuggestions();
+  }
+
+  componentDidUpdate(prevProps) {
     if (prevProps.isSaving && !this.props.isSaving && !this.props.saveError) {
       this.props.onModalClose();
+    }
+
+    if (prevProps.authorId !== this.props.authorId) {
+      this.fetchAuthorIdentitySuggestions();
     }
   }
 
@@ -101,10 +118,44 @@ class EditAuthorModalContentConnector extends Component {
 
   onAuthorIdentityLinkChange = () => {
     this.props.dispatchFetchAuthor();
+    this.fetchAuthorIdentitySuggestions();
 
     if (this.props.onAuthorIdentityLinkChange) {
       this.props.onAuthorIdentityLinkChange();
     }
+  };
+
+  fetchAuthorIdentitySuggestions = () => {
+    if (!this.props.authorId) {
+      return;
+    }
+
+    this.setState({
+      isFetchingIdentitySuggestions: true,
+      identitySuggestionsError: null
+    });
+
+    const { request } = createAjaxRequest({
+      url: `/authoridentitylink/suggestions/${this.props.authorId}`,
+      method: 'GET',
+      dataType: 'json'
+    });
+
+    request.done((identitySuggestions) => {
+      this.setState({
+        identitySuggestions,
+        isFetchingIdentitySuggestions: false,
+        identitySuggestionsError: null
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        identitySuggestions: [],
+        isFetchingIdentitySuggestions: false,
+        identitySuggestionsError: xhr
+      });
+    });
   };
 
   onLinkAuthorPress = (payload) => {
@@ -134,6 +185,7 @@ class EditAuthorModalContentConnector extends Component {
     return (
       <EditAuthorModalContent
         {...this.props}
+        {...this.state}
         onInputChange={this.onInputChange}
         onLinkAuthorPress={this.onLinkAuthorPress}
         onUnlinkAuthorPress={this.onUnlinkAuthorPress}

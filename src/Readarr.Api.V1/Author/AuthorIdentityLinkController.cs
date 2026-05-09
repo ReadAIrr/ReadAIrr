@@ -29,6 +29,12 @@ namespace Readarr.Api.V1.Author
             return links.ToResource(authors);
         }
 
+        [HttpGet("suggestions/{authorId:int}")]
+        public List<AuthorIdentityLinkSuggestionResource> GetAuthorIdentityLinkSuggestions(int authorId)
+        {
+            return _authorIdentityLinkService.GetSuggestions(authorId).ToResource();
+        }
+
         [HttpPost]
         public ActionResult<AuthorIdentityLinkResource> LinkAuthorIdentity([FromBody] AuthorIdentityLinkResource resource)
         {

@@ -70,6 +70,9 @@ class EditAuthorModalContent extends Component {
       allAuthors,
       linkedAuthors,
       identityStatistics,
+      identitySuggestions,
+      isFetchingIdentitySuggestions,
+      identitySuggestionsError,
       onInputChange,
       onLinkAuthorPress,
       onUnlinkAuthorPress,
@@ -210,6 +213,9 @@ class EditAuthorModalContent extends Component {
             allAuthors={allAuthors}
             linkedAuthors={linkedAuthors}
             identityStatistics={identityStatistics}
+            identitySuggestions={identitySuggestions}
+            isFetchingIdentitySuggestions={isFetchingIdentitySuggestions}
+            identitySuggestionsError={identitySuggestionsError}
             onLinkAuthorPress={onLinkAuthorPress}
             onUnlinkAuthorPress={onUnlinkAuthorPress}
           />
@@ -261,6 +267,9 @@ EditAuthorModalContent.propTypes = {
   allAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
   linkedAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
   identityStatistics: PropTypes.object.isRequired,
+  identitySuggestions: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isFetchingIdentitySuggestions: PropTypes.bool.isRequired,
+  identitySuggestionsError: PropTypes.object,
   onInputChange: PropTypes.func.isRequired,
   onLinkAuthorPress: PropTypes.func.isRequired,
   onUnlinkAuthorPress: PropTypes.func.isRequired,

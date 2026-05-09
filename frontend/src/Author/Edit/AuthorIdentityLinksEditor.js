@@ -1,11 +1,13 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import SelectInput from 'Components/Form/SelectInput';
 import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
-import { icons } from 'Helpers/Props';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import { icons, kinds } from 'Helpers/Props';
 import styles from './AuthorIdentityLinksEditor.css';
 
 const relationshipTypeOptions = [
@@ -84,8 +86,97 @@ class AuthorIdentityLinksEditor extends Component {
     this.setState({ linkAuthorId: '' });
   };
 
+  onLinkSuggestionPress = (suggestion) => {
+    this.props.onLinkAuthorPress({
+      canonicalAuthorId: this.props.authorId,
+      aliasAuthorId: suggestion.authorId,
+      relationshipType: suggestion.relationshipType || 'penName',
+      displayPreference: suggestion.displayPreference || 'canonical'
+    });
+  };
+
   //
   // Render
+
+  renderSuggestions() {
+    const {
+      identitySuggestions,
+      isFetchingIdentitySuggestions,
+      identitySuggestionsError
+    } = this.props;
+
+    if (isFetchingIdentitySuggestions) {
+      return (
+        <div className={styles.suggestions}>
+          <LoadingIndicator />
+        </div>
+      );
+    }
+
+    if (identitySuggestionsError) {
+      return (
+        <Alert kind={kinds.WARNING}>
+          Unable to load author identity suggestions.
+        </Alert>
+      );
+    }
+
+    return (
+      <div className={styles.suggestions}>
+        <div className={styles.suggestionsTitle}>
+          Suggested links
+        </div>
+
+        {
+          identitySuggestions.length ?
+            <div className={styles.suggestionList}>
+              {
+                identitySuggestions.map((suggestion) => {
+                  return (
+                    <div
+                      key={suggestion.authorId}
+                      className={styles.suggestionRow}
+                    >
+                      <div className={styles.suggestionMain}>
+                        <Link to={`/author/${suggestion.titleSlug}`}>
+                          {suggestion.authorName}
+                        </Link>
+
+                        <span className={styles.suggestionConfidence}>
+                          {suggestion.confidenceLabel} · {suggestion.confidence}%
+                        </span>
+                      </div>
+
+                      <div className={styles.suggestionReasons}>
+                        {
+                          (suggestion.reasons || []).map((reason) => {
+                            return (
+                              <div
+                                key={reason.kind}
+                                className={styles.suggestionReason}
+                              >
+                                <b>{reason.label}</b>: {reason.detail}
+                              </div>
+                            );
+                          })
+                        }
+                      </div>
+
+                      <Button onPress={() => this.onLinkSuggestionPress(suggestion)}>
+                        Link
+                      </Button>
+                    </div>
+                  );
+                })
+              }
+            </div> :
+            <div className={styles.empty}>
+              No local pen-name suggestions found.
+            </div>
+        }
+      </div>
+    );
+  }
 
   render() {
     const {
@@ -183,6 +274,8 @@ class AuthorIdentityLinksEditor extends Component {
             Link
           </Button>
         </div>
+
+        {this.renderSuggestions()}
       </FieldSet>
     );
   }
@@ -193,6 +286,9 @@ AuthorIdentityLinksEditor.propTypes = {
   allAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
   linkedAuthors: PropTypes.arrayOf(PropTypes.object).isRequired,
   identityStatistics: PropTypes.object.isRequired,
+  identitySuggestions: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isFetchingIdentitySuggestions: PropTypes.bool.isRequired,
+  identitySuggestionsError: PropTypes.object,
   onLinkAuthorPress: PropTypes.func.isRequired,
   onUnlinkAuthorPress: PropTypes.func.isRequired
 };

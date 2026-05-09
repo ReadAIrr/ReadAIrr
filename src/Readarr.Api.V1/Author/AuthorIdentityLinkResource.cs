@@ -28,6 +28,25 @@ namespace Readarr.Api.V1.Author
         public int LinkId { get; set; }
     }
 
+    public class AuthorIdentityLinkSuggestionResource
+    {
+        public int AuthorId { get; set; }
+        public string AuthorName { get; set; }
+        public string TitleSlug { get; set; }
+        public string RelationshipType { get; set; }
+        public string DisplayPreference { get; set; }
+        public int Confidence { get; set; }
+        public string ConfidenceLabel { get; set; }
+        public List<AuthorIdentityLinkSuggestionReasonResource> Reasons { get; set; }
+    }
+
+    public class AuthorIdentityLinkSuggestionReasonResource
+    {
+        public string Kind { get; set; }
+        public string Label { get; set; }
+        public string Detail { get; set; }
+    }
+
     public static class AuthorIdentityLinkResourceMapper
     {
         public static AuthorIdentityLinkResource ToResource(this AuthorIdentityLink model, Dictionary<int, NzbDrone.Core.Books.Author> authors)
@@ -69,6 +88,31 @@ namespace Readarr.Api.V1.Author
                 RelationshipType = resource.RelationshipType,
                 DisplayPreference = resource.DisplayPreference
             };
+        }
+
+        public static AuthorIdentityLinkSuggestionResource ToResource(this AuthorIdentityLinkSuggestion model)
+        {
+            return new AuthorIdentityLinkSuggestionResource
+            {
+                AuthorId = model.AuthorId,
+                AuthorName = model.AuthorName,
+                TitleSlug = model.TitleSlug,
+                RelationshipType = model.RelationshipType,
+                DisplayPreference = model.DisplayPreference,
+                Confidence = model.Confidence,
+                ConfidenceLabel = model.ConfidenceLabel,
+                Reasons = (model.Reasons ?? new List<AuthorIdentityLinkSuggestionReason>()).Select(x => new AuthorIdentityLinkSuggestionReasonResource
+                {
+                    Kind = x.Kind,
+                    Label = x.Label,
+                    Detail = x.Detail
+                }).ToList()
+            };
+        }
+
+        public static List<AuthorIdentityLinkSuggestionResource> ToResource(this IEnumerable<AuthorIdentityLinkSuggestion> models)
+        {
+            return models.Select(x => x.ToResource()).ToList();
         }
     }
 }

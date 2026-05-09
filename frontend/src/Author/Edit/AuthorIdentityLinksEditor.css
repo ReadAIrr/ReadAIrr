@@ -35,9 +35,59 @@
   align-items: center;
 }
 
+.suggestions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borderColor);
+}
+
+.suggestionsTitle {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.suggestionList {
+  display: grid;
+  gap: 8px;
+}
+
+.suggestionRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.suggestionMain {
+  overflow: hidden;
+  min-width: 0;
+}
+
+.suggestionMain a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestionConfidence,
+.suggestionReason {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.suggestionReasons {
+  display: grid;
+  gap: 3px;
+}
+
 @media only screen and (max-width: $breakpointSmall) {
   .linkAuthorControls,
-  .linkedAuthorRow {
+  .linkedAuthorRow,
+  .suggestionRow {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -5,6 +5,14 @@ interface CssExports {
   'linkAuthorControls': string;
   'linkedAuthorRow': string;
   'linkedAuthorsList': string;
+  'suggestionConfidence': string;
+  'suggestionList': string;
+  'suggestionMain': string;
+  'suggestionReason': string;
+  'suggestionReasons': string;
+  'suggestionRow': string;
+  'suggestions': string;
+  'suggestionsTitle': string;
   'summary': string;
 }
 export const cssExports: CssExports;
