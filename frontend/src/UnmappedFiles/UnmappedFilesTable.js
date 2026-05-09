@@ -418,7 +418,7 @@ class UnmappedFilesTable extends Component {
   };
 
   onRefreshPress = () => {
-    this.props.fetchUnmappedFiles();
+    this.props.fetchUnmappedFiles(undefined, { refresh: true });
   };
 
   onFirstPagePress = () => {

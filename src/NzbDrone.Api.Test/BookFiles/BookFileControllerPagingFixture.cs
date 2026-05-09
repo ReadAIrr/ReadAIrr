@@ -23,6 +23,7 @@ namespace NzbDrone.Api.Test.BookFiles
         private Mock<IDeleteMediaFiles> _mediaFileDeletionService;
         private Mock<IMetadataTagService> _metadataTagService;
         private Mock<IManualImportService> _manualImportService;
+        private IManualImportReviewSessionCache _reviewSessionCache;
         private Mock<IAuthorService> _authorService;
         private Mock<IBookService> _bookService;
         private Mock<IUpgradableSpecification> _upgradableSpecification;
@@ -40,6 +41,7 @@ namespace NzbDrone.Api.Test.BookFiles
             _mediaFileDeletionService = new Mock<IDeleteMediaFiles>();
             _metadataTagService = new Mock<IMetadataTagService>();
             _manualImportService = new Mock<IManualImportService>();
+            _reviewSessionCache = new ManualImportReviewSessionCache(NLog.LogManager.GetCurrentClassLogger());
             _authorService = new Mock<IAuthorService>();
             _bookService = new Mock<IBookService>();
             _upgradableSpecification = new Mock<IUpgradableSpecification>();
@@ -63,6 +65,7 @@ namespace NzbDrone.Api.Test.BookFiles
                 _mediaFileDeletionService.Object,
                 _metadataTagService.Object,
                 _manualImportService.Object,
+                _reviewSessionCache,
                 _authorService.Object,
                 _bookService.Object,
                 _upgradableSpecification.Object,

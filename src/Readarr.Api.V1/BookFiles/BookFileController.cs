@@ -35,6 +35,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IDeleteMediaFiles _mediaFileDeletionService;
         private readonly IMetadataTagService _metadataTagService;
         private readonly IManualImportService _manualImportService;
+        private readonly IManualImportReviewSessionCache _reviewSessionCache;
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IUpgradableSpecification _upgradableSpecification;
@@ -49,6 +50,7 @@ namespace Readarr.Api.V1.BookFiles
                                IDeleteMediaFiles mediaFileDeletionService,
                                IMetadataTagService metadataTagService,
                                IManualImportService manualImportService,
+                               IManualImportReviewSessionCache reviewSessionCache,
                                IAuthorService authorService,
                                IBookService bookService,
                                IUpgradableSpecification upgradableSpecification,
@@ -63,6 +65,7 @@ namespace Readarr.Api.V1.BookFiles
             _mediaFileDeletionService = mediaFileDeletionService;
             _metadataTagService = metadataTagService;
             _manualImportService = manualImportService;
+            _reviewSessionCache = reviewSessionCache;
             _authorService = authorService;
             _bookService = bookService;
             _upgradableSpecification = upgradableSpecification;
@@ -134,7 +137,7 @@ namespace Readarr.Api.V1.BookFiles
         }
 
         [HttpGet("unmapped/paged")]
-        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging)
+        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging, bool refresh = false)
         {
             var requestedPage = paging?.Page ?? 1;
             var requestedPageSize = paging?.PageSize ?? MaxUnmappedPageSize;
@@ -158,7 +161,7 @@ namespace Readarr.Api.V1.BookFiles
                 SortKey = null,
                 SortDirection = SortDirection.Default,
                 TotalRecords = result.TotalRecords,
-                Records = MapUnmappedToResources(result.Records)
+                Records = MapUnmappedToResources(result.Records, refresh, true)
             };
         }
 
@@ -409,11 +412,15 @@ namespace Readarr.Api.V1.BookFiles
             return new { };
         }
 
-        private List<BookFileResource> MapUnmappedToResources(List<BookFile> files)
+        private List<BookFileResource> MapUnmappedToResources(List<BookFile> files, bool refreshReviewCache = false, bool useReviewCache = false)
         {
-            var reviewItems = _manualImportService.GetMediaFiles(files.Select(x => x.Path).ToList(), null, false)
-                                                  .GroupBy(x => x.Path, PathEqualityComparer.Instance)
-                                                  .ToDictionary(x => x.Key, x => x.First(), PathEqualityComparer.Instance);
+            var paths = files.Select(x => x.Path).ToList();
+            var reviewItemsList = useReviewCache ?
+                _reviewSessionCache.GetUnmappedReviewItems(files, false, refreshReviewCache, () => _manualImportService.GetMediaFiles(paths, null, false)).Value :
+                _manualImportService.GetMediaFiles(paths, null, false);
+
+            var reviewItems = reviewItemsList.GroupBy(x => x.Path, PathEqualityComparer.Instance)
+                                             .ToDictionary(x => x.Key, x => x.First(), PathEqualityComparer.Instance);
 
             var resources = files.ConvertAll(file =>
             {

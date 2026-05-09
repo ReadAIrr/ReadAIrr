@@ -19,6 +19,7 @@ namespace NzbDrone.Api.Test.ManualImport
     public class ManualImportControllerPagingFixture : TestBase
     {
         private Mock<IManualImportService> _manualImportService;
+        private IManualImportReviewSessionCache _reviewSessionCache;
         private Mock<IAuthorService> _authorService;
         private Mock<IEditionService> _editionService;
         private Mock<IBookService> _bookService;
@@ -31,6 +32,7 @@ namespace NzbDrone.Api.Test.ManualImport
         public void SetUp()
         {
             _manualImportService = new Mock<IManualImportService>();
+            _reviewSessionCache = new ManualImportReviewSessionCache(LogManager.GetCurrentClassLogger());
             _authorService = new Mock<IAuthorService>();
             _editionService = new Mock<IEditionService>();
             _bookService = new Mock<IBookService>();
@@ -44,6 +46,7 @@ namespace NzbDrone.Api.Test.ManualImport
 
             _subject = new ManualImportController(
                 _manualImportService.Object,
+                _reviewSessionCache,
                 _authorService.Object,
                 _editionService.Object,
                 _bookService.Object,

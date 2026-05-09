@@ -315,6 +315,7 @@ export const actionHandlers = handleThunks({
     const state = getState()[section];
     const page = sanitizePage(payload.page, state.page || defaultState.page);
     const pageSize = sanitizePage(payload.pageSize, state.pageSize || defaultState.pageSize);
+    const refresh = payload.refresh === true;
 
     dispatch(set({ section, isFetching: true }));
 
@@ -322,7 +323,8 @@ export const actionHandlers = handleThunks({
       url: '/bookFile/unmapped/paged',
       data: {
         page,
-        pageSize
+        pageSize,
+        refresh
       }
     });
 

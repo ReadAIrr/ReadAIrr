@@ -21,12 +21,14 @@ namespace Readarr.Api.V1.ManualImport
         private readonly IBookService _bookService;
         private readonly IEditionService _editionService;
         private readonly IManualImportService _manualImportService;
+        private readonly IManualImportReviewSessionCache _reviewSessionCache;
         private readonly IMediaFileService _mediaFileService;
         private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         public ManualImportController(IManualImportService manualImportService,
+                                  IManualImportReviewSessionCache reviewSessionCache,
                                   IAuthorService authorService,
                                   IEditionService editionService,
                                   IBookService bookService,
@@ -39,6 +41,7 @@ namespace Readarr.Api.V1.ManualImport
             _bookService = bookService;
             _editionService = editionService;
             _manualImportService = manualImportService;
+            _reviewSessionCache = reviewSessionCache;
             _mediaFileService = mediaFileService;
             _contributorEvidenceRepository = contributorEvidenceRepository;
             _configService = configService;
@@ -67,7 +70,7 @@ namespace Readarr.Api.V1.ManualImport
         }
 
         [HttpGet("paged")]
-        public PagingResource<ManualImportResource> GetMediaFilesPaged([FromQuery] PagingRequestResource paging, string folder, string downloadId, int? authorId, bool filterExistingFiles = true, bool replaceExistingFiles = true)
+        public PagingResource<ManualImportResource> GetMediaFilesPaged([FromQuery] PagingRequestResource paging, string folder, string downloadId, int? authorId, bool filterExistingFiles = true, bool replaceExistingFiles = true, bool refresh = false)
         {
             NzbDrone.Core.Books.Author author = null;
 
@@ -79,7 +82,16 @@ namespace Readarr.Api.V1.ManualImport
             var filter = filterExistingFiles ? FilterFilesType.Matched : FilterFilesType.None;
             var page = paging?.Page ?? 1;
             var pageSize = paging?.PageSize ?? ManualImportService.MaxReviewPageSize;
-            var pageResult = _manualImportService.GetMediaFilesPage(folder, downloadId, author, filter, replaceExistingFiles, page, pageSize);
+            var pageResult = _reviewSessionCache.GetManualImportPage(
+                folder,
+                downloadId,
+                author,
+                filter,
+                replaceExistingFiles,
+                page,
+                pageSize,
+                refresh,
+                () => _manualImportService.GetMediaFilesPage(folder, downloadId, author, filter, replaceExistingFiles, page, pageSize)).Value;
             var records = AddManualImportEvidenceContext(pageResult.Records.ToResource().Select(AddQualityWeight).ToList());
 
             return new PagingResource<ManualImportResource>
