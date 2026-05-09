@@ -214,6 +214,16 @@ class About extends Component {
                 />
 
                 <DescriptionListItem
+                  title="Migration guidance"
+                  data={databaseStatus.migrationGuidance}
+                />
+
+                <DescriptionListItem
+                  title="Target"
+                  data={databaseStatus.redactedTarget}
+                />
+
+                <DescriptionListItem
                   title="Next step"
                   data={databaseStatus.nextStep}
                 />
@@ -241,19 +251,42 @@ class About extends Component {
                 <DescriptionListItem
                   title="Checklist"
                   data={
-                    <ol className={styles.list}>
+                    <div>
+                      <ol className={styles.list}>
+                        {
+                          databaseStatus.checklist.map((item, index) => {
+                            return (
+                              <li key={index}>
+                                {item}
+                              </li>
+                            );
+                          })
+                        }
+                      </ol>
+
                       {
-                        databaseStatus.checklist.map((item, index) => {
-                          return (
-                            <li key={index}>
-                              {item}
-                            </li>
-                          );
-                        })
+                        databaseStatus.copyableChecklist &&
+                          <pre className={styles.copyBlock}>{databaseStatus.copyableChecklist}</pre>
                       }
-                    </ol>
+                    </div>
                   }
                 />
+
+                {
+                  databaseStatus.environmentExample &&
+                    <DescriptionListItem
+                      title="Environment example"
+                      data={<pre className={styles.copyBlock}>{databaseStatus.environmentExample}</pre>}
+                    />
+                }
+
+                {
+                  databaseStatus.configXmlExample &&
+                    <DescriptionListItem
+                      title="config.xml example"
+                      data={<pre className={styles.copyBlock}>{databaseStatus.configXmlExample}</pre>}
+                    />
+                }
               </DescriptionList>
             </FieldSet>
         }

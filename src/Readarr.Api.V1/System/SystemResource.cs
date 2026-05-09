@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Authentication;
@@ -56,6 +57,11 @@ namespace Readarr.Api.V1.System
         public long? SqliteSizeBytes { get; set; }
         public string SqliteSizeLabel { get; set; }
         public PostgresConfigStatusResource Postgres { get; set; }
+        public string MigrationGuidance { get; set; }
+        public string RedactedTarget { get; set; }
+        public string EnvironmentExample { get; set; }
+        public string ConfigXmlExample { get; set; }
+        public string CopyableChecklist { get; set; }
         public List<string> Warnings { get; set; }
         public List<string> Checklist { get; set; }
     }
@@ -197,6 +203,11 @@ namespace Readarr.Api.V1.System
                 warnings.Add("No backup was found. Create a manual backup before changing database backends.");
             }
 
+            if (activeDatabaseType == DatabaseType.SQLite)
+            {
+                warnings.Add("ReadAIrr does not perform an automatic live SQLite to PostgreSQL conversion from this page. Treat this as a guided manual checklist.");
+            }
+
             if (postgresConfigured && !postgresUserConfigured)
             {
                 warnings.Add("PostgreSQL host is configured but no user is configured.");
@@ -212,6 +223,13 @@ namespace Readarr.Api.V1.System
                 warnings.Add(postgresReachabilityMessage);
             }
 
+            var checklist = GetMigrationChecklist(activeDatabaseType, postgresConfigured, postgresReachable, hasBackup);
+            var environmentExample = GetEnvironmentExample(postgresHostConfigured ? postgresHost : "postgres.example.internal",
+                postgresPort,
+                postgresMainDb,
+                postgresLogDb,
+                postgresCacheDb);
+
             return new DatabaseStatusResource
             {
                 ActiveProvider = activeDatabaseType.ToString(),
@@ -222,6 +240,17 @@ namespace Readarr.Api.V1.System
                 SqlitePath = activeDatabaseType == DatabaseType.SQLite ? sqlitePath : null,
                 SqliteSizeBytes = activeDatabaseType == DatabaseType.SQLite && sqliteExists ? sqliteSizeBytes : null,
                 SqliteSizeLabel = activeDatabaseType == DatabaseType.SQLite && sqliteExists ? FormatBytes(sqliteSizeBytes ?? 0) : null,
+                MigrationGuidance = activeDatabaseType == DatabaseType.PostgreSQL ?
+                    "This instance is already running on PostgreSQL. Keep rollback backups and validate imports/search after large metadata changes." :
+                    "Use this guide to prepare a manual SQLite to PostgreSQL migration. The app will not change database settings or migrate data from this page.",
+                RedactedTarget = postgresConfigured ? $"{postgresHost}:{postgresPort}/{RedactName(postgresMainDb)}" : "PostgreSQL target not configured",
+                EnvironmentExample = environmentExample,
+                ConfigXmlExample = GetConfigXmlExample(postgresHostConfigured ? postgresHost : "postgres.example.internal",
+                    postgresPort,
+                    postgresMainDb,
+                    postgresLogDb,
+                    postgresCacheDb),
+                CopyableChecklist = string.Join(Environment.NewLine, checklist.Select((item, index) => $"{index + 1}. {item}")),
                 Postgres = new PostgresConfigStatusResource
                 {
                     IsConfigured = postgresConfigured,
@@ -237,15 +266,74 @@ namespace Readarr.Api.V1.System
                     ReachabilityMessage = postgresReachabilityMessage
                 },
                 Warnings = warnings,
-                Checklist = new List<string>
-                {
-                    "Create a fresh app backup.",
-                    "Stop ReadAIrr before changing database backends.",
-                    "Configure PostgreSQL with host, port, user, password, and database names.",
-                    "Run the manual migration or import process.",
-                    "Restart ReadAIrr and verify the System Status database provider."
-                }
+                Checklist = checklist
             };
+        }
+
+        private static List<string> GetMigrationChecklist(DatabaseType activeDatabaseType, bool postgresConfigured, bool? postgresReachable, bool hasBackup)
+        {
+            if (activeDatabaseType == DatabaseType.PostgreSQL)
+            {
+                return new List<string>
+                {
+                    "Confirm scheduled backups include PostgreSQL and config.xml.",
+                    "Keep the last SQLite backup until the PostgreSQL instance has been verified.",
+                    "Validate System Status, author/book pages, queue, history, and imports after major upgrades.",
+                    "Monitor PostgreSQL storage and connection health during large scans/imports."
+                };
+            }
+
+            var checklist = new List<string>
+            {
+                hasBackup ? "Verify the latest backup is recent and restorable." : "Create a fresh app backup from System > Backup before changing anything.",
+                "Stop ReadAIrr before switching database backends.",
+                postgresConfigured ? "Confirm the configured PostgreSQL host, port, user, and database names." : "Prepare PostgreSQL with dedicated main, log, and cache databases plus a least-privilege user.",
+                postgresReachable == true ? "Keep the reachable PostgreSQL target unchanged until migration time." : "Verify PostgreSQL network access and credentials from the ReadAIrr host/container.",
+                "Export or migrate the SQLite data using the documented manual process outside ReadAIrr.",
+                "Set only non-secret-safe config here; keep the PostgreSQL password in your secret store or deployment environment.",
+                "Start ReadAIrr on PostgreSQL and confirm System > Status reports PostgreSQL as active.",
+                "Keep the original SQLite/config backup until library scans, imports, queue, history, and metadata refreshes are verified."
+            };
+
+            return checklist;
+        }
+
+        private static string GetEnvironmentExample(string host, int port, string mainDb, string logDb, string cacheDb)
+        {
+            return string.Join(Environment.NewLine, new[]
+            {
+                $"Readarr__Postgres__Host={host}",
+                $"Readarr__Postgres__Port={port}",
+                "Readarr__Postgres__User=readarr",
+                "Readarr__Postgres__Password=<store in Azure Key Vault or deployment secret>",
+                $"Readarr__Postgres__MainDb={ValueOrDefault(mainDb, "readarr-main")}",
+                $"Readarr__Postgres__LogDb={ValueOrDefault(logDb, "readarr-log")}",
+                $"Readarr__Postgres__CacheDb={ValueOrDefault(cacheDb, "readarr-cache")}"
+            });
+        }
+
+        private static string GetConfigXmlExample(string host, int port, string mainDb, string logDb, string cacheDb)
+        {
+            return string.Join(Environment.NewLine, new[]
+            {
+                "<PostgresHost>" + host + "</PostgresHost>",
+                "<PostgresPort>" + port + "</PostgresPort>",
+                "<PostgresUser>readarr</PostgresUser>",
+                "<PostgresPassword>&lt;secret value outside chat/docs&gt;</PostgresPassword>",
+                "<PostgresMainDb>" + ValueOrDefault(mainDb, "readarr-main") + "</PostgresMainDb>",
+                "<PostgresLogDb>" + ValueOrDefault(logDb, "readarr-log") + "</PostgresLogDb>",
+                "<PostgresCacheDb>" + ValueOrDefault(cacheDb, "readarr-cache") + "</PostgresCacheDb>"
+            });
+        }
+
+        private static string ValueOrDefault(string value, string defaultValue)
+        {
+            return value.IsNotNullOrWhiteSpace() ? value : defaultValue;
+        }
+
+        private static string RedactName(string value)
+        {
+            return value.IsNotNullOrWhiteSpace() ? value : "database-not-set";
         }
 
         private static string FormatBytes(long bytes)

@@ -8,3 +8,14 @@
   margin: 0;
   padding-left: 18px;
 }
+
+.copyBlock {
+  overflow-x: auto;
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--white);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
