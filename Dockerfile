@@ -42,7 +42,7 @@ RUN case "${TARGETARCH}" in \
         arm64) rid="linux-arm64" ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && ./build.sh --backend --frontend --packages --framework net10.0 --runtime "${rid}" \
+    && ./build.sh --backend --frontend --packages --framework net10.0 --runtime "${rid}" --serial-dotnet-build \
     && mkdir -p /app \
     && cp -a "_artifacts/${rid}/net10.0/Readarr" /app/Readarr
 

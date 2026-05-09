@@ -76,11 +76,20 @@ Build()
         platform=Posix
     fi
 
+    msbuildArgs=()
+
+    if [ "$SERIAL_DOTNET_BUILD" = "YES" ];
+    then
+        echo "Serializing MSBuild project execution"
+        msbuildArgs+=("-maxcpucount:1")
+        msbuildArgs+=("-p:BuildInParallel=false")
+    fi
+
     if [[ -z "$RID" || -z "$FRAMEWORK" ]];
     then
-        dotnet msbuild -restore $slnFile -p:Configuration=Release -p:Platform=$platform -t:PublishAllRids
+        dotnet msbuild -restore "${msbuildArgs[@]}" $slnFile -p:Configuration=Release -p:Platform=$platform -t:PublishAllRids
     else
-        dotnet msbuild -restore $slnFile -p:Configuration=Release -p:Platform=$platform -p:RuntimeIdentifiers=$RID -t:PublishAllRids
+        dotnet msbuild -restore "${msbuildArgs[@]}" $slnFile -p:Configuration=Release -p:Platform=$platform -p:RuntimeIdentifiers=$RID -t:PublishAllRids
     fi
 
     ProgressEnd 'Build'
@@ -336,6 +345,10 @@ case $key in
         ;;
     --packages)
         PACKAGES=YES
+        shift # past argument
+        ;;
+    --serial-dotnet-build)
+        SERIAL_DOTNET_BUILD=YES
         shift # past argument
         ;;
     --installer)
