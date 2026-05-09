@@ -166,6 +166,52 @@ namespace NzbDrone.Core.Test.MediaFiles
             spec.Records[0].Path.Should().Contain("NeedsReviewMatch");
         }
 
+        [Test]
+        public void get_paged_unmapped_files_should_filter_snapshot_backed_reason_ids_before_paging()
+        {
+            var lowConfidenceFile = InsertUnmappedFile(@"/snapshot/LowConfidenceMatch.m4b".AsOsAgnostic());
+            InsertUnmappedFile(@"/snapshot/OtherMatch.m4b".AsOsAgnostic());
+
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 10,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Ascending
+                },
+                "Match",
+                null,
+                "lowConfidence",
+                new[] { lowConfidenceFile.Id });
+
+            spec.TotalRecords.Should().Be(1);
+            spec.Records.Should().ContainSingle();
+            spec.Records[0].Path.Should().Contain("LowConfidenceMatch");
+        }
+
+        [Test]
+        public void get_paged_unmapped_files_should_return_empty_for_snapshot_backed_reason_without_fresh_ids()
+        {
+            InsertUnmappedFile(@"/snapshot/LowConfidenceMatch.m4b".AsOsAgnostic());
+
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 10,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Ascending
+                },
+                "Match",
+                null,
+                "lowConfidence",
+                new List<int>());
+
+            spec.TotalRecords.Should().Be(0);
+            spec.Records.Should().BeEmpty();
+        }
+
         private BookFile InsertUnmappedFile(string path, bool reviewed = false)
         {
             var file = Builder<BookFile>.CreateNew()

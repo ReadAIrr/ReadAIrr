@@ -42,6 +42,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IUnmappedIdentificationSuggestionService _unmappedIdentificationSuggestionService;
         private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
+        private readonly IUnmappedFileReviewStatusRepository _unmappedFileReviewStatusRepository;
         private readonly IAudioTagEditService _audioTagEditService;
         private readonly IConfigService _configService;
 
@@ -57,6 +58,7 @@ namespace Readarr.Api.V1.BookFiles
                                IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService,
                                IAudioIntroTranscriptionService audioIntroTranscriptionService,
                                IContributorEvidenceRepository contributorEvidenceRepository,
+                               IUnmappedFileReviewStatusRepository unmappedFileReviewStatusRepository,
                                IAudioTagEditService audioTagEditService,
                                IConfigService configService)
             : base(signalRBroadcaster)
@@ -72,6 +74,7 @@ namespace Readarr.Api.V1.BookFiles
             _unmappedIdentificationSuggestionService = unmappedIdentificationSuggestionService;
             _audioIntroTranscriptionService = audioIntroTranscriptionService;
             _contributorEvidenceRepository = contributorEvidenceRepository;
+            _unmappedFileReviewStatusRepository = unmappedFileReviewStatusRepository;
             _audioTagEditService = audioTagEditService;
             _configService = configService;
         }
@@ -155,7 +158,8 @@ namespace Readarr.Api.V1.BookFiles
             };
 
             var suggestionBookFileIds = term == null ? new List<int>() : _unmappedIdentificationSuggestionService.GetBookFileIdsMatchingTerm(term);
-            var result = _mediaFileService.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds, triageFilter);
+            var reviewStatusBookFileIds = IsSnapshotBackedTriageFilter(triageFilter) ? _unmappedFileReviewStatusRepository.GetFreshBookFileIdsMatchingStatus(triageFilter) : new List<int>();
+            var result = _mediaFileService.GetUnmappedFiles(pagingSpec, term, suggestionBookFileIds, triageFilter, reviewStatusBookFileIds);
 
             return new PagingResource<BookFileResource>
             {
@@ -193,10 +197,22 @@ namespace Readarr.Api.V1.BookFiles
             {
                 case "needsReview":
                 case "reviewed":
+                case "lowConfidence":
+                case "noCandidate":
+                case "noEdition":
+                case "metadataMismatch":
                     return triageFilter;
                 default:
                     return null;
             }
+        }
+
+        private static bool IsSnapshotBackedTriageFilter(string triageFilter)
+        {
+            return triageFilter == "lowConfidence" ||
+                   triageFilter == "noCandidate" ||
+                   triageFilter == "noEdition" ||
+                   triageFilter == "metadataMismatch";
         }
 
         [RestPutById]
@@ -469,10 +485,40 @@ namespace Readarr.Api.V1.BookFiles
                 return resource;
             });
 
+            SaveReviewStatusSnapshots(files, resources);
             AddSuggestions(resources, _unmappedIdentificationSuggestionService.GetPersisted(resources), _configService.MinimumBookMatchSimilarity);
             AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return resources;
+        }
+
+        private void SaveReviewStatusSnapshots(List<BookFile> files, List<BookFileResource> resources)
+        {
+            var filesById = files.ToDictionary(x => x.Id);
+            var statuses = resources
+                .Where(x => x.Id > 0 && x.Review != null && filesById.ContainsKey(x.Id))
+                .Select(resource =>
+                {
+                    var file = filesById[resource.Id];
+
+                    return new UnmappedFileReviewStatus
+                    {
+                        BookFileId = file.Id,
+                        Path = file.Path,
+                        Size = file.Size,
+                        Modified = file.Modified,
+                        Status = resource.Review.Status ?? "unknown",
+                        ReasonKinds = string.Join(",", (resource.Review.Reasons ?? new List<ManualImportReviewReasonResource>())
+                            .Select(x => x.Kind)
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Distinct()),
+                        Confidence = resource.Review.Confidence,
+                        Source = resource.Review.Provider ?? "readarr-import-identification"
+                    };
+                })
+                .ToList();
+
+            _unmappedFileReviewStatusRepository.UpsertMany(statuses);
         }
 
         private static void AddSuggestions(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions, int minimumMatchSimilarity)

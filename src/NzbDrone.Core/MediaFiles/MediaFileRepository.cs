@@ -16,7 +16,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
-        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null);
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null, IEnumerable<int> reviewStatusBookFileIds = null);
         List<BookFile> GetFilesWithBasePath(string path);
         List<BookFile> GetFileWithPath(List<string> paths);
         BookFile GetFileWithPath(string path);
@@ -91,7 +91,7 @@ namespace NzbDrone.Core.MediaFiles
                                               .Where<BookFile>(t => t.EditionId == 0)).ToList();
         }
 
-        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null)
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec, string term = null, IEnumerable<int> suggestionBookFileIds = null, string triageFilter = null, IEnumerable<int> reviewStatusBookFileIds = null)
         {
             var recordsBuilder = new SqlBuilder(_database.DatabaseType)
                 .Select(typeof(BookFile))
@@ -129,11 +129,34 @@ namespace NzbDrone.Core.MediaFiles
                 recordsBuilder.Where<BookFile>(t => t.Reviewed == true);
                 countBuilder.Where<BookFile>(t => t.Reviewed == true);
             }
+            else if (IsSnapshotBackedTriageFilter(triageFilter))
+            {
+                var ids = reviewStatusBookFileIds?.Distinct().ToList() ?? new List<int>();
+
+                if (ids.Any())
+                {
+                    recordsBuilder.Where<BookFile>(t => ids.Contains(t.Id));
+                    countBuilder.Where<BookFile>(t => ids.Contains(t.Id));
+                }
+                else
+                {
+                    recordsBuilder.Where<BookFile>(t => t.Id == -1);
+                    countBuilder.Where<BookFile>(t => t.Id == -1);
+                }
+            }
 
             pagingSpec.Records = GetPagedRecords(recordsBuilder, pagingSpec, builder => _database.Query<BookFile>(builder));
             pagingSpec.TotalRecords = GetPagedRecordCount(countBuilder, pagingSpec);
 
             return pagingSpec;
+        }
+
+        private static bool IsSnapshotBackedTriageFilter(string triageFilter)
+        {
+            return triageFilter == "lowConfidence" ||
+                   triageFilter == "noCandidate" ||
+                   triageFilter == "noEdition" ||
+                   triageFilter == "metadataMismatch";
         }
 
         public void DeleteFilesByBook(int bookId)

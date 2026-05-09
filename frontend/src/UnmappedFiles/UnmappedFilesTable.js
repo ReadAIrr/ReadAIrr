@@ -41,15 +41,19 @@ const triageFilterOptions = {
 const triageFilterLabels = {
   [triageFilterOptions.ALL]: 'All unmapped',
   [triageFilterOptions.NEEDS_REVIEW]: 'Needs review (all pages)',
-  [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence (loaded page)',
-  [triageFilterOptions.NO_CANDIDATE]: 'No candidate (loaded page)',
-  [triageFilterOptions.NO_EDITION]: 'No edition (loaded page)',
-  [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch (loaded page)',
+  [triageFilterOptions.LOW_CONFIDENCE]: 'Low confidence (all pages)',
+  [triageFilterOptions.NO_CANDIDATE]: 'No candidate (all pages)',
+  [triageFilterOptions.NO_EDITION]: 'No edition (all pages)',
+  [triageFilterOptions.METADATA_MISMATCH]: 'Metadata mismatch (all pages)',
   [triageFilterOptions.REVIEWED]: 'Reviewed (all pages)'
 };
 
 function isServerTriageFilter(triageFilter) {
   return triageFilter === triageFilterOptions.NEEDS_REVIEW ||
+    triageFilter === triageFilterOptions.LOW_CONFIDENCE ||
+    triageFilter === triageFilterOptions.NO_CANDIDATE ||
+    triageFilter === triageFilterOptions.NO_EDITION ||
+    triageFilter === triageFilterOptions.METADATA_MISMATCH ||
     triageFilter === triageFilterOptions.REVIEWED;
 }
 
@@ -646,7 +650,7 @@ class UnmappedFilesTable extends Component {
           {
             isPopulated && !error && !!items.length &&
               <Alert kind={kinds.INFO}>
-                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search, Needs review, and Reviewed apply across all unmapped files. Other triage filters, select all, sorting, and row actions apply only to this loaded page.
+                This page shows {items.length} loaded unmapped files out of {totalRecords}. Search and triage filters apply across all unmapped files when backed by current review snapshots. Select all, sorting, and row actions apply only to this loaded page.
               </Alert>
           }
 

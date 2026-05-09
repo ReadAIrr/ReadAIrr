@@ -177,6 +177,7 @@ namespace NzbDrone.Core.Datastore
                           t => t.Id > 0);
 
             Mapper.Entity<UnmappedFileIdentificationSuggestion>("UnmappedFileIdentificationSuggestions").RegisterModel();
+            Mapper.Entity<UnmappedFileReviewStatus>("UnmappedFileReviewStatuses").RegisterModel();
             Mapper.Entity<ContributorEvidence>("ContributorEvidence").RegisterModel();
             Mapper.Entity<NarratorIdentityLink>("NarratorIdentityLinks").RegisterModel();
 
