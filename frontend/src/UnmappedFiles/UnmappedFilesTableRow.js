@@ -516,7 +516,6 @@ class UnmappedFilesTableRow extends Component {
                   explanation: 'Deep Identify Audio is running for this row.'
                 } : null);
               const candidateTitle = candidate.bookTitle || parsed.book || 'No book candidate';
-              const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
               const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
               const contributorEvidenceDetails = getContributorEvidenceDetails(review?.contributorEvidence || contributorEvidence);
@@ -530,13 +529,12 @@ class UnmappedFilesTableRow extends Component {
                     {candidateTitle}
                   </div>
 
-                  <div className={styles.candidateMeta}>
-                    {candidateAuthor}
-                    {
-                      edition &&
-                        ` - ${edition}`
-                    }
-                  </div>
+                  {
+                    edition &&
+                      <div className={styles.candidateMeta}>
+                        {edition}
+                      </div>
+                  }
 
                   {
                     suggestion &&
@@ -596,6 +594,23 @@ class UnmappedFilesTableRow extends Component {
                         {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
                       </div>
                   }
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'candidateAuthor') {
+              const parsed = review?.parsed || {};
+              const candidate = review?.candidate || {};
+              const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
+
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  <div className={styles.candidateTitle}>
+                    {candidateAuthor}
+                  </div>
                 </VirtualTableRowCell>
               );
             }

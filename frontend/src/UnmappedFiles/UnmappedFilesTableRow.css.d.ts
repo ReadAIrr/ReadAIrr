@@ -3,6 +3,7 @@
 interface CssExports {
   'actions': string;
   'candidate': string;
+  'candidateAuthor': string;
   'candidateMeta': string;
   'candidateTitle': string;
   'checkInput': string;

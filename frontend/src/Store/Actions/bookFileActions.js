@@ -49,6 +49,10 @@ export const defaultState = {
       return item.review?.candidate?.bookTitle || item.review?.parsed?.book || '';
     },
 
+    candidateAuthor: function(item, direction) {
+      return item.review?.candidate?.authorName || item.review?.parsed?.author || '';
+    },
+
     confidence: function(item, direction) {
       return item.review?.confidence ?? -1;
     }
@@ -78,7 +82,13 @@ export const defaultState = {
     },
     {
       name: 'candidate',
-      label: 'Candidate',
+      label: 'Candidate Book',
+      isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'candidateAuthor',
+      label: 'Candidate Author',
       isSortable: true,
       isVisible: true
     },

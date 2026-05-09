@@ -3,6 +3,7 @@
 interface CssExports {
   'actions': string;
   'candidate': string;
+  'candidateAuthor': string;
   'confidence': string;
   'dateAdded': string;
   'path': string;

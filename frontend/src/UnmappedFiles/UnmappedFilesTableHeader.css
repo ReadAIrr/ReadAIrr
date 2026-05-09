@@ -21,7 +21,13 @@
 .candidate {
   composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
 
-  flex: 3 0 260px;
+  flex: 2 0 220px;
+}
+
+.candidateAuthor {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+
+  flex: 2 0 180px;
 }
 
 .confidence {
