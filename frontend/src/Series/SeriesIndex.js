@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useState } from 'react';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
@@ -12,11 +12,12 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
-import TableRowCell from 'Components/Table/Cells/TableRowCell';
-import Table from 'Components/Table/Table';
-import TableBody from 'Components/Table/TableBody';
+import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
-import TableRow from 'Components/Table/TableRow';
+import VirtualTable from 'Components/Table/VirtualTable';
+import VirtualTableHeader from 'Components/Table/VirtualTableHeader';
+import VirtualTableHeaderCell from 'Components/Table/VirtualTableHeaderCell';
+import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import { align, icons, kinds, sortDirections } from 'Helpers/Props';
 import SeriesIndexFilterMenu from './Menus/SeriesIndexFilterMenu';
 import SeriesIndexSortMenu from './Menus/SeriesIndexSortMenu';
@@ -125,124 +126,246 @@ SeriesProgress.propTypes = {
   series: PropTypes.object.isRequired
 };
 
+function getColumnClassName(name, isHeader = false) {
+  const suffix = isHeader ? 'HeaderCell' : 'Cell';
+
+  return styles[`${name}${suffix}`] || styles[isHeader ? 'headerCell' : 'cell'];
+}
+
+function SeriesTableRow({ series, columns }) {
+  return (
+    <>
+      {
+        columns.map((column) => {
+          const {
+            name,
+            isVisible
+          } = column;
+
+          if (!isVisible) {
+            return null;
+          }
+
+          if (name === 'title') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.titleCell}
+              >
+                <Link to={`/series/${series.id}`}>
+                  {series.title}
+                </Link>
+                <SeriesProgress series={series} />
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'authors') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.authorsCell}
+              >
+                <SeriesAuthors series={series} />
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'totalBooks') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.numericCell}
+              >
+                {getTotalBooks(series)}
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'availableBooks') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.numericCell}
+              >
+                {getAvailableBooks(series)}
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'missingBooks') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.numericCell}
+              >
+                <span className={getMissingBooks(series) ? styles.warningText : undefined}>
+                  {getMissingBooks(series)}
+                </span>
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'monitored') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.monitoredCell}
+              >
+                <Icon
+                  name={isSeriesMonitored(series) ? icons.MONITORED : icons.UNMONITORED}
+                  title={isSeriesMonitored(series) ? 'Monitored' : 'Unmonitored'}
+                />
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'authorCount') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.numericCell}
+              >
+                {getAuthorNames(series).length}
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'unmonitoredBooks') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.numericCell}
+              >
+                {getUnmonitoredBooks(series)}
+              </VirtualTableRowCell>
+            );
+          }
+
+          if (name === 'actions') {
+            return (
+              <VirtualTableRowCell
+                key={name}
+                className={styles.actionsCell}
+              >
+                <IconButton
+                  name={icons.ARROW_RIGHT}
+                  title="Open series"
+                  to={`/series/${series.id}`}
+                />
+              </VirtualTableRowCell>
+            );
+          }
+
+          return null;
+        })
+      }
+    </>
+  );
+}
+
+SeriesTableRow.propTypes = {
+  series: PropTypes.object.isRequired,
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired
+};
+
+function SeriesTableHeader(props) {
+  const {
+    columns,
+    sortKey,
+    sortDirection,
+    onSortSelect
+  } = props;
+
+  return (
+    <VirtualTableHeader>
+      {
+        columns.map((column) => {
+          const {
+            name,
+            label,
+            columnLabel,
+            isSortable,
+            isVisible
+          } = column;
+
+          if (!isVisible) {
+            return null;
+          }
+
+          return (
+            <VirtualTableHeaderCell
+              key={name}
+              name={name}
+              className={getColumnClassName(name, true)}
+              isSortable={isSortable}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortPress={onSortSelect}
+            >
+              {columnLabel || label || ''}
+            </VirtualTableHeaderCell>
+          );
+        })
+      }
+    </VirtualTableHeader>
+  );
+}
+
+SeriesTableHeader.propTypes = {
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  sortKey: PropTypes.string,
+  sortDirection: PropTypes.oneOf(sortDirections.all),
+  onSortSelect: PropTypes.func.isRequired
+};
+
 function SeriesTableView(props) {
   const {
     items,
     columns,
     sortKey,
     sortDirection,
-    onSortSelect,
-    onTableOptionChange
+    isSmallScreen,
+    scroller,
+    onSortSelect
   } = props;
 
+  const rowRenderer = ({ key, rowIndex, style }) => {
+    const series = items[rowIndex];
+
+    return (
+      <VirtualTableRow
+        key={key}
+        style={style}
+      >
+        <SeriesTableRow
+          series={series}
+          columns={columns}
+        />
+      </VirtualTableRow>
+    );
+  };
+
   return (
-    <Table
+    <VirtualTable
+      className={styles.tableContainer}
+      items={items}
       columns={columns}
+      scroller={scroller}
+      isSmallScreen={isSmallScreen}
+      rowHeight={64}
+      rowRenderer={rowRenderer}
       sortKey={sortKey}
       sortDirection={sortDirection}
-      onSortPress={onSortSelect}
-      onTableOptionChange={onTableOptionChange}
-    >
-      <TableBody>
-        {
-          items.map((series) => {
-            return (
-              <TableRow key={series.id}>
-                {
-                  columns.map((column) => {
-                    const {
-                      name,
-                      isVisible
-                    } = column;
-
-                    if (!isVisible) {
-                      return null;
-                    }
-
-                    if (name === 'title') {
-                      return (
-                        <TableRowCell
-                          key={name}
-                          className={styles.titleCell}
-                        >
-                          <Link to={`/series/${series.id}`}>
-                            {series.title}
-                          </Link>
-                          <SeriesProgress series={series} />
-                        </TableRowCell>
-                      );
-                    }
-
-                    if (name === 'authors') {
-                      return (
-                        <TableRowCell key={name}>
-                          <SeriesAuthors series={series} />
-                        </TableRowCell>
-                      );
-                    }
-
-                    if (name === 'totalBooks') {
-                      return <TableRowCell key={name}>{getTotalBooks(series)}</TableRowCell>;
-                    }
-
-                    if (name === 'availableBooks') {
-                      return <TableRowCell key={name}>{getAvailableBooks(series)}</TableRowCell>;
-                    }
-
-                    if (name === 'missingBooks') {
-                      return (
-                        <TableRowCell
-                          key={name}
-                          className={getMissingBooks(series) ? styles.warningText : undefined}
-                        >
-                          {getMissingBooks(series)}
-                        </TableRowCell>
-                      );
-                    }
-
-                    if (name === 'monitored') {
-                      return (
-                        <TableRowCell key={name}>
-                          <Icon
-                            name={isSeriesMonitored(series) ? icons.MONITORED : icons.UNMONITORED}
-                            title={isSeriesMonitored(series) ? 'Monitored' : 'Unmonitored'}
-                          />
-                        </TableRowCell>
-                      );
-                    }
-
-                    if (name === 'authorCount') {
-                      return <TableRowCell key={name}>{getAuthorNames(series).length}</TableRowCell>;
-                    }
-
-                    if (name === 'unmonitoredBooks') {
-                      return <TableRowCell key={name}>{getUnmonitoredBooks(series)}</TableRowCell>;
-                    }
-
-                    if (name === 'actions') {
-                      return (
-                        <TableRowCell
-                          key={name}
-                          className={styles.actionsCell}
-                        >
-                          <IconButton
-                            name={icons.ARROW_RIGHT}
-                            title="Open series"
-                            to={`/series/${series.id}`}
-                          />
-                        </TableRowCell>
-                      );
-                    }
-
-                    return null;
-                  })
-                }
-              </TableRow>
-            );
-          })
-        }
-      </TableBody>
-    </Table>
+      header={
+        <SeriesTableHeader
+          columns={columns}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortSelect={onSortSelect}
+        />
+      }
+    />
   );
 }
 
@@ -251,8 +374,9 @@ SeriesTableView.propTypes = {
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   sortKey: PropTypes.string,
   sortDirection: PropTypes.oneOf(sortDirections.all),
-  onSortSelect: PropTypes.func.isRequired,
-  onTableOptionChange: PropTypes.func.isRequired
+  isSmallScreen: PropTypes.bool.isRequired,
+  scroller: PropTypes.instanceOf(Element).isRequired,
+  onSortSelect: PropTypes.func.isRequired
 };
 
 function SeriesOverviewView({ items }) {
@@ -377,6 +501,7 @@ function getViewComponent(view) {
 }
 
 function SeriesIndex(props) {
+  const [scroller, setScroller] = useState(null);
   const {
     isFetching,
     isPopulated,
@@ -391,6 +516,7 @@ function SeriesIndex(props) {
     sortKey,
     sortDirection,
     view,
+    isSmallScreen,
     onSortSelect,
     onFilterSelect,
     onSearchTermChange,
@@ -464,7 +590,7 @@ function SeriesIndex(props) {
         </PageToolbarSection>
       </PageToolbar>
 
-      <PageContentBody>
+      <PageContentBody registerScroller={setScroller}>
         {
           isFetching && !isPopulated &&
             <LoadingIndicator />
@@ -478,12 +604,14 @@ function SeriesIndex(props) {
         }
 
         {
-          isLoaded && !!items.length &&
+          isLoaded && !!items.length && (view !== 'table' || scroller) &&
             <ViewComponent
               items={items}
               columns={columns}
               sortKey={sortKey}
               sortDirection={sortDirection}
+              isSmallScreen={isSmallScreen}
+              scroller={scroller}
               onSortSelect={onSortSelect}
               onTableOptionChange={onTableOptionChange}
             />
@@ -518,6 +646,7 @@ SeriesIndex.propTypes = {
   sortKey: PropTypes.string,
   sortDirection: PropTypes.oneOf(sortDirections.all),
   view: PropTypes.string.isRequired,
+  isSmallScreen: PropTypes.bool.isRequired,
   onSortSelect: PropTypes.func.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
   onSearchTermChange: PropTypes.func.isRequired,

@@ -2,9 +2,20 @@
 // Please do not change this file!
 interface CssExports {
   'actionsCell': string;
+  'actionsHeaderCell': string;
+  'authorCountHeaderCell': string;
+  'authorsCell': string;
+  'authorsHeaderCell': string;
+  'availableBooksHeaderCell': string;
   'availableText': string;
+  'cell': string;
   'emptyMessage': string;
+  'headerCell': string;
+  'missingBooksHeaderCell': string;
+  'monitoredCell': string;
+  'monitoredHeaderCell': string;
   'muted': string;
+  'numericCell': string;
   'overviewAuthors': string;
   'overviewItem': string;
   'overviewLabel': string;
@@ -24,7 +35,11 @@ interface CssExports {
   'progressWrap': string;
   'seriesMeta': string;
   'seriesTitle': string;
+  'tableContainer': string;
   'titleCell': string;
+  'titleHeaderCell': string;
+  'totalBooksHeaderCell': string;
+  'unmonitoredBooksHeaderCell': string;
   'warningText': string;
 }
 export const cssExports: CssExports;

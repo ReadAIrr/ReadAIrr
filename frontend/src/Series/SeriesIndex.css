@@ -4,6 +4,18 @@
   color: var(--textSecondaryColor);
 }
 
+.tableContainer {
+  composes: tableContainer from '~Components/Table/VirtualTable.css';
+}
+
+.cell {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+}
+
+.headerCell {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+}
+
 .overviewList {
   display: flex;
   flex-direction: column;
@@ -155,10 +167,59 @@
 }
 
 .titleCell {
-  min-width: 260px;
+  composes: cell;
+
+  flex: 1 0 260px;
+}
+
+.titleHeaderCell {
+  composes: headerCell;
+
+  flex: 1 0 260px;
+}
+
+.authorsCell {
+  composes: cell;
+
+  flex: 0 1 220px;
+}
+
+.authorsHeaderCell {
+  composes: headerCell;
+
+  flex: 0 1 220px;
+}
+
+.numericCell,
+.monitoredCell {
+  composes: cell;
+
+  flex: 0 0 110px;
+}
+
+.totalBooksHeaderCell,
+.availableBooksHeaderCell,
+.missingBooksHeaderCell,
+.authorCountHeaderCell,
+.unmonitoredBooksHeaderCell,
+.monitoredHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 110px;
 }
 
 .actionsCell {
+  composes: cell;
+
+  flex: 0 0 50px;
+  width: 50px;
+  text-align: right;
+}
+
+.actionsHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 50px;
   width: 50px;
   text-align: right;
 }
