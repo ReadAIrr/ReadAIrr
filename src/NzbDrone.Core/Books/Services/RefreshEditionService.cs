@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.MediaFiles;
 
 namespace NzbDrone.Core.Books
@@ -15,14 +16,17 @@ namespace NzbDrone.Core.Books
     {
         private readonly IEditionService _editionService;
         private readonly IMetadataTagService _metadataTagService;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly Logger _logger;
 
         public RefreshEditionService(IEditionService editionService,
             IMetadataTagService metadataTagService,
+            IContributorEvidenceRepository contributorEvidenceRepository,
             Logger logger)
         {
             _editionService = editionService;
             _metadataTagService = metadataTagService;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
             _logger = logger;
         }
 
@@ -52,8 +56,55 @@ namespace NzbDrone.Core.Books
             }
 
             _metadataTagService.SyncTags(tagsToUpdate);
+            SyncProviderContributorEvidence(add.Concat(updateList).Concat(upToDate).ToList(), remoteEditions);
 
             return add.Any() || delete.Any() || updateList.Any() || merge.Any();
+        }
+
+        private void SyncProviderContributorEvidence(List<Edition> editions, List<Edition> remoteEditions)
+        {
+            var editionsByForeignId = editions
+                .Where(x => x.Id > 0 && x.ForeignEditionId.IsNotNullOrWhiteSpace())
+                .GroupBy(x => x.ForeignEditionId)
+                .ToDictionary(x => x.Key, x => x.First());
+
+            if (!editionsByForeignId.Any())
+            {
+                return;
+            }
+
+            var evidence = remoteEditions
+                .Where(x => x.ProviderContributorEvidence != null && x.ProviderContributorEvidence.Any())
+                .SelectMany(remoteEdition =>
+                {
+                    if (!editionsByForeignId.TryGetValue(remoteEdition.ForeignEditionId, out var edition))
+                    {
+                        return new List<ContributorEvidence>();
+                    }
+
+                    return remoteEdition.ProviderContributorEvidence.Select(item => new ContributorEvidence
+                    {
+                        EditionId = edition.Id,
+                        ForeignEditionId = edition.ForeignEditionId,
+                        Role = item.Role,
+                        DisplayName = item.DisplayName,
+                        NormalizedName = item.NormalizedName,
+                        Source = item.Source,
+                        Confidence = item.Confidence,
+                        RawValue = item.RawValue,
+                        Created = DateTime.UtcNow,
+                        Updated = DateTime.UtcNow
+                    }).ToList();
+                })
+                .Where(x => x.DisplayName.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            _contributorEvidenceRepository.DeleteByEditionIdsAndSources(editionsByForeignId.Values.Select(x => x.Id), new[] { "providerMetadata" });
+
+            if (evidence.Any())
+            {
+                _contributorEvidenceRepository.InsertMany(evidence);
+            }
         }
     }
 }

@@ -41,6 +41,7 @@ namespace NzbDrone.Core.MediaFiles
         public bool IsAudioFile { get; set; }
         public bool CanWrite { get; set; }
         public string Warning { get; set; }
+        public List<string> EvidenceWarnings { get; set; }
         public List<string> WriteWarnings { get; set; }
         public AudioTagValues Current { get; set; }
         public AudioTagValues Suggested { get; set; }
@@ -208,7 +209,7 @@ namespace NzbDrone.Core.MediaFiles
         {
             warning = null;
             var suggested = _audioTagService.GetTrackMetadata(bookFile);
-            var narrator = GetTrustedNarratorEvidence(bookFile);
+            var narrator = GetTrustedNarratorEvidence(bookFile, out var evidenceWarning);
 
             if (narrator.IsNotNullOrWhiteSpace())
             {
@@ -221,6 +222,11 @@ namespace NzbDrone.Core.MediaFiles
             {
                 warning = $"This file belongs to an incomplete audiobook part set. Automated retagging is blocked: {issue.Message}. Manual edits affect only this file and will not normalize track count.";
                 suggested.TrackCount = current.TrackCount;
+            }
+
+            if (evidenceWarning.IsNotNullOrWhiteSpace())
+            {
+                warning = warning.IsNullOrWhiteSpace() ? evidenceWarning : $"{warning} {evidenceWarning}";
             }
 
             return suggested;
@@ -368,18 +374,25 @@ namespace NzbDrone.Core.MediaFiles
             throw new BadRequestException($"Unknown audio tag template '{template}'");
         }
 
-        private string GetTrustedNarratorEvidence(BookFile bookFile)
+        private string GetTrustedNarratorEvidence(BookFile bookFile, out string warning)
         {
+            warning = null;
             var evidence = _contributorEvidenceRepository.GetByBookFileIds(new[] { bookFile.Id })
                 .Concat(_contributorEvidenceRepository.GetByEditionIds(new[] { bookFile.EditionId }))
                 .Where(x => x.Role == "narrator" && x.DisplayName.IsNotNullOrWhiteSpace())
-                .Where(x => IsManualEvidence(x) || IsHighConfidenceReviewEvidence(x))
+                .Where(x => IsManualEvidence(x) || IsProviderEvidence(x) || IsHighConfidenceReviewEvidence(x))
+                .ToList();
+
+            var selected = evidence
                 .OrderByDescending(x => IsManualEvidence(x))
+                .ThenByDescending(x => IsProviderEvidence(x))
                 .ThenByDescending(x => x.Confidence ?? 0)
                 .ThenByDescending(x => x.Updated)
                 .FirstOrDefault();
 
-            return evidence?.DisplayName;
+            warning = GetNarratorEvidenceConflictWarning(selected, evidence);
+
+            return selected?.DisplayName;
         }
 
         private static bool IsManualEvidence(ContributorEvidence evidence)
@@ -387,9 +400,58 @@ namespace NzbDrone.Core.MediaFiles
             return evidence.Source == "manual";
         }
 
+        private static bool IsProviderEvidence(ContributorEvidence evidence)
+        {
+            return evidence.Source == "providerMetadata";
+        }
+
         private static bool IsHighConfidenceReviewEvidence(ContributorEvidence evidence)
         {
             return (evidence.Source == "aiReview" || evidence.Source == "sttTranscript") && (evidence.Confidence ?? 0) >= 80;
+        }
+
+        private static string GetNarratorEvidenceConflictWarning(ContributorEvidence selected, List<ContributorEvidence> evidence)
+        {
+            if (selected == null || evidence == null)
+            {
+                return null;
+            }
+
+            var providerNames = evidence
+                .Where(IsProviderEvidence)
+                .Select(x => x.DisplayName)
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!providerNames.Any())
+            {
+                return null;
+            }
+
+            var nonProviderNames = evidence
+                .Where(x => !IsProviderEvidence(x))
+                .Select(x => x.DisplayName)
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!nonProviderNames.Any())
+            {
+                return null;
+            }
+
+            var providerNormalized = providerNames.Select(ContributorEvidence.NormalizeName).ToHashSet();
+            var conflictingNonProviderNames = nonProviderNames
+                .Where(x => !providerNormalized.Contains(ContributorEvidence.NormalizeName(x)))
+                .ToList();
+
+            if (!conflictingNonProviderNames.Any())
+            {
+                return null;
+            }
+
+            return $"Provider narrator metadata ({string.Join(", ", providerNames)}) conflicts with other narrator evidence ({string.Join(", ", conflictingNonProviderNames)}). Selected performer is {selected.DisplayName} from {selected.Source}. Review before writing performer tags.";
         }
 
         private AudioTagEditPreview BuildPreview(BookFile bookFile, AudioTag current, AudioTag suggested, AudioTag proposed, string warning, List<string> writeWarnings = null)
@@ -401,6 +463,7 @@ namespace NzbDrone.Core.MediaFiles
                 IsAudioFile = true,
                 CanWrite = current.IsValid && proposed.IsValid,
                 Warning = warning,
+                EvidenceWarnings = warning.IsNotNullOrWhiteSpace() && warning.Contains("Provider narrator metadata") ? new List<string> { warning } : new List<string>(),
                 WriteWarnings = writeWarnings ?? new List<string>(),
                 Current = ToValues(current),
                 Suggested = ToValues(suggested),

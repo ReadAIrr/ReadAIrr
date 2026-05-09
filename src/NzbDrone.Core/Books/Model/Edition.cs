@@ -42,6 +42,10 @@ namespace NzbDrone.Core.Books
         public bool Monitored { get; set; }
         public bool ManualAdd { get; set; }
 
+        // These are derived from provider payloads during refresh and persisted separately.
+        [MemberwiseEqualityIgnore]
+        public List<ContributorEvidence> ProviderContributorEvidence { get; set; }
+
         // These are dynamically queried from other tables
         [MemberwiseEqualityIgnore]
         public LazyLoaded<Book> Book { get; set; }
@@ -71,6 +75,7 @@ namespace NzbDrone.Core.Books
             Images = other.Images.Any() ? other.Images : Images;
             Links = other.Links;
             Ratings = other.Ratings;
+            ProviderContributorEvidence = other.ProviderContributorEvidence;
         }
 
         public override void UseDbFieldsFrom(Edition other)

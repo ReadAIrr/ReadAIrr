@@ -18,6 +18,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MediaCover;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
@@ -519,11 +520,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             var authors = resource.Authors.Select(MapAuthorMetadata).ToDictionary(x => x.ForeignAuthorId, x => x);
+            var contributorNames = BuildContributorNameMap(resource.Authors);
             var series = resource.Series.Select(MapSeries).ToList();
 
             foreach (var work in resource.Works)
             {
-                var book = MapBook(work);
+                var book = MapBook(work, contributorNames);
                 var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
 
                 AddDbIds(authorId, book, authors);
@@ -739,7 +741,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException($"Failed to get books for {foreignBookId}");
             }
 
-            var book = MapBook(resource);
+            var book = MapBook(resource, BuildContributorNameMap(resource.Authors));
             var authorId = GetAuthorId(resource).ToString();
             var metadata = resource.Authors.Select(MapAuthorMetadata).ToList();
 
@@ -804,10 +806,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private static Author MapAuthor(AuthorResource resource)
         {
             var metadata = MapAuthorMetadata(resource);
+            var contributorNames = BuildContributorNameMap((resource.Works ?? new List<WorkResource>())
+                .SelectMany(x => x.Authors ?? new List<AuthorResource>())
+                .Concat(new[] { resource }));
 
             var books = resource.Works
                 .Where(x => x.ForeignId > 0 && GetAuthorId(x) == resource.ForeignId)
-                .Select(MapBook)
+                .Select(x => MapBook(x, contributorNames))
                 .ToList();
 
             books.ForEach(x => x.AuthorMetadata = metadata);
@@ -871,7 +876,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return series;
         }
 
-        private static Book MapBook(WorkResource resource)
+        private static Book MapBook(WorkResource resource, Dictionary<int, string> contributorNames = null)
         {
             var book = new Book
             {
@@ -888,7 +893,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (resource.Books != null)
             {
-                book.Editions = resource.Books.Select(x => MapEdition(x)).ToList();
+                var names = BuildContributorNameMap(resource.Authors ?? new List<AuthorResource>());
+
+                if (contributorNames != null)
+                {
+                    foreach (var contributorName in contributorNames)
+                    {
+                        names.TryAdd(contributorName.Key, contributorName.Value);
+                    }
+                }
+
+                book.Editions = resource.Books.Select(x => MapEdition(x, names)).ToList();
 
                 // monitor the most popular release
                 var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);
@@ -951,7 +966,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return book;
         }
 
-        private static Edition MapEdition(BookResource resource)
+        private static Edition MapEdition(BookResource resource, Dictionary<int, string> contributorNames = null)
         {
             var edition = new Edition
             {
@@ -968,7 +983,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 Publisher = resource.Publisher,
                 PageCount = resource.NumPages ?? 0,
                 ReleaseDate = resource.ReleaseDate,
-                Ratings = new Ratings { Votes = resource.RatingCount, Value = (decimal)resource.AverageRating }
+                Ratings = new Ratings { Votes = resource.RatingCount, Value = (decimal)resource.AverageRating },
+                ProviderContributorEvidence = MapProviderContributorEvidence(resource, contributorNames)
             };
 
             if (resource.ImageUrl.IsNotNullOrWhiteSpace())
@@ -983,6 +999,59 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             edition.Links.Add(new Links { Url = resource.Url, Name = "Goodreads Book" });
 
             return edition;
+        }
+
+        private static Dictionary<int, string> BuildContributorNameMap(IEnumerable<AuthorResource> authors)
+        {
+            return (authors ?? new List<AuthorResource>())
+                .Where(x => x != null && x.ForeignId > 0 && x.Name.IsNotNullOrWhiteSpace())
+                .GroupBy(x => x.ForeignId)
+                .ToDictionary(x => x.Key, x => x.First().Name);
+        }
+
+        private static List<ContributorEvidence> MapProviderContributorEvidence(BookResource resource, Dictionary<int, string> contributorNames)
+        {
+            return (resource.Contributors ?? new List<ContributorResource>())
+                .Select(x => MapProviderContributorEvidence(resource, x, contributorNames))
+                .Where(x => x != null)
+                .ToList();
+        }
+
+        private static ContributorEvidence MapProviderContributorEvidence(BookResource resource, ContributorResource contributor, Dictionary<int, string> contributorNames)
+        {
+            var role = NormalizeProviderContributorRole(contributor.Role);
+            if (role == null)
+            {
+                return null;
+            }
+
+            if (contributorNames == null || !contributorNames.TryGetValue(contributor.ForeignId, out var displayName) || displayName.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            return new ContributorEvidence
+            {
+                ForeignEditionId = resource.ForeignId.ToString(),
+                Role = role,
+                DisplayName = displayName,
+                NormalizedName = ContributorEvidence.NormalizeName(displayName),
+                Source = "providerMetadata",
+                Confidence = 95,
+                RawValue = $"providerRole={contributor.Role};foreignContributorId={contributor.ForeignId};foreignEditionId={resource.ForeignId}"
+            };
+        }
+
+        private static string NormalizeProviderContributorRole(string role)
+        {
+            var normalized = (role ?? string.Empty).Trim().ToLowerInvariant().Replace(" ", string.Empty).Replace("_", string.Empty).Replace("-", string.Empty);
+
+            if (normalized == "narrator" || normalized == "reader" || normalized == "readby" || normalized == "performer")
+            {
+                return "narrator";
+            }
+
+            return null;
         }
 
         private static int GetAuthorId(WorkResource b)
