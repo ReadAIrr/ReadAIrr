@@ -19,9 +19,113 @@ import InteractiveSearchFilterMenuConnector from 'InteractiveSearch/InteractiveS
 import InteractiveSearchTable from 'InteractiveSearch/InteractiveSearchTable';
 import OrganizePreviewModalConnector from 'Organize/OrganizePreviewModalConnector';
 import RetagPreviewModalConnector from 'Retag/RetagPreviewModalConnector';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
 import BookDetailsHeaderConnector from './BookDetailsHeaderConnector';
 import styles from './BookDetails.css';
+
+function getFieldStatusLabel(status) {
+  switch (status) {
+    case 'confirmed':
+      return 'Confirmed';
+    case 'conflicting':
+      return 'Conflict';
+    case 'provider-only':
+      return 'Provider only';
+    case 'local-only':
+      return 'Local only';
+    case 'low-confidence':
+      return 'Low confidence';
+    case 'needs-review':
+      return 'Needs review';
+    default:
+      return 'Missing';
+  }
+}
+
+function MetadataComparisonPanel({ comparison, isFetching, error }) {
+  if (isFetching) {
+    return (
+      <div className={styles.metadataComparison}>
+        <LoadingIndicator />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.metadataComparison}>
+        <div className={styles.metadataComparisonTitle}>Metadata confidence review</div>
+        <div className={styles.metadataComparisonNotice}>
+          Unable to load review-only metadata comparison.
+        </div>
+      </div>
+    );
+  }
+
+  if (!comparison) {
+    return null;
+  }
+
+  const fields = (comparison.fields || []).filter((field) => field.status !== 'confirmed').slice(0, 8);
+  const visibleFields = fields.length ? fields : (comparison.fields || []).slice(0, 5);
+
+  return (
+    <div className={styles.metadataComparison}>
+      <div className={styles.metadataComparisonHeader}>
+        <div>
+          <div className={styles.metadataComparisonTitle}>Metadata confidence review</div>
+          <div className={styles.metadataComparisonSummary}>
+            {comparison.summary}
+          </div>
+        </div>
+
+        <div className={styles.metadataComparisonBadge}>
+          Review only
+        </div>
+      </div>
+
+      <div className={styles.metadataComparisonNotice}>
+        Opening this comparison does not update metadata, change editions, import files, rename, retag, search, monitor, or call AI providers.
+      </div>
+
+      <div className={styles.metadataComparisonGrid}>
+        {
+          visibleFields.map((field) => {
+            return (
+              <div
+                key={field.field}
+                className={styles.metadataComparisonRow}
+              >
+                <div className={styles.metadataComparisonField}>
+                  <span className={styles.metadataComparisonLabel}>{field.label}</span>
+                  <span className={styles.metadataComparisonStatus}>{getFieldStatusLabel(field.status)}</span>
+                </div>
+                <div className={styles.metadataComparisonValues}>
+                  <div><b>Local:</b> {field.localValue || 'Not set'}</div>
+                  <div><b>Provider:</b> {field.providerValue || 'Not available'}</div>
+                  {
+                    field.evidenceValue &&
+                      <div><b>Evidence:</b> {field.evidenceValue}</div>
+                  }
+                </div>
+                <div className={styles.metadataComparisonExplanation}>
+                  {field.explanation}
+                </div>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  );
+}
+
+MetadataComparisonPanel.propTypes = {
+  comparison: PropTypes.object,
+  isFetching: PropTypes.bool.isRequired,
+  error: PropTypes.object
+};
 
 class BookDetails extends Component {
 
@@ -36,9 +140,71 @@ class BookDetails extends Component {
       isRetagModalOpen: false,
       isEditBookModalOpen: false,
       isDeleteBookModalOpen: false,
-      selectedTabIndex: 0
+      selectedTabIndex: 0,
+      metadataComparison: null,
+      isFetchingMetadataComparison: false,
+      metadataComparisonError: null
     };
   }
+
+  componentDidMount() {
+    this.fetchMetadataComparison();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.id !== this.props.id) {
+      this.fetchMetadataComparison();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this._abortMetadataComparisonRequest) {
+      this._abortMetadataComparisonRequest();
+    }
+  }
+
+  fetchMetadataComparison = () => {
+    const { id } = this.props;
+
+    if (!id) {
+      return;
+    }
+
+    if (this._abortMetadataComparisonRequest) {
+      this._abortMetadataComparisonRequest();
+    }
+
+    this.setState({
+      isFetchingMetadataComparison: true,
+      metadataComparisonError: null
+    });
+
+    const { request, abortRequest } = createAjaxRequest({
+      url: `/metadata/compare/book/${id}`
+    });
+
+    this._abortMetadataComparisonRequest = abortRequest;
+
+    request.done((metadataComparison) => {
+      this.setState({
+        metadataComparison,
+        isFetchingMetadataComparison: false,
+        metadataComparisonError: null
+      });
+    });
+
+    request.fail((xhr) => {
+      if (xhr.aborted) {
+        return;
+      }
+
+      this.setState({
+        metadataComparison: null,
+        isFetchingMetadataComparison: false,
+        metadataComparisonError: xhr
+      });
+    });
+  };
 
   //
   // Listeners
@@ -112,7 +278,10 @@ class BookDetails extends Component {
       isRetagModalOpen,
       isEditBookModalOpen,
       isDeleteBookModalOpen,
-      selectedTabIndex
+      selectedTabIndex,
+      metadataComparison,
+      isFetchingMetadataComparison,
+      metadataComparisonError
     } = this.state;
 
     return (
@@ -223,6 +392,12 @@ class BookDetails extends Component {
           </SwipeHeaderConnector>
 
           <div className={styles.contentContainer}>
+            <MetadataComparisonPanel
+              comparison={metadataComparison}
+              isFetching={isFetchingMetadataComparison}
+              error={metadataComparisonError}
+            />
+
             {
               !isPopulated && !bookFilesError &&
                 <LoadingIndicator />

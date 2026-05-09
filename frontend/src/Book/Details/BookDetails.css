@@ -6,6 +6,81 @@
   padding: 20px;
 }
 
+.metadataComparison {
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+}
+
+.metadataComparisonHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metadataComparisonTitle {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.metadataComparisonSummary {
+  margin-top: 4px;
+  color: var(--helpTextColor);
+}
+
+.metadataComparisonBadge,
+.metadataComparisonStatus {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--gray);
+  color: var(--white);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.metadataComparisonNotice {
+  margin-top: 10px;
+  color: var(--helpTextColor);
+}
+
+.metadataComparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.metadataComparisonRow {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.metadataComparisonField {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metadataComparisonLabel {
+  font-weight: 600;
+}
+
+.metadataComparisonValues {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--textColor);
+}
+
+.metadataComparisonExplanation {
+  margin-top: 8px;
+  color: var(--helpTextColor);
+}
+
 .tabList {
   margin: 0;
   padding: 0;
