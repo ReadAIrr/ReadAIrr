@@ -18,6 +18,9 @@ namespace NzbDrone.Core.Profiles.Qualities
         public int Cutoff { get; set; }
         public int MinFormatScore { get; set; }
         public int CutoffFormatScore { get; set; }
+        public AudiobookLayoutPreference AudiobookLayoutPreference { get; set; }
+        public AudiobookFormatPreference AudiobookFormatPreference { get; set; }
+        public AudiobookFileCountPreference AudiobookFileCountPreference { get; set; }
         public List<ProfileFormatItem> FormatItems { get; set; }
         public List<QualityProfileQualityItem> Items { get; set; }
 

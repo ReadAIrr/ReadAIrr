@@ -21,6 +21,23 @@ import styles from './EditQualityProfileModalContent.css';
 
 const MODAL_BODY_PADDING = parseInt(dimensions.modalBodyPadding);
 
+const audiobookLayoutPreferenceOptions = [
+  { key: 0, value: 'No layout preference' },
+  { key: 1, value: 'Prefer single-file audiobooks' },
+  { key: 2, value: 'Prefer multi-file audiobooks' }
+];
+
+const audiobookFormatPreferenceOptions = [
+  { key: 0, value: 'No format preference' },
+  { key: 1, value: 'Prefer M4B' },
+  { key: 2, value: 'Prefer MP3' }
+];
+
+const audiobookFileCountPreferenceOptions = [
+  { key: 0, value: 'No file-count preference' },
+  { key: 1, value: 'Prefer fewer parts' }
+];
+
 function getCustomFormatRender(formatItems, otherProps) {
   return (
     <QualityProfileFormatItems
@@ -123,6 +140,9 @@ class EditQualityProfileModalContent extends Component {
       cutoff,
       minFormatScore,
       cutoffFormatScore,
+      audiobookLayoutPreference = { value: 0 },
+      audiobookFormatPreference = { value: 0 },
+      audiobookFileCountPreference = { value: 0 },
       items,
       formatItems
     } = item;
@@ -236,6 +256,51 @@ class EditQualityProfileModalContent extends Component {
                             />
                           </FormGroup>
                       }
+
+                      <FormGroup size={sizes.EXTRA_SMALL}>
+                        <FormLabel size={sizes.SMALL}>
+                          Audiobook Layout
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.SELECT}
+                          name="audiobookLayoutPreference"
+                          {...audiobookLayoutPreference}
+                          values={audiobookLayoutPreferenceOptions}
+                          helpText="Optional audiobook upgrade preference. Unknown release layout stays neutral."
+                          onChange={onInputChange}
+                        />
+                      </FormGroup>
+
+                      <FormGroup size={sizes.EXTRA_SMALL}>
+                        <FormLabel size={sizes.SMALL}>
+                          Audiobook Format
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.SELECT}
+                          name="audiobookFormatPreference"
+                          {...audiobookFormatPreference}
+                          values={audiobookFormatPreferenceOptions}
+                          helpText="Optional M4B/MP3 preference for audiobook releases where format can be inferred."
+                          onChange={onInputChange}
+                        />
+                      </FormGroup>
+
+                      <FormGroup size={sizes.EXTRA_SMALL}>
+                        <FormLabel size={sizes.SMALL}>
+                          Audiobook File Count
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.SELECT}
+                          name="audiobookFileCountPreference"
+                          {...audiobookFileCountPreference}
+                          values={audiobookFileCountPreferenceOptions}
+                          helpText="Optionally prefer fewer audiobook parts when file-count data is known."
+                          onChange={onInputChange}
+                        />
+                      </FormGroup>
 
                       <div className={styles.formatItemLarge}>
                         {getCustomFormatRender(formatItems, otherProps)}

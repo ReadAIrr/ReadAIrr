@@ -15,6 +15,9 @@ namespace Readarr.Api.V1.Profiles.Quality
         public List<QualityProfileQualityItemResource> Items { get; set; }
         public int MinFormatScore { get; set; }
         public int CutoffFormatScore { get; set; }
+        public AudiobookLayoutPreference AudiobookLayoutPreference { get; set; }
+        public AudiobookFormatPreference AudiobookFormatPreference { get; set; }
+        public AudiobookFileCountPreference AudiobookFileCountPreference { get; set; }
         public List<ProfileFormatItemResource> FormatItems { get; set; }
     }
 
@@ -56,6 +59,9 @@ namespace Readarr.Api.V1.Profiles.Quality
                 Items = model.Items.ConvertAll(ToResource),
                 MinFormatScore = model.MinFormatScore,
                 CutoffFormatScore = model.CutoffFormatScore,
+                AudiobookLayoutPreference = model.AudiobookLayoutPreference,
+                AudiobookFormatPreference = model.AudiobookFormatPreference,
+                AudiobookFileCountPreference = model.AudiobookFileCountPreference,
                 FormatItems = model.FormatItems.ConvertAll(ToResource)
             };
         }
@@ -103,6 +109,9 @@ namespace Readarr.Api.V1.Profiles.Quality
                 Items = resource.Items.ConvertAll(ToModel),
                 MinFormatScore = resource.MinFormatScore,
                 CutoffFormatScore = resource.CutoffFormatScore,
+                AudiobookLayoutPreference = resource.AudiobookLayoutPreference,
+                AudiobookFormatPreference = resource.AudiobookFormatPreference,
+                AudiobookFileCountPreference = resource.AudiobookFileCountPreference,
                 FormatItems = resource.FormatItems.ConvertAll(ToModel)
             };
         }
