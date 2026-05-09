@@ -47,6 +47,46 @@
   vertical-align: top;
 }
 
+.templateDiffs {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.templateDiff {
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) 1fr;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.templateDiffField {
+  font-weight: 600;
+}
+
+.templateDiffValues {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+
+.templateDiffValue {
+  overflow-wrap: anywhere;
+}
+
+.templateDiffArrow {
+  color: var(--helpTextColor);
+}
+
+.templateWarnings {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.noTemplateChanges {
+  color: var(--helpTextColor);
+}
+
 .blankpad {
   padding-top: 10px;
   padding-bottom: 10px;

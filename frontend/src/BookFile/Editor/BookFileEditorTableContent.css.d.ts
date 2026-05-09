@@ -4,10 +4,18 @@ interface CssExports {
   'actions': string;
   'blankpad': string;
   'filesTable': string;
+  'noTemplateChanges': string;
   'selectInput': string;
   'templateControls': string;
+  'templateDiff': string;
+  'templateDiffArrow': string;
+  'templateDiffField': string;
+  'templateDiffValue': string;
+  'templateDiffValues': string;
+  'templateDiffs': string;
   'templatePreviewTable': string;
   'templateSummary': string;
+  'templateWarnings': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

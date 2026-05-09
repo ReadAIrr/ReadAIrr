@@ -122,6 +122,10 @@ class BookFileEditorTableContent extends Component {
   };
 
   previewAudioTagTemplate = (write = false) => {
+    if (this.state.isAudioTagTemplateWriting) {
+      return;
+    }
+
     const selectedIds = this.getSelectedIds();
 
     if (!selectedIds.length) {
@@ -161,6 +165,75 @@ class BookFileEditorTableContent extends Component {
       });
     });
   };
+
+  getFileName(path, fallback) {
+    if (!path) {
+      return fallback;
+    }
+
+    return path.split(/[\\/]/).pop();
+  }
+
+  renderTemplateFileDiffs(file) {
+    if (!file.changes.length) {
+      return (
+        <div className={styles.noTemplateChanges}>
+          No field changes.
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.templateDiffs}>
+        {
+          file.changes.map((change) => {
+            return (
+              <div
+                key={change.field}
+                className={styles.templateDiff}
+              >
+                <div className={styles.templateDiffField}>
+                  {change.field}
+                </div>
+                <div className={styles.templateDiffValues}>
+                  <span className={styles.templateDiffValue}>
+                    {change.currentValue || 'Empty'}
+                  </span>
+                  <span className={styles.templateDiffArrow}>-&gt;</span>
+                  <span className={styles.templateDiffValue}>
+                    {change.proposedValue || 'Empty'}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        }
+      </div>
+    );
+  }
+
+  renderTemplateFileWarnings(file) {
+    const warnings = [
+      file.warning,
+      ...(file.writeWarnings || [])
+    ].filter(Boolean);
+
+    if (!warnings.length) {
+      return null;
+    }
+
+    return (
+      <ul className={styles.templateWarnings}>
+        {
+          warnings.map((warning) => {
+            return (
+              <li key={warning}>{warning}</li>
+            );
+          })
+        }
+      </ul>
+    );
+  }
 
   renderAudioTagTemplateModal() {
     const {
@@ -246,18 +319,16 @@ class BookFileEditorTableContent extends Component {
                     <tbody>
                       {
                         audioTagTemplatePreview.files.map((file) => {
-                          const fileName = file.path ? file.path.split('/').pop() : file.bookFileId;
+                          const fileName = this.getFileName(file.path, file.bookFileId);
 
                           return (
                             <tr key={file.bookFileId}>
                               <td>{fileName}</td>
-                              <td>{file.changes.length}</td>
                               <td>
-                                {
-                                  file.warning ||
-                                  (file.writeWarnings && file.writeWarnings.length ? file.writeWarnings.join(' ') : null) ||
-                                  null
-                                }
+                                {this.renderTemplateFileDiffs(file)}
+                              </td>
+                              <td>
+                                {this.renderTemplateFileWarnings(file)}
                               </td>
                             </tr>
                           );
@@ -278,7 +349,7 @@ class BookFileEditorTableContent extends Component {
             <SpinnerButton
               kind={kinds.PRIMARY}
               isSpinning={isAudioTagTemplateWriting}
-              isDisabled={!audioTagTemplatePreview || !audioTagTemplatePreview.changedFiles || isAudioTagTemplateFetching}
+              isDisabled={!audioTagTemplatePreview || !audioTagTemplatePreview.changedFiles || isAudioTagTemplateFetching || isAudioTagTemplateWriting}
               onPress={() => this.previewAudioTagTemplate(true)}
             >
               Apply Template
