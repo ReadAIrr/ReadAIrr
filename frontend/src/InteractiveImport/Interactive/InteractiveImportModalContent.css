@@ -28,6 +28,13 @@
   white-space: nowrap;
 }
 
+.acceptedSuggestionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .footer {
   composes: modalFooter from '~Components/Modal/ModalFooter.css';
 

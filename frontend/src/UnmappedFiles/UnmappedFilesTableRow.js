@@ -24,6 +24,7 @@ import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import { buildAddSearchUrl, getAuthorContext, getBookContext, getCleanAuthorCandidate, getCleanBookCandidate } from './unmappedAddSearchUtils';
 import styles from './UnmappedFilesTableRow.css';
 
 function getStatusKind(status) {
@@ -274,34 +275,6 @@ function getReviewSuggestion(review) {
   return getDeepIdentifySuggestion(review) || review?.suggestions?.find((item) => item.status !== 'disabled');
 }
 
-function getAuthorAddCandidate(review, suggestion) {
-  const candidate = review?.candidate || {};
-
-  if (candidate.authorId) {
-    return null;
-  }
-
-  return suggestion?.likelyAuthor || candidate.authorName || review?.parsed?.author || '';
-}
-
-function getBookContext(review, suggestion) {
-  return suggestion?.likelyBook || review?.candidate?.bookTitle || review?.parsed?.book || '';
-}
-
-function getAddAuthorUrl(authorName, bookTitle) {
-  const params = [
-    `term=${encodeURIComponent(authorName)}`,
-    `returnUrl=${encodeURIComponent('/unmapped')}`,
-    `returnLabel=${encodeURIComponent('Unmapped Files')}`
-  ];
-
-  if (bookTitle) {
-    params.push(`contextBook=${encodeURIComponent(bookTitle)}`);
-  }
-
-  return `/add/search?${params.join('&')}`;
-}
-
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -468,6 +441,24 @@ class UnmappedFilesTableRow extends Component {
 
     const reviewSuggestion = getReviewSuggestion(review);
     const reviewAudioPreviewUrl = getAudioPreviewUrl(reviewSuggestion?.audioPreviewUrl);
+    const addAuthorCandidate = getCleanAuthorCandidate(review, reviewSuggestion);
+    const addBookCandidate = getCleanBookCandidate(review, reviewSuggestion);
+    const bookContext = getBookContext(review, reviewSuggestion);
+    const authorContext = getAuthorContext(review, reviewSuggestion);
+    const narratorContext = reviewSuggestion?.narrator || getManualNarratorValue(review?.contributorEvidence || contributorEvidence);
+    const addAuthorUrl = addAuthorCandidate ? buildAddSearchUrl({
+      term: addAuthorCandidate,
+      contextType: 'author',
+      contextBook: bookContext,
+      contextNarrator: narratorContext
+    }) : null;
+    const addBookUrl = addBookCandidate ? buildAddSearchUrl({
+      term: [addBookCandidate, authorContext].filter(Boolean).join(' '),
+      contextType: 'book',
+      contextBook: addBookCandidate,
+      contextAuthor: authorContext,
+      contextNarrator: narratorContext
+    }) : null;
 
     return (
       <>
@@ -587,8 +578,6 @@ class UnmappedFilesTableRow extends Component {
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
               const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
               const contributorEvidenceDetails = getContributorEvidenceDetails(review?.contributorEvidence || contributorEvidence);
-              const addAuthorCandidate = getAuthorAddCandidate(review, suggestion);
-              const bookContext = getBookContext(review, suggestion);
 
               return (
                 <VirtualTableRowCell
@@ -678,12 +667,22 @@ class UnmappedFilesTableRow extends Component {
                       }
 
                       {
-                        addAuthorCandidate &&
+                        addAuthorUrl &&
                           <Link
                             className={styles.inlineAction}
-                            to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                            to={addAuthorUrl}
                           >
                             Add Author
+                          </Link>
+                      }
+
+                      {
+                        addBookUrl &&
+                          <Link
+                            className={styles.inlineAction}
+                            to={addBookUrl}
+                          >
+                            Add Book
                           </Link>
                       }
                     </div>
@@ -696,8 +695,6 @@ class UnmappedFilesTableRow extends Component {
               const parsed = review?.parsed || {};
               const candidate = review?.candidate || {};
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
-              const addAuthorCandidate = getAuthorAddCandidate(review, reviewSuggestion);
-              const bookContext = getBookContext(review, reviewSuggestion);
 
               return (
                 <VirtualTableRowCell
@@ -711,10 +708,10 @@ class UnmappedFilesTableRow extends Component {
 
                     <div className={styles.candidateSubline}>
                       {
-                        addAuthorCandidate &&
+                        addAuthorUrl &&
                           <Link
                             className={styles.inlineAction}
-                            to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                            to={addAuthorUrl}
                           >
                             Add Author
                           </Link>
@@ -1042,7 +1039,7 @@ class UnmappedFilesTableRow extends Component {
                     }
 
                     {
-                      getAuthorAddCandidate(review, reviewSuggestion) &&
+                      addAuthorUrl &&
                         <div className={styles.reviewSection}>
                           <div className={styles.reviewSectionTitle}>
                             Missing author
@@ -1050,6 +1047,19 @@ class UnmappedFilesTableRow extends Component {
 
                           <div className={styles.reasonDetail}>
                             Add the likely author using the existing add flow, then return here and retry identify or manual match.
+                          </div>
+                        </div>
+                    }
+
+                    {
+                      addBookUrl &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Missing book
+                          </div>
+
+                          <div className={styles.reasonDetail}>
+                            Add the likely book using the existing add flow, then return here and retry identify or manual match.
                           </div>
                         </div>
                     }
@@ -1073,11 +1083,20 @@ class UnmappedFilesTableRow extends Component {
               </Button>
 
               {
-                getAuthorAddCandidate(review, reviewSuggestion) &&
+                addAuthorUrl &&
                   <Button
-                    to={getAddAuthorUrl(getAuthorAddCandidate(review, reviewSuggestion), getBookContext(review, reviewSuggestion))}
+                    to={addAuthorUrl}
                   >
                     Add Author
+                  </Button>
+              }
+
+              {
+                addBookUrl &&
+                  <Button
+                    to={addBookUrl}
+                  >
+                    Add Book
                   </Button>
               }
             </ModalFooter>

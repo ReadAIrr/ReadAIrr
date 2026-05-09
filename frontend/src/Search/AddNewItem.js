@@ -85,7 +85,10 @@ class AddNewItem extends Component {
       items,
       returnUrl,
       returnLabel,
+      contextType,
       contextBook,
+      contextAuthor,
+      contextNarrator,
       hasExistingAuthors
     } = this.props;
 
@@ -99,10 +102,20 @@ class AddNewItem extends Component {
             returnUrl &&
               <div className={styles.returnContext}>
                 <div>
-                  Adding author from {returnLabel || 'previous workflow'}
+                  Adding {contextType === 'book' ? 'book' : 'author'} from {returnLabel || 'previous workflow'}
                   {
                     contextBook ?
                       ` for "${contextBook}"` :
+                      ''
+                  }
+                  {
+                    contextAuthor ?
+                      ` by ${contextAuthor}` :
+                      ''
+                  }
+                  {
+                    contextNarrator ?
+                      `, narrated by ${contextNarrator}` :
                       ''
                   }
                 </div>
@@ -251,7 +264,10 @@ AddNewItem.propTypes = {
   term: PropTypes.string,
   returnUrl: PropTypes.string,
   returnLabel: PropTypes.string,
+  contextType: PropTypes.string,
   contextBook: PropTypes.string,
+  contextAuthor: PropTypes.string,
+  contextNarrator: PropTypes.string,
   isFetching: PropTypes.bool.isRequired,
   error: PropTypes.object,
   isAdding: PropTypes.bool.isRequired,

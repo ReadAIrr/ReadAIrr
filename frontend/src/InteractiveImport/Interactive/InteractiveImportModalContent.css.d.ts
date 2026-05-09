@@ -2,6 +2,7 @@
 // Please do not change this file!
 interface CssExports {
   'acceptedSuggestion': string;
+  'acceptedSuggestionActions': string;
   'acceptedSuggestionDetail': string;
   'acceptedSuggestionTitle': string;
   'bulkSelect': string;

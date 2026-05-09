@@ -23,6 +23,7 @@ import SelectEditionModal from 'InteractiveImport/Edition/SelectEditionModal';
 import SelectIndexerFlagsModal from 'InteractiveImport/IndexerFlags/SelectIndexerFlagsModal';
 import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectReleaseGroupModal from 'InteractiveImport/ReleaseGroup/SelectReleaseGroupModal';
+import { buildAddSearchUrl, getAuthorContext, getBookContext, getCleanAuthorCandidate, getCleanBookCandidate } from 'UnmappedFiles/unmappedAddSearchUtils';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -320,6 +321,26 @@ class InteractiveImportModalContent extends Component {
     } = this.state;
 
     const allColumns = _.cloneDeep(COLUMNS);
+    const acceptedItem = acceptedPath ? items.find((item) => item.path === acceptedPath) : null;
+    const acceptedReview = acceptedItem?.review;
+    const acceptedAuthorCandidate = getCleanAuthorCandidate(acceptedReview, acceptedSuggestion);
+    const acceptedBookCandidate = getCleanBookCandidate(acceptedReview, acceptedSuggestion);
+    const acceptedBookContext = getBookContext(acceptedReview, acceptedSuggestion);
+    const acceptedAuthorContext = getAuthorContext(acceptedReview, acceptedSuggestion);
+    const acceptedNarratorContext = acceptedSuggestion?.narrator;
+    const acceptedAddAuthorUrl = acceptedAuthorCandidate ? buildAddSearchUrl({
+      term: acceptedAuthorCandidate,
+      contextType: 'author',
+      contextBook: acceptedBookContext,
+      contextNarrator: acceptedNarratorContext
+    }) : null;
+    const acceptedAddBookUrl = acceptedBookCandidate ? buildAddSearchUrl({
+      term: [acceptedBookCandidate, acceptedAuthorContext].filter(Boolean).join(' '),
+      contextType: 'book',
+      contextBook: acceptedBookCandidate,
+      contextAuthor: acceptedAuthorContext,
+      contextNarrator: acceptedNarratorContext
+    }) : null;
     const columns = allColumns.map((column) => {
       const showIndexerFlags = items.some((item) => item.indexerFlags);
 
@@ -454,6 +475,31 @@ class InteractiveImportModalContent extends Component {
                     ].filter(Boolean).join(' - ')
                   }
                 </div>
+
+                {
+                  (acceptedAddAuthorUrl || acceptedAddBookUrl) &&
+                    <div className={styles.acceptedSuggestionActions}>
+                      {
+                        acceptedAddAuthorUrl &&
+                          <Button
+                            to={acceptedAddAuthorUrl}
+                            kind={kinds.DEFAULT}
+                          >
+                            Add Author
+                          </Button>
+                      }
+
+                      {
+                        acceptedAddBookUrl &&
+                          <Button
+                            to={acceptedAddBookUrl}
+                            kind={kinds.DEFAULT}
+                          >
+                            Add Book
+                          </Button>
+                      }
+                    </div>
+                }
               </div>
           }
 

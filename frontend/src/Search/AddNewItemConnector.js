@@ -20,7 +20,10 @@ function createMapStateToProps() {
         term: params.term,
         returnUrl: params.returnUrl,
         returnLabel: params.returnLabel,
+        contextType: params.contextType,
         contextBook: params.contextBook,
+        contextAuthor: params.contextAuthor,
+        contextNarrator: params.contextNarrator,
         hasExistingAuthors: existingAuthorsCount > 0
       };
     }
