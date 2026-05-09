@@ -8,6 +8,6 @@
   position: relative;
   display: flex;
   height: 100%;
-  transition: var(--transition);
-  transform: translateX(var(--translate));
+  transition: var(--transition, none);
+  transform: translateX(var(--translate, 0px));
 }

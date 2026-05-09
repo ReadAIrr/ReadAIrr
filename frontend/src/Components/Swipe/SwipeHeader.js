@@ -197,7 +197,7 @@ class SwipeHeader extends Component {
 
     const style = {
       width: '100%',
-      '--translate': 0
+      '--translate': '0px'
     };
 
     if (allowSwipe) {
