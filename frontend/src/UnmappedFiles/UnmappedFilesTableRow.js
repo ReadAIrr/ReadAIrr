@@ -740,6 +740,7 @@ class UnmappedFilesTableRow extends Component {
           isOpen={isDetailsModalOpen}
           onModalClose={this.onDetailsModalClose}
           id={id}
+          showAudioTagEditor={false}
         />
 
         <ConfirmModal

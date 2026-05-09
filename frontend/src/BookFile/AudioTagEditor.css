@@ -1,0 +1,41 @@
+.editor {
+  margin-top: 20px;
+}
+
+.heading {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.changes {
+  margin-top: 14px;
+}
+
+.changesTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.changesTable th,
+.changesTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--borderColor);
+  text-align: left;
+  vertical-align: top;
+}
+
+.changesTable th {
+  font-weight: 600;
+}
+
+.emptyChanges {
+  color: var(--helpTextColor);
+}

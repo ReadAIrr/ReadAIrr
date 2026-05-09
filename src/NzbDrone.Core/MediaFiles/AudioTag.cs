@@ -32,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles
         public uint Year { get; set; }
         public uint OriginalYear { get; set; }
         public string Publisher { get; set; }
+        public string Comment { get; set; }
         public TimeSpan Duration { get; set; }
         public string[] Genres { get; set; }
         public string ImageFile { get; set; }
@@ -93,6 +94,7 @@ namespace NzbDrone.Core.MediaFiles
                 DiscCount = tag.DiscCount;
                 Year = tag.Year;
                 Publisher = tag.Publisher;
+                Comment = tag.Comment;
                 Duration = file.Properties.Duration;
                 Genres = tag.Genres;
                 ImageSize = tag.Pictures.FirstOrDefault()?.Data.Count ?? 0;
@@ -326,6 +328,7 @@ namespace NzbDrone.Core.MediaFiles
                 tag.Disc = Disc;
                 tag.DiscCount = DiscCount;
                 tag.Publisher = Publisher;
+                tag.Comment = Comment;
                 tag.Genres = Genres;
 
                 if (ImageFile.IsNotNullOrWhiteSpace())
@@ -501,6 +504,11 @@ namespace NzbDrone.Core.MediaFiles
             if (Publisher != other.Publisher)
             {
                 output.Add("Label", Tuple.Create(Publisher, other.Publisher));
+            }
+
+            if (Comment != other.Comment)
+            {
+                output.Add("Comment", Tuple.Create(Comment, other.Comment));
             }
 
             if (!Genres.SequenceEqual(other.Genres))

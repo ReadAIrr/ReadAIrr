@@ -6,13 +6,15 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
+import AudioTagEditor from './AudioTagEditor';
 import FileDetailsConnector from './FileDetailsConnector';
 
 function FileDetailsModal(props) {
   const {
     isOpen,
     onModalClose,
-    id
+    id,
+    showAudioTagEditor
   } = props;
 
   return (
@@ -31,6 +33,13 @@ function FileDetailsModal(props) {
           <FileDetailsConnector
             id={id}
           />
+
+          {
+            showAudioTagEditor &&
+              <AudioTagEditor
+                id={id}
+              />
+          }
         </ModalBody>
 
         <ModalFooter>
@@ -46,7 +55,12 @@ function FileDetailsModal(props) {
 FileDetailsModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onModalClose: PropTypes.func.isRequired,
-  id: PropTypes.number.isRequired
+  id: PropTypes.number.isRequired,
+  showAudioTagEditor: PropTypes.bool
+};
+
+FileDetailsModal.defaultProps = {
+  showAudioTagEditor: true
 };
 
 export default FileDetailsModal;

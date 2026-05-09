@@ -37,6 +37,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IUnmappedIdentificationSuggestionService _unmappedIdentificationSuggestionService;
         private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
+        private readonly IAudioTagEditService _audioTagEditService;
 
         public BookFileController(IBroadcastSignalRMessage signalRBroadcaster,
                                IMediaFileService mediaFileService,
@@ -48,7 +49,8 @@ namespace Readarr.Api.V1.BookFiles
                                IUpgradableSpecification upgradableSpecification,
                                IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService,
                                IAudioIntroTranscriptionService audioIntroTranscriptionService,
-                               IContributorEvidenceRepository contributorEvidenceRepository)
+                               IContributorEvidenceRepository contributorEvidenceRepository,
+                               IAudioTagEditService audioTagEditService)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -61,6 +63,7 @@ namespace Readarr.Api.V1.BookFiles
             _unmappedIdentificationSuggestionService = unmappedIdentificationSuggestionService;
             _audioIntroTranscriptionService = audioIntroTranscriptionService;
             _contributorEvidenceRepository = contributorEvidenceRepository;
+            _audioTagEditService = audioTagEditService;
         }
 
         private BookFileResource MapToResource(BookFile bookFile)
@@ -130,6 +133,24 @@ namespace Readarr.Api.V1.BookFiles
             bookFile.Quality = bookFileResource.Quality;
             _mediaFileService.Update(bookFile);
             return Accepted(bookFile.Id);
+        }
+
+        [HttpGet("{id:int}/audioTag")]
+        public ActionResult<AudioTagEditPreview> GetAudioTagPreview(int id)
+        {
+            return _audioTagEditService.GetPreview(id);
+        }
+
+        [HttpPost("{id:int}/audioTag/preview")]
+        public ActionResult<AudioTagEditPreview> PreviewAudioTagWrite(int id, [FromBody] AudioTagValues resource)
+        {
+            return _audioTagEditService.Preview(id, resource);
+        }
+
+        [HttpPut("{id:int}/audioTag")]
+        public ActionResult<AudioTagEditPreview> WriteAudioTags(int id, [FromBody] AudioTagValues resource)
+        {
+            return Accepted(_audioTagEditService.Write(id, resource));
         }
 
         [HttpPut("editor")]

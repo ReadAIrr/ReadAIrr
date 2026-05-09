@@ -18,7 +18,10 @@ namespace NzbDrone.Core.MediaFiles
 {
     public interface IAudioTagService
     {
+        AudioTag ReadAudioTag(string file);
         ParsedTrackInfo ReadTags(string file);
+        AudioTag GetTrackMetadata(BookFile trackfile);
+        Dictionary<string, Tuple<string, string>> WriteManualTags(BookFile trackfile, AudioTag tags);
         void WriteTags(BookFile trackfile, bool newDownload, bool force = false);
         void SyncTags(List<Edition> tracks);
         List<RetagBookFilePreview> GetRetagPreviewsByAuthor(int authorId);
@@ -132,6 +135,29 @@ namespace NzbDrone.Core.MediaFiles
             {
                 _mediaFileService.Update(trackfile);
             }
+        }
+
+        public Dictionary<string, Tuple<string, string>> WriteManualTags(BookFile trackfile, AudioTag tags)
+        {
+            var path = trackfile.Path;
+            var diff = ReadAudioTag(path).Diff(tags);
+
+            if (!diff.Any())
+            {
+                _logger.Debug("No manual tag update for {0} due to no difference", trackfile);
+                return diff;
+            }
+
+            _rootFolderWatchingService.ReportFileSystemChangeBeginning(path);
+            _logger.Debug("Writing manual tags for {0}", trackfile);
+
+            tags.Write(path);
+
+            UpdateTrackfileSizeAndModified(trackfile, path);
+
+            _eventAggregator.PublishEvent(new BookFileRetaggedEvent(trackfile.Author.Value, trackfile, diff, false));
+
+            return diff;
         }
 
         public void RemoveAllTags(string path)
