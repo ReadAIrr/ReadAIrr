@@ -10,6 +10,8 @@ namespace NzbDrone.Api.Test.System
     [TestFixture]
     public class MetadataServiceStatusResourceMapperFixture
     {
+        private static readonly DateTime StatusCheckedAt = new DateTime(2026, 5, 9, 4, 30, 0, DateTimeKind.Utc);
+
         [Test]
         public void should_report_local_rreading_glasses_as_reachable()
         {
@@ -26,9 +28,11 @@ namespace NzbDrone.Api.Test.System
                 "No ReadAIrr app update is currently available.",
                 true,
                 "dev",
-                new Version(1, 0, 0));
+                new Version(1, 0, 0),
+                StatusCheckedAt);
 
             resource.SourceType.Should().Be("localRReadingGlasses");
+            resource.StatusCheckedAt.Should().Be(StatusCheckedAt);
             resource.ReadinessState.Should().Be("reachable");
             resource.IsReachable.Should().BeTrue();
             resource.ServiceUrl.Should().Be(MetadataSourceConfig.LocalRReadingGlasses);
@@ -46,6 +50,29 @@ namespace NzbDrone.Api.Test.System
             resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "localRReadingGlasses" && x.Role == "primary" && x.IsActive && x.ConfidenceWeight == 100);
             resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "aiReview" && x.Status == "disabled");
             resource.Warnings.Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_report_local_rreading_glasses_version_when_endpoint_exposes_it()
+        {
+            var resource = MetadataServiceStatusResourceMapper.ToResource(MetadataSourceConfig.LocalRReadingGlasses,
+                new MetadataSourceHealthResult
+                {
+                    IsHealthy = true,
+                    Message = "Metadata source is reachable",
+                    ServiceVersion = "2026.05.09",
+                    ServiceVersionDetail = "Version endpoint returned metadata."
+                },
+                null,
+                "No ReadAIrr app update is currently available.",
+                true,
+                "dev",
+                new Version(1, 0, 0),
+                StatusCheckedAt);
+
+            resource.SidecarCurrentVersion.Should().Be("2026.05.09");
+            resource.SidecarVersionMessage.Should().Be("Version endpoint returned metadata.");
+            resource.SidecarUpdateCheckMessage.Should().Contain("version metadata");
         }
 
         [Test]

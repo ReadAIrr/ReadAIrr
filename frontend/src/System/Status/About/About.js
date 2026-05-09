@@ -7,6 +7,7 @@ import Label from 'Components/Label';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import { kinds } from 'Helpers/Props';
+import formatDateTime from 'Utilities/Date/formatDateTime';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
 import StartTime from './StartTime';
@@ -310,6 +311,14 @@ class About extends Component {
                       title="Health detail"
                       data={`${metadataServiceStatus.healthMessage}${metadataServiceStatus.statusCode ? ` (HTTP ${metadataServiceStatus.statusCode})` : ''}${metadataServiceStatus.responseTimeMs ? ` in ${metadataServiceStatus.responseTimeMs} ms` : ''}`}
                     />
+
+                    {
+                      metadataServiceStatus.statusCheckedAt &&
+                        <DescriptionListItem
+                          title="Last checked"
+                          data={formatDateTime(metadataServiceStatus.statusCheckedAt, longDateFormat, timeFormat, { includeSeconds: true })}
+                        />
+                    }
 
                     {
                       metadataServiceStatus.healthDetail &&

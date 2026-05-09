@@ -73,6 +73,7 @@ namespace Readarr.Api.V1.System
         public string HealthDetail { get; set; }
         public int? StatusCode { get; set; }
         public double ResponseTimeMs { get; set; }
+        public DateTime StatusCheckedAt { get; set; }
         public string UpdateEndpoint { get; set; }
         public string UpdateBranch { get; set; }
         public string CurrentVersion { get; set; }
@@ -276,7 +277,8 @@ namespace Readarr.Api.V1.System
                                                                string updateCheckMessage,
                                                                bool updateCheckSucceeded,
                                                                string branch,
-                                                               Version currentVersion)
+                                                               Version currentVersion,
+                                                               DateTime? statusCheckedAt = null)
         {
             var metadataSource = configuredMetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.LocalRReadingGlasses : configuredMetadataSource;
             var redactedMetadataSource = RedactUrl(metadataSource);
@@ -285,7 +287,7 @@ namespace Readarr.Api.V1.System
             var readinessState = healthResult.IsHealthy ? "reachable" : "blocked";
             var readinessLabel = healthResult.IsHealthy ? "Metadata service reachable" : "Metadata service unreachable";
             var confidenceSignals = GetConfidenceSignals(sourceType, healthResult.IsHealthy);
-            var sidecarStatus = GetSidecarStatus(sourceType);
+            var sidecarStatus = GetSidecarStatus(sourceType, healthResult.ServiceVersion, healthResult.ServiceVersionDetail);
 
             if (sourceType == "originalReadarr")
             {
@@ -315,6 +317,7 @@ namespace Readarr.Api.V1.System
                 HealthDetail = RedactText(healthResult.Detail, metadataSource, redactedMetadataSource),
                 StatusCode = healthResult.StatusCode,
                 ResponseTimeMs = healthResult.ResponseTimeMs,
+                StatusCheckedAt = statusCheckedAt ?? DateTime.UtcNow,
                 UpdateEndpoint = "https://readairr.com/v1/update/{branch}",
                 UpdateBranch = branch,
                 CurrentVersion = currentVersion.ToString(),
@@ -350,7 +353,7 @@ namespace Readarr.Api.V1.System
             };
         }
 
-        private static SidecarStatus GetSidecarStatus(string sourceType)
+        private static SidecarStatus GetSidecarStatus(string sourceType, string currentVersion, string versionDetail)
         {
             switch (sourceType)
             {
@@ -362,11 +365,11 @@ namespace Readarr.Api.V1.System
                         ManagedByReadAIrr = true,
                         UpdateSupported = false,
                         UpdateAction = "manualDockerImageUpdate",
-                        CurrentVersion = null,
+                        CurrentVersion = currentVersion,
                         LatestVersion = null,
                         UpdateAvailable = null,
-                        VersionMessage = "The configured rreading-glasses endpoint does not expose version metadata to ReadAIrr yet.",
-                        UpdateCheckMessage = "ReadAIrr can refresh sidecar reachability here, but does not mutate or restart the sidecar.",
+                        VersionMessage = versionDetail.IsNotNullOrWhiteSpace() ? versionDetail : "The configured rreading-glasses endpoint does not expose version metadata to ReadAIrr yet.",
+                        UpdateCheckMessage = "ReadAIrr can refresh sidecar reachability and version metadata here, but does not mutate or restart the sidecar.",
                         UpdateGuidance = "For Docker deployments, update rreading-glasses by pulling the newer sidecar image and restarting the compose/deployment outside ReadAIrr."
                     };
                 case "hostedGoodreads":

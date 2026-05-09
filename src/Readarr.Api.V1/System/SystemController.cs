@@ -262,7 +262,8 @@ namespace Readarr.Api.V1.System
                 updateCheckMessage,
                 updateCheckSucceeded,
                 branch,
-                BuildInfo.Version);
+                BuildInfo.Version,
+                global::System.DateTime.UtcNow);
         }
 
         [HttpPost("shutdown")]
