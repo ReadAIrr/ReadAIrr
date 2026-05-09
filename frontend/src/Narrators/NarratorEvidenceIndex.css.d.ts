@@ -7,11 +7,14 @@ interface CssExports {
   'exampleMeta': string;
   'examples': string;
   'filterButtons': string;
+  'identityNote': string;
   'narratorHeader': string;
   'narratorList': string;
   'narratorMeta': string;
   'narratorName': string;
   'narratorRow': string;
+  'narratorStat': string;
+  'narratorStats': string;
   'rowActions': string;
   'sourceCount': string;
   'sourceCounts': string;

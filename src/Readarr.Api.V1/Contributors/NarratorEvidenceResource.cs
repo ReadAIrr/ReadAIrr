@@ -11,6 +11,13 @@ namespace Readarr.Api.V1.Contributors
         public string DisplayName { get; set; }
         public string NormalizedName { get; set; }
         public int EvidenceCount { get; set; }
+        public int WorkCount { get; set; }
+        public int MatchedBookCount { get; set; }
+        public int UnmappedFileCount { get; set; }
+        public int ManualEvidenceCount { get; set; }
+        public int ReviewEvidenceCount { get; set; }
+        public bool IsCanonicalIdentity { get; set; }
+        public string ReviewOnlyReason { get; set; }
         public List<NarratorEvidenceSourceCountResource> SourceCounts { get; set; }
         public DateTime LatestUpdated { get; set; }
         public List<NarratorEvidenceExampleResource> Examples { get; set; }
@@ -76,6 +83,17 @@ namespace Readarr.Api.V1.Contributors
                                              .Key,
                         NormalizedName = group.Key,
                         EvidenceCount = ordered.Count,
+                        WorkCount = ordered.Count(x => x.BookFileId.HasValue),
+                        MatchedBookCount = ordered.Select(x => ToExampleResource(x, fileById).BookId).Where(x => x.HasValue).Distinct().Count(),
+                        UnmappedFileCount = ordered.Count(x =>
+                        {
+                            fileById.TryGetValue(x.BookFileId ?? 0, out var file);
+                            return x.BookFileId.HasValue && (file == null || file.EditionId <= 0);
+                        }),
+                        ManualEvidenceCount = ordered.Count(x => x.Source == "manual"),
+                        ReviewEvidenceCount = ordered.Count(x => x.Source != "manual"),
+                        IsCanonicalIdentity = false,
+                        ReviewOnlyReason = "Narrator identity is currently assembled from manual, AI, or STT review evidence. It is not provider-confirmed canonical metadata yet.",
                         LatestUpdated = ordered.Max(x => x.Updated),
                         SourceCounts = ordered.GroupBy(x => x.Source)
                                               .OrderBy(x => x.Key)
@@ -121,6 +139,13 @@ namespace Readarr.Api.V1.Contributors
                 DisplayName = summary.DisplayName,
                 NormalizedName = summary.NormalizedName,
                 EvidenceCount = summary.EvidenceCount,
+                WorkCount = summary.WorkCount,
+                MatchedBookCount = summary.MatchedBookCount,
+                UnmappedFileCount = summary.UnmappedFileCount,
+                ManualEvidenceCount = summary.ManualEvidenceCount,
+                ReviewEvidenceCount = summary.ReviewEvidenceCount,
+                IsCanonicalIdentity = summary.IsCanonicalIdentity,
+                ReviewOnlyReason = summary.ReviewOnlyReason,
                 LatestUpdated = summary.LatestUpdated,
                 SourceCounts = summary.SourceCounts,
                 Examples = summary.Examples,

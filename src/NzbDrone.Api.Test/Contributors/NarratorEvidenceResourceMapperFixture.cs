@@ -58,6 +58,12 @@ namespace NzbDrone.Api.Test.Contributors
             result.Should().HaveCount(1);
             result[0].DisplayName.Should().Be("Jane Reader");
             result[0].EvidenceCount.Should().Be(2);
+            result[0].WorkCount.Should().Be(2);
+            result[0].UnmappedFileCount.Should().Be(2);
+            result[0].ManualEvidenceCount.Should().Be(1);
+            result[0].ReviewEvidenceCount.Should().Be(1);
+            result[0].IsCanonicalIdentity.Should().BeFalse();
+            result[0].ReviewOnlyReason.Should().Contain("not provider-confirmed");
             result[0].SourceCounts.Should().Contain(x => x.Source == "manual" && x.Count == 1);
             result[0].SourceCounts.Should().Contain(x => x.Source == "sttTranscript" && x.Count == 1);
             result[0].Examples.Should().Contain(x => x.BookFileId == 2 && x.Path == "/books/two.m4b" && x.Confidence == 82);
@@ -115,6 +121,10 @@ namespace NzbDrone.Api.Test.Contributors
             var result = NarratorEvidenceResourceMapper.ToDetailResource(evidence, new List<BookFile> { file }, "janereader");
 
             result.DisplayName.Should().Be("Jane Reader");
+            result.MatchedBookCount.Should().Be(1);
+            result.UnmappedFileCount.Should().Be(0);
+            result.ManualEvidenceCount.Should().Be(1);
+            result.IsCanonicalIdentity.Should().BeFalse();
             result.Works.Should().HaveCount(1);
             result.Works[0].BookTitle.Should().Be("The Hidden Book");
             result.Works[0].BookTitleSlug.Should().Be("the-hidden-book");

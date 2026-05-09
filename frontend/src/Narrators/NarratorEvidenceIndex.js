@@ -52,6 +52,37 @@ function SourceCounts({ sourceCounts }) {
   );
 }
 
+function NarratorStats({ item }) {
+  const stats = [
+    `${item.workCount} work${item.workCount === 1 ? '' : 's'}`,
+    `${item.matchedBookCount} matched book${item.matchedBookCount === 1 ? '' : 's'}`,
+    `${item.unmappedFileCount} unmapped file${item.unmappedFileCount === 1 ? '' : 's'}`,
+    `${item.manualEvidenceCount} manual`,
+    `${item.reviewEvidenceCount} review`
+  ];
+
+  return (
+    <div className={styles.narratorStats}>
+      {
+        stats.map((stat) => {
+          return (
+            <span
+              key={stat}
+              className={styles.narratorStat}
+            >
+              {stat}
+            </span>
+          );
+        })
+      }
+    </div>
+  );
+}
+
+NarratorStats.propTypes = {
+  item: PropTypes.object.isRequired
+};
+
 SourceCounts.propTypes = {
   sourceCounts: PropTypes.arrayOf(PropTypes.object).isRequired
 };
@@ -143,6 +174,12 @@ function NarratorDetailPanel({ detail, isFetching, error }) {
       <div className={styles.detailTitle}>
         Known works and review evidence
       </div>
+
+      <div className={styles.identityNote}>
+        {detail.reviewOnlyReason}
+      </div>
+
+      <NarratorStats item={detail} />
 
       <div className={styles.workList}>
         {
@@ -433,6 +470,12 @@ class NarratorEvidenceIndex extends Component {
 
                           <SourceCounts sourceCounts={item.sourceCounts || []} />
                         </div>
+
+                        <div className={styles.identityNote}>
+                          {item.reviewOnlyReason}
+                        </div>
+
+                        <NarratorStats item={item} />
 
                         <EvidenceExamples examples={item.examples || []} />
 
