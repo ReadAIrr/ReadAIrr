@@ -109,6 +109,34 @@
   gap: 8px;
 }
 
+.aliasPanel {
+  margin: 12px 0;
+}
+
+.aliasList {
+  margin: 10px 0;
+  padding-left: 18px;
+}
+
+.aliasList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.aliasEditor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.aliasEditor input {
+  min-width: 240px;
+}
+
 .workRow {
   padding: 8px;
   border: 1px solid var(--borderColor);

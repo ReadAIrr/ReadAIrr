@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
+import TextInput from 'Components/Form/TextInput';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -148,7 +149,17 @@ WorkLink.propTypes = {
   item: PropTypes.object.isRequired
 };
 
-function NarratorDetailPanel({ detail, isFetching, error }) {
+function NarratorDetailPanel({
+  detail,
+  isFetching,
+  error,
+  aliasCanonicalName,
+  isSavingAlias,
+  aliasError,
+  onAliasCanonicalNameChange,
+  onSaveAliasPress,
+  onDeleteAliasPress
+}) {
   if (isFetching) {
     return (
       <div className={styles.detailPanel}>
@@ -180,6 +191,63 @@ function NarratorDetailPanel({ detail, isFetching, error }) {
       </div>
 
       <NarratorStats item={detail} />
+
+      <div className={styles.aliasPanel}>
+        <div className={styles.detailTitle}>
+          Standardized name
+        </div>
+
+        <div className={styles.identityNote}>
+          Link this narrator evidence name to a preferred display name. This only changes narrator evidence grouping and can be reversed.
+        </div>
+
+        {
+          !!detail.aliases?.length &&
+            <ul className={styles.aliasList}>
+              {
+                detail.aliases.map((alias) => {
+                  return (
+                    <li key={alias.id}>
+                      <span>
+                        {alias.aliasName} -> {alias.canonicalName}
+                      </span>
+                      <Button
+                        kind={kinds.DEFAULT}
+                        onPress={() => onDeleteAliasPress(alias.id)}
+                      >
+                        Unlink
+                      </Button>
+                    </li>
+                  );
+                })
+              }
+            </ul>
+        }
+
+        <div className={styles.aliasEditor}>
+          <TextInput
+            name="aliasCanonicalName"
+            value={aliasCanonicalName}
+            placeholder="Preferred narrator name"
+            onChange={onAliasCanonicalNameChange}
+          />
+
+          <Button
+            kind={kinds.PRIMARY}
+            isDisabled={isSavingAlias || !aliasCanonicalName || aliasCanonicalName === detail.displayName}
+            onPress={onSaveAliasPress}
+          >
+            Standardize Current Name
+          </Button>
+        </div>
+
+        {
+          aliasError &&
+            <Alert kind={kinds.DANGER}>
+              Unable to save narrator alias.
+            </Alert>
+        }
+      </div>
 
       <div className={styles.workList}>
         {
@@ -232,7 +300,13 @@ function NarratorDetailPanel({ detail, isFetching, error }) {
 NarratorDetailPanel.propTypes = {
   detail: PropTypes.object,
   error: PropTypes.object,
-  isFetching: PropTypes.bool.isRequired
+  isFetching: PropTypes.bool.isRequired,
+  aliasCanonicalName: PropTypes.string.isRequired,
+  isSavingAlias: PropTypes.bool.isRequired,
+  aliasError: PropTypes.object,
+  onAliasCanonicalNameChange: PropTypes.func.isRequired,
+  onSaveAliasPress: PropTypes.func.isRequired,
+  onDeleteAliasPress: PropTypes.func.isRequired
 };
 
 class NarratorEvidenceIndex extends Component {
@@ -248,7 +322,10 @@ class NarratorEvidenceIndex extends Component {
       selectedNarrator: null,
       isFetchingDetail: false,
       detailError: null,
-      detail: null
+      detail: null,
+      aliasCanonicalName: '',
+      isSavingAlias: false,
+      aliasError: null
     };
 
     this._abortRequest = null;
@@ -363,7 +440,8 @@ class NarratorEvidenceIndex extends Component {
       this.setState({
         isFetchingDetail: false,
         detailError: null,
-        detail
+        detail,
+        aliasCanonicalName: detail.canonicalDisplayName || detail.displayName || ''
       });
     });
 
@@ -371,6 +449,96 @@ class NarratorEvidenceIndex extends Component {
       this.setState({
         isFetchingDetail: false,
         detailError: xhr.aborted ? null : xhr
+      });
+    });
+  };
+
+  onAliasCanonicalNameChange = ({ value }) => {
+    this.setState({
+      aliasCanonicalName: value,
+      aliasError: null
+    });
+  };
+
+  onSaveAliasPress = () => {
+    const {
+      aliasCanonicalName,
+      detail
+    } = this.state;
+
+    if (!detail || !aliasCanonicalName || aliasCanonicalName === detail.displayName) {
+      return;
+    }
+
+    this.setState({
+      isSavingAlias: true,
+      aliasError: null
+    });
+
+    const { request } = createAjaxRequest({
+      url: '/narrator/aliases',
+      method: 'POST',
+      dataType: 'json',
+      data: JSON.stringify({
+        canonicalName: aliasCanonicalName,
+        aliasName: detail.displayName,
+        relationshipType: 'alias',
+        displayPreference: 'canonical'
+      })
+    });
+
+    request.done((alias) => {
+      this.setState({
+        isSavingAlias: false,
+        selectedNarrator: null,
+        detail: null
+      }, () => {
+        this.fetchNarrators();
+        this.onDetailPress(alias.canonicalNormalizedName);
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        isSavingAlias: false,
+        aliasError: xhr.aborted ? null : xhr
+      });
+    });
+  };
+
+  onDeleteAliasPress = (aliasId) => {
+    const {
+      detail
+    } = this.state;
+
+    this.setState({
+      isSavingAlias: true,
+      aliasError: null
+    });
+
+    const { request } = createAjaxRequest({
+      url: `/narrator/aliases/${aliasId}`,
+      method: 'DELETE'
+    });
+
+    request.done(() => {
+      this.setState({
+        isSavingAlias: false,
+        selectedNarrator: null,
+        detail: null
+      }, () => {
+        this.fetchNarrators();
+
+        if (detail?.normalizedName) {
+          this.onDetailPress(detail.normalizedName);
+        }
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        isSavingAlias: false,
+        aliasError: xhr.aborted ? null : xhr
       });
     });
   };
@@ -385,7 +553,10 @@ class NarratorEvidenceIndex extends Component {
       selectedNarrator,
       isFetchingDetail,
       detailError,
-      detail
+      detail,
+      aliasCanonicalName,
+      isSavingAlias,
+      aliasError
     } = this.state;
 
     return (
@@ -494,6 +665,12 @@ class NarratorEvidenceIndex extends Component {
                               detail={detail}
                               error={detailError}
                               isFetching={isFetchingDetail}
+                              aliasCanonicalName={aliasCanonicalName}
+                              isSavingAlias={isSavingAlias}
+                              aliasError={aliasError}
+                              onAliasCanonicalNameChange={this.onAliasCanonicalNameChange}
+                              onSaveAliasPress={this.onSaveAliasPress}
+                              onDeleteAliasPress={this.onDeleteAliasPress}
                             />
                         }
                       </div>

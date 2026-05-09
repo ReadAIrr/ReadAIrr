@@ -86,6 +86,72 @@ namespace NzbDrone.Api.Test.Contributors
         }
 
         [Test]
+        public void should_group_alias_evidence_under_user_standardized_canonical_name()
+        {
+            var now = DateTime.UtcNow;
+            var evidence = new List<ContributorEvidence>
+            {
+                new ContributorEvidence { Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "manual", Updated = now },
+                new ContributorEvidence { Role = "narrator", DisplayName = "J. Reader", NormalizedName = "jreader", Source = "sttTranscript", Updated = now.AddMinutes(-1) }
+            };
+            var aliases = new List<NarratorIdentityLink>
+            {
+                new NarratorIdentityLink
+                {
+                    Id = 5,
+                    CanonicalName = "Jane Reader",
+                    CanonicalNormalizedName = "janereader",
+                    AliasName = "J. Reader",
+                    AliasNormalizedName = "jreader",
+                    RelationshipType = "alias",
+                    DisplayPreference = "canonical"
+                }
+            };
+
+            var result = NarratorEvidenceResourceMapper.ToResource(evidence, new List<BookFile>(), aliases);
+
+            result.Should().HaveCount(1);
+            result[0].DisplayName.Should().Be("Jane Reader");
+            result[0].NormalizedName.Should().Be("janereader");
+            result[0].EvidenceCount.Should().Be(2);
+            result[0].IsCanonicalIdentity.Should().BeTrue();
+            result[0].ReviewOnlyReason.Should().Contain("user-standardized");
+            result[0].AliasCount.Should().Be(1);
+            result[0].Aliases.Should().ContainSingle(x => x.Id == 5 && x.AliasName == "J. Reader");
+        }
+
+        [Test]
+        public void should_return_canonical_detail_when_alias_normalized_name_is_requested()
+        {
+            var now = DateTime.UtcNow;
+            var evidence = new List<ContributorEvidence>
+            {
+                new ContributorEvidence { Role = "narrator", DisplayName = "Jane Reader", NormalizedName = "janereader", Source = "manual", Updated = now },
+                new ContributorEvidence { Role = "narrator", DisplayName = "J. Reader", NormalizedName = "jreader", Source = "sttTranscript", Updated = now.AddMinutes(-1) }
+            };
+            var aliases = new List<NarratorIdentityLink>
+            {
+                new NarratorIdentityLink
+                {
+                    Id = 5,
+                    CanonicalName = "Jane Reader",
+                    CanonicalNormalizedName = "janereader",
+                    AliasName = "J. Reader",
+                    AliasNormalizedName = "jreader",
+                    RelationshipType = "alias",
+                    DisplayPreference = "canonical"
+                }
+            };
+
+            var result = NarratorEvidenceResourceMapper.ToDetailResource(evidence, new List<BookFile>(), aliases, "jreader");
+
+            result.DisplayName.Should().Be("Jane Reader");
+            result.NormalizedName.Should().Be("janereader");
+            result.Works.Should().HaveCount(2);
+            result.Aliases.Should().ContainSingle(x => x.AliasNormalizedName == "jreader");
+        }
+
+        [Test]
         public void should_shape_detail_rows_with_book_author_and_edition_context()
         {
             var now = DateTime.UtcNow;

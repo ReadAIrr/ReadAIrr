@@ -18,6 +18,10 @@ namespace Readarr.Api.V1.Contributors
         public int ReviewEvidenceCount { get; set; }
         public bool IsCanonicalIdentity { get; set; }
         public string ReviewOnlyReason { get; set; }
+        public string CanonicalDisplayName { get; set; }
+        public string CanonicalNormalizedName { get; set; }
+        public int AliasCount { get; set; }
+        public List<NarratorIdentityLinkResource> Aliases { get; set; }
         public List<NarratorEvidenceSourceCountResource> SourceCounts { get; set; }
         public DateTime LatestUpdated { get; set; }
         public List<NarratorEvidenceExampleResource> Examples { get; set; }
@@ -52,11 +56,36 @@ namespace Readarr.Api.V1.Contributors
         public List<NarratorEvidenceExampleResource> Works { get; set; }
     }
 
+    public class NarratorIdentityLinkResource
+    {
+        public int Id { get; set; }
+        public string CanonicalName { get; set; }
+        public string CanonicalNormalizedName { get; set; }
+        public string AliasName { get; set; }
+        public string AliasNormalizedName { get; set; }
+        public string RelationshipType { get; set; }
+        public string DisplayPreference { get; set; }
+    }
+
+    public class NarratorIdentityLinkUpdateResource
+    {
+        public string CanonicalName { get; set; }
+        public string AliasName { get; set; }
+        public string RelationshipType { get; set; }
+        public string DisplayPreference { get; set; }
+    }
+
     public static class NarratorEvidenceResourceMapper
     {
         public static List<NarratorEvidenceResource> ToResource(List<ContributorEvidence> evidence, List<BookFile> bookFiles, string term = null, string source = null)
         {
+            return ToResource(evidence, bookFiles, new List<NarratorIdentityLink>(), term, source);
+        }
+
+        public static List<NarratorEvidenceResource> ToResource(List<ContributorEvidence> evidence, List<BookFile> bookFiles, List<NarratorIdentityLink> aliases, string term = null, string source = null)
+        {
             var fileById = (bookFiles ?? new List<BookFile>()).ToDictionary(x => x.Id);
+            var aliasMap = new NarratorAliasMap(aliases);
 
             var narratorEvidence = (evidence ?? new List<ContributorEvidence>())
                 .Where(x => x.Role == "narrator" && x.DisplayName.IsNotNullOrWhiteSpace())
@@ -64,23 +93,27 @@ namespace Readarr.Api.V1.Contributors
                 .Where(x => term.IsNullOrWhiteSpace() ||
                             x.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                             (x.NormalizedName ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                            (aliasMap.GetCanonicalName(x) ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase) ||
                             (x.Source ?? string.Empty).Contains(term, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             return narratorEvidence
-                .GroupBy(x => x.NormalizedName.IsNotNullOrWhiteSpace() ? x.NormalizedName : ContributorEvidence.NormalizeName(x.DisplayName))
+                .GroupBy(aliasMap.GetCanonicalNormalizedName)
                 .Where(x => x.Key.IsNotNullOrWhiteSpace())
                 .Select(group =>
                 {
                     var ordered = group.OrderByDescending(x => x.Updated).ToList();
+                    var groupAliases = aliasMap.GetAliases(group.Key);
+                    var canonicalName = aliasMap.GetCanonicalName(group.Key) ??
+                                        ordered.GroupBy(x => x.DisplayName)
+                                               .OrderByDescending(x => x.Count())
+                                               .ThenBy(x => x.Key)
+                                               .First()
+                                               .Key;
 
                     return new NarratorEvidenceResource
                     {
-                        DisplayName = ordered.GroupBy(x => x.DisplayName)
-                                             .OrderByDescending(x => x.Count())
-                                             .ThenBy(x => x.Key)
-                                             .First()
-                                             .Key,
+                        DisplayName = canonicalName,
                         NormalizedName = group.Key,
                         EvidenceCount = ordered.Count,
                         WorkCount = ordered.Count(x => x.BookFileId.HasValue),
@@ -92,8 +125,14 @@ namespace Readarr.Api.V1.Contributors
                         }),
                         ManualEvidenceCount = ordered.Count(x => x.Source == "manual"),
                         ReviewEvidenceCount = ordered.Count(x => x.Source != "manual"),
-                        IsCanonicalIdentity = false,
-                        ReviewOnlyReason = "Narrator identity is currently assembled from manual, AI, or STT review evidence. It is not provider-confirmed canonical metadata yet.",
+                        IsCanonicalIdentity = groupAliases.Any(),
+                        ReviewOnlyReason = groupAliases.Any() ?
+                            "Narrator identity is user-standardized from review evidence. Source evidence is preserved and no provider-confirmed metadata has been written." :
+                            "Narrator identity is currently assembled from manual, AI, or STT review evidence. It is not provider-confirmed canonical metadata yet.",
+                        CanonicalDisplayName = canonicalName,
+                        CanonicalNormalizedName = group.Key,
+                        AliasCount = groupAliases.Count,
+                        Aliases = groupAliases.ToResource(),
                         LatestUpdated = ordered.Max(x => x.Updated),
                         SourceCounts = ordered.GroupBy(x => x.Source)
                                               .OrderBy(x => x.Key)
@@ -114,15 +153,21 @@ namespace Readarr.Api.V1.Contributors
 
         public static NarratorEvidenceDetailResource ToDetailResource(List<ContributorEvidence> evidence, List<BookFile> bookFiles, string normalizedName, string source = null)
         {
+            return ToDetailResource(evidence, bookFiles, new List<NarratorIdentityLink>(), normalizedName, source);
+        }
+
+        public static NarratorEvidenceDetailResource ToDetailResource(List<ContributorEvidence> evidence, List<BookFile> bookFiles, List<NarratorIdentityLink> aliases, string normalizedName, string source = null)
+        {
             var fileById = (bookFiles ?? new List<BookFile>()).ToDictionary(x => x.Id);
+            var aliasMap = new NarratorAliasMap(aliases);
+            var canonicalNormalizedName = aliasMap.GetCanonicalNormalizedName(normalizedName);
 
             var narratorEvidence = (evidence ?? new List<ContributorEvidence>())
                 .Where(x => x.Role == "narrator" && x.DisplayName.IsNotNullOrWhiteSpace())
                 .Where(x => source.IsNullOrWhiteSpace() || x.Source == source)
                 .Where(x =>
                 {
-                    var normalized = x.NormalizedName.IsNotNullOrWhiteSpace() ? x.NormalizedName : ContributorEvidence.NormalizeName(x.DisplayName);
-                    return normalized == normalizedName;
+                    return aliasMap.GetCanonicalNormalizedName(x) == canonicalNormalizedName;
                 })
                 .OrderByDescending(x => x.Updated)
                 .ToList();
@@ -132,7 +177,7 @@ namespace Readarr.Api.V1.Contributors
                 return null;
             }
 
-            var summary = ToResource(narratorEvidence, bookFiles).First();
+            var summary = ToResource(narratorEvidence, bookFiles, aliases).First();
 
             return new NarratorEvidenceDetailResource
             {
@@ -146,11 +191,34 @@ namespace Readarr.Api.V1.Contributors
                 ReviewEvidenceCount = summary.ReviewEvidenceCount,
                 IsCanonicalIdentity = summary.IsCanonicalIdentity,
                 ReviewOnlyReason = summary.ReviewOnlyReason,
+                CanonicalDisplayName = summary.CanonicalDisplayName,
+                CanonicalNormalizedName = summary.CanonicalNormalizedName,
+                AliasCount = summary.AliasCount,
+                Aliases = summary.Aliases,
                 LatestUpdated = summary.LatestUpdated,
                 SourceCounts = summary.SourceCounts,
                 Examples = summary.Examples,
                 Works = narratorEvidence.Select(x => ToExampleResource(x, fileById)).ToList()
             };
+        }
+
+        public static NarratorIdentityLinkResource ToResource(this NarratorIdentityLink model)
+        {
+            return new NarratorIdentityLinkResource
+            {
+                Id = model.Id,
+                CanonicalName = model.CanonicalName,
+                CanonicalNormalizedName = model.CanonicalNormalizedName,
+                AliasName = model.AliasName,
+                AliasNormalizedName = model.AliasNormalizedName,
+                RelationshipType = model.RelationshipType,
+                DisplayPreference = model.DisplayPreference
+            };
+        }
+
+        public static List<NarratorIdentityLinkResource> ToResource(this IEnumerable<NarratorIdentityLink> models)
+        {
+            return models.Select(ToResource).ToList();
         }
 
         private static NarratorEvidenceExampleResource ToExampleResource(ContributorEvidence evidence, Dictionary<int, BookFile> fileById)
@@ -179,6 +247,64 @@ namespace Readarr.Api.V1.Contributors
                 Confidence = evidence.Confidence,
                 Updated = evidence.Updated
             };
+        }
+
+        private class NarratorAliasMap
+        {
+            private readonly Dictionary<string, NarratorIdentityLink> _aliasByNormalizedName;
+            private readonly Dictionary<string, List<NarratorIdentityLink>> _aliasesByCanonicalName;
+
+            public NarratorAliasMap(List<NarratorIdentityLink> aliases)
+            {
+                var validAliases = (aliases ?? new List<NarratorIdentityLink>())
+                    .Where(x => x.CanonicalNormalizedName.IsNotNullOrWhiteSpace() && x.AliasNormalizedName.IsNotNullOrWhiteSpace())
+                    .ToList();
+
+                _aliasByNormalizedName = validAliases
+                    .GroupBy(x => x.AliasNormalizedName)
+                    .ToDictionary(x => x.Key, x => x.OrderByDescending(y => y.Id).First());
+
+                _aliasesByCanonicalName = validAliases
+                    .GroupBy(x => x.CanonicalNormalizedName)
+                    .ToDictionary(x => x.Key, x => x.OrderBy(y => y.AliasName).ToList());
+            }
+
+            public string GetCanonicalNormalizedName(ContributorEvidence evidence)
+            {
+                var normalized = evidence.NormalizedName.IsNotNullOrWhiteSpace() ? evidence.NormalizedName : ContributorEvidence.NormalizeName(evidence.DisplayName);
+                return GetCanonicalNormalizedName(normalized);
+            }
+
+            public string GetCanonicalNormalizedName(string normalizedName)
+            {
+                var normalized = ContributorEvidence.NormalizeName(normalizedName);
+
+                return _aliasByNormalizedName.TryGetValue(normalized, out var link) ?
+                    link.CanonicalNormalizedName :
+                    normalized;
+            }
+
+            public string GetCanonicalName(ContributorEvidence evidence)
+            {
+                return GetCanonicalName(GetCanonicalNormalizedName(evidence));
+            }
+
+            public string GetCanonicalName(string canonicalNormalizedName)
+            {
+                if (_aliasesByCanonicalName.TryGetValue(canonicalNormalizedName, out var links))
+                {
+                    return links.First().CanonicalName;
+                }
+
+                return null;
+            }
+
+            public List<NarratorIdentityLink> GetAliases(string canonicalNormalizedName)
+            {
+                return _aliasesByCanonicalName.TryGetValue(canonicalNormalizedName, out var links) ?
+                    links :
+                    new List<NarratorIdentityLink>();
+            }
         }
     }
 }
