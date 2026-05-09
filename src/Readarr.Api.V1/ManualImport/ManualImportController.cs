@@ -5,6 +5,7 @@ using NLog;
 using NzbDrone.Common;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Qualities;
@@ -63,6 +64,33 @@ namespace Readarr.Api.V1.ManualImport
             var filter = filterExistingFiles ? FilterFilesType.Matched : FilterFilesType.None;
 
             return AddManualImportEvidenceContext(_manualImportService.GetMediaFiles(folder, downloadId, author, filter, replaceExistingFiles).ToResource().Select(AddQualityWeight).ToList());
+        }
+
+        [HttpGet("paged")]
+        public PagingResource<ManualImportResource> GetMediaFilesPaged([FromQuery] PagingRequestResource paging, string folder, string downloadId, int? authorId, bool filterExistingFiles = true, bool replaceExistingFiles = true)
+        {
+            NzbDrone.Core.Books.Author author = null;
+
+            if (authorId > 0)
+            {
+                author = _authorService.GetAuthor(authorId.Value);
+            }
+
+            var filter = filterExistingFiles ? FilterFilesType.Matched : FilterFilesType.None;
+            var page = paging?.Page ?? 1;
+            var pageSize = paging?.PageSize ?? ManualImportService.MaxReviewPageSize;
+            var pageResult = _manualImportService.GetMediaFilesPage(folder, downloadId, author, filter, replaceExistingFiles, page, pageSize);
+            var records = AddManualImportEvidenceContext(pageResult.Records.ToResource().Select(AddQualityWeight).ToList());
+
+            return new PagingResource<ManualImportResource>
+            {
+                Page = pageResult.Page,
+                PageSize = pageResult.PageSize,
+                SortKey = paging?.SortKey ?? "path",
+                SortDirection = paging?.SortDirection ?? SortDirection.Ascending,
+                TotalRecords = pageResult.TotalRecords,
+                Records = records
+            };
         }
 
         private ManualImportResource AddQualityWeight(ManualImportResource item)

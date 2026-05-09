@@ -28,13 +28,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
     public interface IManualImportService
     {
         List<ManualImportItem> GetMediaFiles(string path, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles);
+        ManualImportPageResult GetMediaFilesPage(string path, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles, int page, int pageSize);
         List<ManualImportItem> GetMediaFiles(List<string> paths, string downloadId, bool replaceExistingFiles);
+        ManualImportPageResult GetMediaFilesPage(List<string> paths, string downloadId, bool replaceExistingFiles, int page, int pageSize);
         List<ManualImportItem> UpdateItems(List<ManualImportItem> item);
+    }
+
+    public class ManualImportPageResult
+    {
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalRecords { get; set; }
+        public List<ManualImportItem> Records { get; set; }
     }
 
     public class ManualImportService : IExecute<ManualImportCommand>, IManualImportService
     {
         internal const int ImportDecisionBatchSize = 100;
+        public const int MaxReviewPageSize = 500;
 
         private readonly IDiskProvider _diskProvider;
         private readonly IParsingService _parsingService;
@@ -138,6 +149,58 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             return ProcessFolder(path, downloadId, author, filter, replaceExistingFiles);
         }
 
+        public ManualImportPageResult GetMediaFilesPage(string path, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles, int page, int pageSize)
+        {
+            if (downloadId.IsNotNullOrWhiteSpace())
+            {
+                var trackedDownload = _trackedDownloadService.Find(downloadId);
+
+                if (trackedDownload == null)
+                {
+                    return NewPage(page, pageSize);
+                }
+
+                if (trackedDownload.ImportItem == null)
+                {
+                    trackedDownload.ImportItem = _provideImportItemService.ProvideImportItem(trackedDownload.DownloadItem, trackedDownload.ImportItem);
+                }
+
+                path = trackedDownload.ImportItem.OutputPath.FullPath;
+            }
+
+            if (!_diskProvider.FolderExists(path))
+            {
+                if (!_diskProvider.FileExists(path))
+                {
+                    return NewPage(page, pageSize);
+                }
+
+                var files = new List<IFileInfo> { _diskProvider.GetFileInfo(path) };
+
+                var config = new ImportDecisionMakerConfig
+                {
+                    Filter = FilterFilesType.None,
+                    NewDownload = true,
+                    SingleRelease = false,
+                    IncludeExisting = !replaceExistingFiles,
+                    AddNewAuthors = false,
+                    KeepAllEditions = true
+                };
+
+                var decision = _importDecisionMaker.GetImportDecisions(files, null, null, config);
+                var result = NewPage(page, pageSize);
+
+                foreach (var item in decision.Select(x => MapItem(x, downloadId, replaceExistingFiles, false)))
+                {
+                    AddPagedItem(result, item);
+                }
+
+                return result;
+            }
+
+            return ProcessFolderPage(path, downloadId, author, filter, replaceExistingFiles, page, pageSize);
+        }
+
         public List<ManualImportItem> GetMediaFiles(List<string> paths, string downloadId, bool replaceExistingFiles)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -191,6 +254,58 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             _logger.Debug("Completed manual import decisions for {0} selected files [{1}]", files.Count, stopwatch.Elapsed);
 
             return items;
+        }
+
+        public ManualImportPageResult GetMediaFilesPage(List<string> paths, string downloadId, bool replaceExistingFiles, int page, int pageSize)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var result = NewPage(page, pageSize);
+
+            var config = new ImportDecisionMakerConfig
+            {
+                Filter = FilterFilesType.None,
+                NewDownload = true,
+                SingleRelease = false,
+                IncludeExisting = !replaceExistingFiles,
+                AddNewAuthors = false,
+                KeepAllEditions = true
+            };
+
+            var batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            var batchNumber = 0;
+            var selectedFileCount = 0;
+
+            foreach (var path in paths.Where(_diskProvider.FileExists))
+            {
+                selectedFileCount++;
+                batchFiles.Add(_diskProvider.GetFileInfo(path));
+
+                if (batchFiles.Count < ImportDecisionBatchSize)
+                {
+                    continue;
+                }
+
+                batchNumber++;
+                AddPagedBatch(result, batchFiles, batchNumber, downloadId, null, null, config, replaceExistingFiles);
+                batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            }
+
+            if (batchFiles.Any())
+            {
+                batchNumber++;
+                AddPagedBatch(result, batchFiles, batchNumber, downloadId, null, null, config, replaceExistingFiles);
+            }
+
+            stopwatch.Stop();
+            _logger.Debug("Completed paged manual import decisions for {0} selected files: page {1}, page size {2}, total records {3}, returned records {4} [{5}]",
+                selectedFileCount,
+                result.Page,
+                result.PageSize,
+                result.TotalRecords,
+                result.Records.Count,
+                stopwatch.Elapsed);
+
+            return result;
         }
 
         private List<ManualImportItem> ProcessFolder(string folder, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles)
@@ -256,6 +371,79 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             return items;
         }
 
+        private ManualImportPageResult ProcessFolderPage(string folder, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles, int page, int pageSize)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            DownloadClientItem downloadClientItem = null;
+            var directoryInfo = new DirectoryInfo(folder);
+            author = author ?? _parsingService.GetAuthor(directoryInfo.Name);
+
+            if (downloadId.IsNotNullOrWhiteSpace())
+            {
+                var trackedDownload = _trackedDownloadService.Find(downloadId);
+                downloadClientItem = trackedDownload?.DownloadItem;
+
+                if (author == null)
+                {
+                    author = trackedDownload?.RemoteBook?.Author;
+                }
+            }
+
+            var idOverrides = new IdentificationOverrides
+            {
+                Author = author
+            };
+            var itemInfo = new ImportDecisionMakerInfo
+            {
+                DownloadClientItem = downloadClientItem,
+                ParsedBookInfo = Parser.Parser.ParseBookTitle(directoryInfo.Name)
+            };
+            var config = new ImportDecisionMakerConfig
+            {
+                Filter = filter,
+                NewDownload = true,
+                SingleRelease = false,
+                IncludeExisting = !replaceExistingFiles,
+                AddNewAuthors = false,
+                KeepAllEditions = true
+            };
+
+            var result = NewPage(page, pageSize);
+            var batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            var batchNumber = 0;
+
+            foreach (var file in _diskScanService.EnumerateBookFiles(folder))
+            {
+                batchFiles.Add(file);
+
+                if (batchFiles.Count < ImportDecisionBatchSize)
+                {
+                    continue;
+                }
+
+                batchNumber++;
+                AddPagedBatch(result, batchFiles, batchNumber, downloadId, idOverrides, itemInfo, config, replaceExistingFiles);
+                batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            }
+
+            if (batchFiles.Any())
+            {
+                batchNumber++;
+                AddPagedBatch(result, batchFiles, batchNumber, downloadId, idOverrides, itemInfo, config, replaceExistingFiles);
+            }
+
+            stopwatch.Stop();
+            _logger.Debug("Completed paged manual import folder scan for {0}: page {1}, page size {2}, total records {3}, returned records {4} [{5}]",
+                folder,
+                result.Page,
+                result.PageSize,
+                result.TotalRecords,
+                result.Records.Count,
+                stopwatch.Elapsed);
+
+            return result;
+        }
+
         private IEnumerable<ManualImportItem> ProcessFolderBatch(List<IFileInfo> files, int batchNumber, string downloadId, IdentificationOverrides idOverrides, ImportDecisionMakerInfo itemInfo, ImportDecisionMakerConfig config, bool replaceExistingFiles)
         {
             var batchStopwatch = Stopwatch.StartNew();
@@ -283,6 +471,38 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 batchStopwatch.Elapsed);
 
             return newItems.Concat(existingItems);
+        }
+
+        private void AddPagedBatch(ManualImportPageResult page, List<IFileInfo> files, int batchNumber, string downloadId, IdentificationOverrides idOverrides, ImportDecisionMakerInfo itemInfo, ImportDecisionMakerConfig config, bool replaceExistingFiles)
+        {
+            foreach (var item in ProcessFolderBatch(files, batchNumber, downloadId, idOverrides, itemInfo, config, replaceExistingFiles))
+            {
+                AddPagedItem(page, item);
+            }
+        }
+
+        private static ManualImportPageResult NewPage(int page, int pageSize)
+        {
+            return new ManualImportPageResult
+            {
+                Page = Math.Max(page, 1),
+                PageSize = Math.Min(Math.Max(pageSize, 1), MaxReviewPageSize),
+                Records = new List<ManualImportItem>()
+            };
+        }
+
+        private static void AddPagedItem(ManualImportPageResult page, ManualImportItem item)
+        {
+            page.TotalRecords++;
+
+            var start = (page.Page - 1) * page.PageSize;
+            var end = start + page.PageSize;
+            var index = page.TotalRecords - 1;
+
+            if (index >= start && index < end)
+            {
+                page.Records.Add(item);
+            }
         }
 
         public List<ManualImportItem> UpdateItems(List<ManualImportItem> items)

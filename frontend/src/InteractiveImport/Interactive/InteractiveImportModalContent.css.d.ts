@@ -17,6 +17,8 @@ interface CssExports {
   'importMode': string;
   'indexerFlagsHeaderCell': string;
   'leftButtons': string;
+  'pageButtons': string;
+  'pageNotice': string;
   'pathHeaderCell': string;
   'qualityHeaderCell': string;
   'rejectionsHeaderCell': string;

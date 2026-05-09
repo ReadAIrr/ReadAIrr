@@ -419,6 +419,14 @@ class InteractiveImportModalContent extends Component {
     this.props.onReplaceExistingFilesChange(value === replaceExistingFilesOptions.DELETE);
   };
 
+  onPreviousPagePress = () => {
+    this.props.onPageChange(Math.max(this.props.page - 1, 1));
+  };
+
+  onNextPagePress = () => {
+    this.props.onPageChange(this.props.page + 1);
+  };
+
   onImportModeChange = ({ value }) => {
     this.props.onImportModeChange(value);
   };
@@ -532,6 +540,10 @@ class InteractiveImportModalContent extends Component {
       isSaving,
       error,
       items,
+      page,
+      pageSize,
+      totalRecords,
+      isPaged,
       sortKey,
       sortDirection,
       importMode,
@@ -566,6 +578,9 @@ class InteractiveImportModalContent extends Component {
     const importIdsByBook = _.chain(items).filter((x) => x.book).groupBy((x) => x.book.id).mapValues((x) => x.map((y) => y.id)).value();
     const editions = _.chain(items).filter((x) => x.book).keyBy((x) => x.book.id).mapValues((x) => ({ matchedEditionId: x.foreignEditionId, book: x.book })).values().value();
     const errorMessage = getErrorMessage(error, 'Unable to load manual import items');
+    const totalPages = pageSize > 0 ? Math.max(Math.ceil(totalRecords / pageSize), 1) : 1;
+    const isFirstPage = page <= 1;
+    const isLastPage = page >= totalPages;
 
     const bulkSelectOptions = [
       { key: SELECT, value: translate('SelectDropdown'), disabled: true },
@@ -720,6 +735,31 @@ class InteractiveImportModalContent extends Component {
           {
             error &&
               <div>{errorMessage}</div>
+          }
+
+          {
+            isPaged && isPopulated && !isFetching &&
+              <div className={styles.pageNotice}>
+                <span>
+                  Showing manual import review page {page} of {totalPages} ({items.length} of {totalRecords} files). Select all, ignore, retry, and import actions apply only to this loaded page.
+                </span>
+
+                <div className={styles.pageButtons}>
+                  <Button
+                    isDisabled={isFirstPage}
+                    onPress={this.onPreviousPagePress}
+                  >
+                    Previous
+                  </Button>
+
+                  <Button
+                    isDisabled={isLastPage}
+                    onPress={this.onNextPagePress}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
           }
 
           {
@@ -892,6 +932,10 @@ InteractiveImportModalContent.propTypes = {
   isSaving: PropTypes.bool.isRequired,
   error: PropTypes.object,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  page: PropTypes.number,
+  pageSize: PropTypes.number,
+  totalRecords: PropTypes.number,
+  isPaged: PropTypes.bool,
   sortKey: PropTypes.string,
   sortDirection: PropTypes.string,
   interactiveImportErrorMessage: PropTypes.string,
@@ -900,6 +944,7 @@ InteractiveImportModalContent.propTypes = {
   onSortPress: PropTypes.func.isRequired,
   onFilterExistingFilesChange: PropTypes.func.isRequired,
   onReplaceExistingFilesChange: PropTypes.func.isRequired,
+  onPageChange: PropTypes.func.isRequired,
   onImportModeChange: PropTypes.func.isRequired,
   onImportSelectedPress: PropTypes.func.isRequired,
   saveInteractiveImportItem: PropTypes.func.isRequired,
@@ -914,7 +959,11 @@ InteractiveImportModalContent.defaultProps = {
   showFilterExistingFiles: false,
   showReplaceExistingFiles: false,
   showImportMode: true,
-  importMode: 'move'
+  importMode: 'move',
+  page: 1,
+  pageSize: 500,
+  totalRecords: 0,
+  isPaged: false
 };
 
 export default InteractiveImportModalContent;

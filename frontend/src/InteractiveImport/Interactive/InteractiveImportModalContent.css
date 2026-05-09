@@ -35,6 +35,21 @@
   margin-top: 8px;
 }
 
+.pageNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--dimColor);
+}
+
+.pageButtons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .tableContainer {
   composes: tableContainer from '~Components/Table/VirtualTable.css';
 }

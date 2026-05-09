@@ -33,6 +33,10 @@ export const defaultState = {
   isSaving: false,
   error: null,
   items: [],
+  page: 1,
+  pageSize: 500,
+  totalRecords: 0,
+  isPaged: false,
   pendingChanges: {},
   sortKey: 'path',
   sortDirection: sortDirections.ASCENDING,
@@ -145,15 +149,31 @@ export const actionHandlers = handleThunks({
     dispatch(set({ section, isFetching: true }));
 
     const { request, abortRequest } = createAjaxRequest({
-      url: '/manualimport',
-      data: payload
+      url: '/manualimport/paged',
+      data: {
+        page: 1,
+        pageSize: defaultState.pageSize,
+        sortKey: 'path',
+        sortDirection: sortDirections.ASCENDING,
+        ...payload
+      }
     });
 
     abortCurrentFetchRequest = abortRequest;
 
     request.done((data) => {
+      const sectionData = Array.isArray(data.records) ?
+        {
+          items: data.records,
+          page: data.page,
+          pageSize: data.pageSize,
+          totalRecords: data.totalRecords,
+          isPaged: true
+        } :
+        data;
+
       dispatch(batchActions([
-        update({ section, data }),
+        update({ section, data: sectionData }),
 
         set({
           section,

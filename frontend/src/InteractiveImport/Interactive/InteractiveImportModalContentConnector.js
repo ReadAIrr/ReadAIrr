@@ -51,11 +51,41 @@ class InteractiveImportModalContentConnector extends Component {
     this.state = {
       interactiveImportErrorMessage: null,
       filterExistingFiles: props.filterExistingFiles,
-      replaceExistingFiles: props.replaceExistingFiles
+      replaceExistingFiles: props.replaceExistingFiles,
+      page: 1
     };
   }
 
   componentDidMount() {
+    this.fetchImportItems();
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    const {
+      filterExistingFiles,
+      replaceExistingFiles,
+      page
+    } = this.state;
+
+    if (prevState.filterExistingFiles !== filterExistingFiles ||
+        prevState.replaceExistingFiles !== replaceExistingFiles) {
+      this.setState({ page: 1 }, this.fetchImportItems);
+      return;
+    }
+
+    if (prevState.page !== page) {
+      this.fetchImportItems();
+    }
+  }
+
+  componentWillUnmount() {
+    this.props.clearInteractiveImport();
+  }
+
+  //
+  // Control
+
+  fetchImportItems = () => {
     const {
       authorId,
       downloadId,
@@ -64,7 +94,8 @@ class InteractiveImportModalContentConnector extends Component {
 
     const {
       filterExistingFiles,
-      replaceExistingFiles
+      replaceExistingFiles,
+      page
     } = this.state;
 
     this.props.fetchInteractiveImportItems({
@@ -72,37 +103,10 @@ class InteractiveImportModalContentConnector extends Component {
       downloadId,
       folder,
       filterExistingFiles,
-      replaceExistingFiles
+      replaceExistingFiles,
+      page
     });
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    const {
-      filterExistingFiles,
-      replaceExistingFiles
-    } = this.state;
-
-    if (prevState.filterExistingFiles !== filterExistingFiles ||
-        prevState.replaceExistingFiles !== replaceExistingFiles) {
-      const {
-        authorId,
-        downloadId,
-        folder
-      } = this.props;
-
-      this.props.fetchInteractiveImportItems({
-        authorId,
-        downloadId,
-        folder,
-        filterExistingFiles,
-        replaceExistingFiles
-      });
-    }
-  }
-
-  componentWillUnmount() {
-    this.props.clearInteractiveImport();
-  }
+  };
 
   //
   // Listeners
@@ -117,6 +121,10 @@ class InteractiveImportModalContentConnector extends Component {
 
   onReplaceExistingFilesChange = (replaceExistingFiles) => {
     this.setState({ replaceExistingFiles });
+  };
+
+  onPageChange = (page) => {
+    this.setState({ page });
   };
 
   onImportModeChange = (importMode) => {
@@ -233,7 +241,8 @@ class InteractiveImportModalContentConnector extends Component {
     const {
       interactiveImportErrorMessage,
       filterExistingFiles,
-      replaceExistingFiles
+      replaceExistingFiles,
+      page
     } = this.state;
 
     return (
@@ -242,9 +251,11 @@ class InteractiveImportModalContentConnector extends Component {
         interactiveImportErrorMessage={interactiveImportErrorMessage}
         filterExistingFiles={filterExistingFiles}
         replaceExistingFiles={replaceExistingFiles}
+        page={page}
         onSortPress={this.onSortPress}
         onFilterExistingFilesChange={this.onFilterExistingFilesChange}
         onReplaceExistingFilesChange={this.onReplaceExistingFilesChange}
+        onPageChange={this.onPageChange}
         onImportModeChange={this.onImportModeChange}
         onImportSelectedPress={this.onImportSelectedPress}
         onSetContributorEvidencePress={this.onSetContributorEvidencePress}
