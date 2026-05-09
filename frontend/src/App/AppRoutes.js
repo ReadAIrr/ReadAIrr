@@ -3,6 +3,7 @@ import React from 'react';
 import { Redirect, Route } from 'react-router-dom';
 import BlocklistConnector from 'Activity/Blocklist/BlocklistConnector';
 import HistoryConnector from 'Activity/History/HistoryConnector';
+import ActivityOverview from 'Activity/Overview/ActivityOverview';
 import QueueConnector from 'Activity/Queue/QueueConnector';
 import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
 import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
@@ -141,6 +142,11 @@ function AppRoutes(props) {
       {/*
         Activity
       */}
+
+      <Route
+        path="/activity/overview"
+        component={ActivityOverview}
+      />
 
       <Route
         path="/activity/history"

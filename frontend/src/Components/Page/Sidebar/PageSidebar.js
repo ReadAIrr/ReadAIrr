@@ -65,8 +65,12 @@ const links = [
   {
     iconName: icons.ACTIVITY,
     title: () => translate('Activity'),
-    to: '/activity/queue',
+    to: '/activity/overview',
     children: [
+      {
+        title: () => 'Overview',
+        to: '/activity/overview'
+      },
       {
         title: () => translate('Queue'),
         to: '/activity/queue',
