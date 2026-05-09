@@ -137,7 +137,11 @@ function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
 
             <div className={styles.metadataConfidenceSummary}>
               <b>{confidenceScoring.fieldConfidenceScore || 0}% passive field confidence</b>
-              <span>{confidenceScoring.summary}</span>
+              <span>
+                {confidenceScoring.summary}
+                {' '}
+                {confidenceScoring.totalComparableFields || 0} field{confidenceScoring.totalComparableFields === 1 ? '' : 's'} included in scoring.
+              </span>
             </div>
 
             <div className={styles.metadataConfidenceSourceGrid}>
@@ -213,6 +217,10 @@ function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
 
                           <div className={styles.metadataDrillInHint}>
                             {field.actionHint}
+                            {
+                              !field.includedInScoring &&
+                                ' This row is status context only and is not included in the passive score.'
+                            }
                           </div>
                         </div>
                       );

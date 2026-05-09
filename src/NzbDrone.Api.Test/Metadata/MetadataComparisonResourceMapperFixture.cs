@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -46,6 +47,8 @@ namespace NzbDrone.Api.Test.Metadata
             result.ConfidenceScoring.Mode.Should().Be("passiveSingleProvider");
             result.ConfidenceScoring.AutomaticMetadataDecisioningEnabled.Should().BeFalse();
             result.ConfidenceScoring.AiDecisioningEnabled.Should().BeFalse();
+            result.ConfidenceScoring.TotalComparableFields.Should().Be(result.Fields.Count(x => x.IncludedInScoring));
+            result.Fields.Should().OnlyContain(x => x.Field == "providerAvailability" || x.IncludedInScoring);
             result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "localLibrary" && x.Role == "baseline" && x.IsAvailable);
             result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "activeProvider" && x.Role == "activeProvider" && x.IsAvailable);
             result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "futureReferenceProvider" && x.Status == "notEvaluated");
@@ -86,7 +89,8 @@ namespace NzbDrone.Api.Test.Metadata
             result.StatusCounts.Should().Contain(x => x.Status == "needs-review" && x.Count > 0);
             result.Fields.Should().Contain(x => x.Field == "providerAvailability" &&
                                                 x.Status == "needs-review" &&
-                                                x.Section == "provider");
+                                                x.Section == "provider" &&
+                                                !x.IncludedInScoring);
             result.Fields.Should().Contain(x => x.Field == "title" && x.Status == "local-only");
         }
 

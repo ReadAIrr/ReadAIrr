@@ -28,6 +28,7 @@ namespace Readarr.Api.V1.Metadata
         public bool AutomaticMetadataDecisioningEnabled { get; set; }
         public bool AiDecisioningEnabled { get; set; }
         public int FieldConfidenceScore { get; set; }
+        public int TotalComparableFields { get; set; }
         public int ConfirmedFields { get; set; }
         public int ReviewFields { get; set; }
         public int LocalOnlyFields { get; set; }
@@ -62,6 +63,7 @@ namespace Readarr.Api.V1.Metadata
         public string Section { get; set; }
         public string SectionLabel { get; set; }
         public string Status { get; set; }
+        public bool IncludedInScoring { get; set; }
         public string LocalValue { get; set; }
         public string ProviderValue { get; set; }
         public string EvidenceValue { get; set; }
@@ -111,6 +113,7 @@ namespace Readarr.Api.V1.Metadata
                     Section = "provider",
                     SectionLabel = "Provider availability",
                     Status = "needs-review",
+                    IncludedInScoring = false,
                     Source = metadataSource,
                     Confidence = 0,
                     Explanation = providerError,
@@ -157,6 +160,7 @@ namespace Readarr.Api.V1.Metadata
                 AutomaticMetadataDecisioningEnabled = false,
                 AiDecisioningEnabled = false,
                 FieldConfidenceScore = fieldConfidenceScore,
+                TotalComparableFields = comparableFields,
                 ConfirmedFields = confirmedFields,
                 ReviewFields = reviewFields,
                 LocalOnlyFields = localOnlyFields,
@@ -251,6 +255,7 @@ namespace Readarr.Api.V1.Metadata
                 Section = section,
                 SectionLabel = sectionLabel,
                 Status = status,
+                IncludedInScoring = true,
                 LocalValue = localValue,
                 ProviderValue = providerValue,
                 Source = source,
@@ -282,6 +287,7 @@ namespace Readarr.Api.V1.Metadata
                 Section = "contributors",
                 SectionLabel = "Narrator and contributor evidence",
                 Status = status,
+                IncludedInScoring = true,
                 LocalValue = local,
                 ProviderValue = provider,
                 EvidenceValue = FormatEvidenceSources(narratorEvidence),
