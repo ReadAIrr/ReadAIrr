@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NLog;
 using NzbDrone.Common;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Qualities;
@@ -21,6 +22,7 @@ namespace Readarr.Api.V1.ManualImport
         private readonly IManualImportService _manualImportService;
         private readonly IMediaFileService _mediaFileService;
         private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         public ManualImportController(IManualImportService manualImportService,
@@ -29,6 +31,7 @@ namespace Readarr.Api.V1.ManualImport
                                   IBookService bookService,
                                   IMediaFileService mediaFileService,
                                   IContributorEvidenceRepository contributorEvidenceRepository,
+                                  IConfigService configService,
                                   Logger logger)
         {
             _authorService = authorService;
@@ -37,6 +40,7 @@ namespace Readarr.Api.V1.ManualImport
             _manualImportService = manualImportService;
             _mediaFileService = mediaFileService;
             _contributorEvidenceRepository = contributorEvidenceRepository;
+            _configService = configService;
             _logger = logger;
         }
 
@@ -118,6 +122,7 @@ namespace Readarr.Api.V1.ManualImport
                 var evidence = bookFile != null && contributorEvidence.TryGetValue(bookFile.Id, out var fileEvidence) ? fileEvidence : new List<ContributorEvidenceResource>();
 
                 ManualImportReviewResourceMapper.ApplyContributorEvidenceContext(resource.Review, bookFile, evidence);
+                ManualImportReviewResourceMapper.ApplyMatchingCriteriaContext(resource.Review, _configService.MinimumBookMatchSimilarity);
             }
 
             return resources;

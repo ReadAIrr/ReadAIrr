@@ -64,6 +64,30 @@ namespace NzbDrone.Api.Test.ManualImport
         }
 
         [Test]
+        public void should_surface_current_matching_criteria_context()
+        {
+            var resource = new ManualImportReviewResource
+            {
+                Confidence = 72,
+                Hints = new List<ManualImportReviewReasonResource>
+                {
+                    new ManualImportReviewReasonResource
+                    {
+                        Kind = "matchDistance",
+                        Label = "Match distance",
+                        Detail = "book_title: 0.28"
+                    }
+                }
+            };
+
+            ManualImportReviewResourceMapper.ApplyMatchingCriteriaContext(resource, 80);
+
+            resource.MinimumMatchSimilarity.Should().Be(80);
+            resource.Hints.Should().Contain(x => x.Kind == "matchingCriteria" && x.Detail.Contains("72% match confidence"));
+            resource.Hints.Should().Contain(x => x.Kind == "matchDistance");
+        }
+
+        [Test]
         public void should_shape_no_edition_reason_when_book_candidate_has_no_edition()
         {
             var item = new ManualImportItem

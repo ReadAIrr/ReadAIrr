@@ -19,6 +19,7 @@ namespace Readarr.Api.V1.ManualImport
         public string Provider { get; set; }
         public ManualImportParsedResource Parsed { get; set; }
         public ManualImportCandidateResource Candidate { get; set; }
+        public int? MinimumMatchSimilarity { get; set; }
         public List<ManualImportReviewReasonResource> Reasons { get; set; }
         public List<ManualImportReviewReasonResource> Hints { get; set; }
         public List<ManualImportIdentificationSuggestionResource> Suggestions { get; set; }
@@ -236,6 +237,29 @@ namespace Readarr.Api.V1.ManualImport
             review.ContributorEvidence = contributorEvidence ?? new List<ContributorEvidenceResource>();
 
             ApplySuggestionEvidence(review);
+        }
+
+        public static void ApplyMatchingCriteriaContext(ManualImportReviewResource review, int minimumMatchSimilarity)
+        {
+            if (review == null)
+            {
+                return;
+            }
+
+            review.MinimumMatchSimilarity = minimumMatchSimilarity;
+            review.Hints ??= new List<ManualImportReviewReasonResource>();
+            review.Hints.RemoveAll(x => x.Kind == "matchingCriteria");
+
+            var detail = review.Confidence.HasValue ?
+                $"{review.Confidence}% match confidence compared with the current {minimumMatchSimilarity}% minimum. This threshold is used by automatic imports, manual import identification, retry identify, and unmapped triage." :
+                $"Current minimum match similarity is {minimumMatchSimilarity}%. This row did not produce a comparable confidence score.";
+
+            review.Hints.Insert(0, new ManualImportReviewReasonResource
+            {
+                Kind = "matchingCriteria",
+                Label = "Matching criteria",
+                Detail = detail
+            });
         }
 
         public static void ApplySuggestionEvidence(ManualImportReviewResource review)

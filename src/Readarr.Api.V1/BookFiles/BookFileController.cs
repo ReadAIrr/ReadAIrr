@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Exceptions;
@@ -38,6 +39,7 @@ namespace Readarr.Api.V1.BookFiles
         private readonly IAudioIntroTranscriptionService _audioIntroTranscriptionService;
         private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly IAudioTagEditService _audioTagEditService;
+        private readonly IConfigService _configService;
 
         public BookFileController(IBroadcastSignalRMessage signalRBroadcaster,
                                IMediaFileService mediaFileService,
@@ -50,7 +52,8 @@ namespace Readarr.Api.V1.BookFiles
                                IUnmappedIdentificationSuggestionService unmappedIdentificationSuggestionService,
                                IAudioIntroTranscriptionService audioIntroTranscriptionService,
                                IContributorEvidenceRepository contributorEvidenceRepository,
-                               IAudioTagEditService audioTagEditService)
+                               IAudioTagEditService audioTagEditService,
+                               IConfigService configService)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -64,6 +67,7 @@ namespace Readarr.Api.V1.BookFiles
             _audioIntroTranscriptionService = audioIntroTranscriptionService;
             _contributorEvidenceRepository = contributorEvidenceRepository;
             _audioTagEditService = audioTagEditService;
+            _configService = configService;
         }
 
         private BookFileResource MapToResource(BookFile bookFile)
@@ -205,7 +209,7 @@ namespace Readarr.Api.V1.BookFiles
             var resources = MapUnmappedToResources(bookFiles);
             var suggestions = _unmappedIdentificationSuggestionService.ReviewWithAi(resources);
 
-            AddSuggestions(resources, suggestions);
+            AddSuggestions(resources, suggestions, _configService.MinimumBookMatchSimilarity);
             AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return Accepted(resources);
@@ -219,7 +223,7 @@ namespace Readarr.Api.V1.BookFiles
             var resources = MapUnmappedToResources(bookFiles);
             var suggestions = _unmappedIdentificationSuggestionService.DeepIdentifyAudio(resources);
 
-            AddSuggestions(resources, suggestions);
+            AddSuggestions(resources, suggestions, _configService.MinimumBookMatchSimilarity);
             AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return Accepted(resources);
@@ -374,13 +378,13 @@ namespace Readarr.Api.V1.BookFiles
                 return resource;
             });
 
-            AddSuggestions(resources, _unmappedIdentificationSuggestionService.GetPersisted(resources));
+            AddSuggestions(resources, _unmappedIdentificationSuggestionService.GetPersisted(resources), _configService.MinimumBookMatchSimilarity);
             AddContributorEvidence(resources, _contributorEvidenceRepository.GetByBookFileIds(resources.Select(x => x.Id)));
 
             return resources;
         }
 
-        private static void AddSuggestions(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions)
+        private static void AddSuggestions(List<BookFileResource> resources, List<ManualImportIdentificationSuggestionResource> suggestions, int minimumMatchSimilarity)
         {
             foreach (var resource in resources)
             {
@@ -394,6 +398,7 @@ namespace Readarr.Api.V1.BookFiles
                 resource.Review.Suggestions ??= new List<ManualImportIdentificationSuggestionResource>();
                 resource.Review.Suggestions.AddRange(suggestions.Where(x => string.Equals(x.Path, resource.Path, global::System.StringComparison.OrdinalIgnoreCase)));
                 ManualImportReviewResourceMapper.ApplySuggestionEvidence(resource.Review);
+                ManualImportReviewResourceMapper.ApplyMatchingCriteriaContext(resource.Review, minimumMatchSimilarity);
             }
         }
 

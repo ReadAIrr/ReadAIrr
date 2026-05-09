@@ -27,6 +27,13 @@ const speechToTextProviderOptions = [
   { key: 'openai-compatible', value: 'OpenAI-compatible speech-to-text' }
 ];
 
+const matchingPresetOptions = [
+  { key: 'relaxed', value: 'Relaxed - 70%', threshold: 70 },
+  { key: 'balanced', value: 'Balanced - 80% default', threshold: 80 },
+  { key: 'strict', value: 'Strict - 90%', threshold: 90 },
+  { key: 'custom', value: 'Custom' }
+];
+
 const GOODREADS_METADATA_SOURCE = 'https://api.bookinfo.pro';
 const HARDCOVER_METADATA_SOURCE = 'https://hardcover.bookinfo.pro';
 const LOCAL_METADATA_SOURCE = 'http://rreading-glasses:8788';
@@ -50,6 +57,25 @@ function getMetadataSourceOption(metadataSource, metadataSourceMode) {
   const metadataSourceOption = metadataSourceOptions.find((option) => option.key === metadataSourceValue);
 
   return metadataSourceOption ? metadataSourceValue : CUSTOM_METADATA_SOURCE;
+}
+
+function getMatchingThreshold(settings) {
+  const value = settings.minimumBookMatchSimilarity?.value;
+  const threshold = parseInt(value);
+
+  return isNaN(threshold) ? 80 : threshold;
+}
+
+function getMatchingPresetOption(threshold) {
+  const preset = matchingPresetOptions.find((option) => option.threshold === threshold);
+
+  return preset ? preset.key : 'custom';
+}
+
+function getMatchingCriteriaSummary(threshold) {
+  const allowedDistance = 100 - threshold;
+
+  return `Current matching minimum is ${threshold}%. Candidates below this confidence are rejected. This allows up to ${allowedDistance}% normalized title/author/edition distance and applies to automatic imports, manual import identification, retry identify, and unmapped triage.`;
 }
 
 class DevelopmentSettings extends Component {
@@ -90,6 +116,19 @@ class DevelopmentSettings extends Component {
     });
   };
 
+  onMatchingPresetChange = ({ value }) => {
+    const preset = matchingPresetOptions.find((option) => option.key === value);
+
+    if (!preset?.threshold) {
+      return;
+    }
+
+    this.props.onInputChange({
+      name: 'minimumBookMatchSimilarity',
+      value: preset.threshold
+    });
+  };
+
   //
   // Render
 
@@ -116,6 +155,8 @@ class DevelopmentSettings extends Component {
     const metadataSource = metadataSourceSetting.value || LOCAL_METADATA_SOURCE;
     const metadataSourceOption = getMetadataSourceOption(metadataSource, this.state.metadataSourceMode);
     const isCustomMetadataSource = metadataSourceOption === CUSTOM_METADATA_SOURCE;
+    const matchingThreshold = getMatchingThreshold(settings);
+    const matchingPresetOption = getMatchingPresetOption(matchingThreshold);
 
     return (
       <PageContent title={translate('Development')}>
@@ -228,7 +269,22 @@ class DevelopmentSettings extends Component {
                   </FormGroup>
                 </FieldSet>
 
-                <FieldSet legend={translate('Matching')}>
+                <FieldSet legend="Matching Criteria">
+                  <FormGroup>
+                    <FormLabel>
+                      Preset
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.SELECT}
+                      name="minimumBookMatchSimilarityPreset"
+                      value={matchingPresetOption}
+                      values={matchingPresetOptions}
+                      helpText="Choose a safe preset, or fine tune the exact percentage below."
+                      onChange={this.onMatchingPresetChange}
+                    />
+                  </FormGroup>
+
                   <FormGroup>
                     <FormLabel>
                       {translate('MinimumBookMatchSimilarity')}
@@ -244,6 +300,10 @@ class DevelopmentSettings extends Component {
                       {...settings.minimumBookMatchSimilarity}
                     />
                   </FormGroup>
+
+                  <Alert kind={kinds.INFO}>
+                    {getMatchingCriteriaSummary(matchingThreshold)}
+                  </Alert>
                 </FieldSet>
 
                 <FieldSet legend="AI / Deep Identification">
