@@ -153,8 +153,6 @@ export const actionHandlers = handleThunks({
       data: {
         page: 1,
         pageSize: defaultState.pageSize,
-        sortKey: 'path',
-        sortDirection: sortDirections.ASCENDING,
         ...payload
       }
     });

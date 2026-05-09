@@ -741,7 +741,7 @@ class InteractiveImportModalContent extends Component {
             isPaged && isPopulated && !isFetching &&
               <div className={styles.pageNotice}>
                 <span>
-                  Showing manual import review page {page} of {totalPages} ({items.length} of {totalRecords} files). Select all, ignore, retry, and import actions apply only to this loaded page.
+                  Showing manual import review page {page} of {totalPages} ({items.length} of {totalRecords} files). Select all, ignore, retry, import, and column sorting apply only to this loaded page.
                 </span>
 
                 <div className={styles.pageButtons}>

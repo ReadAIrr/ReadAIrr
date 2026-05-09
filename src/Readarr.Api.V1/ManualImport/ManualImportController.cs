@@ -86,8 +86,8 @@ namespace Readarr.Api.V1.ManualImport
             {
                 Page = pageResult.Page,
                 PageSize = pageResult.PageSize,
-                SortKey = paging?.SortKey ?? "path",
-                SortDirection = paging?.SortDirection ?? SortDirection.Ascending,
+                SortKey = null,
+                SortDirection = SortDirection.Default,
                 TotalRecords = pageResult.TotalRecords,
                 Records = records
             };
