@@ -34,6 +34,13 @@ namespace NzbDrone.Api.Test.System
             resource.ServiceUrl.Should().Be(MetadataSourceConfig.LocalRReadingGlasses);
             resource.UpdateEndpoint.Should().Be("https://readairr.com/v1/update/{branch}");
             resource.UpdateAvailable.Should().BeFalse();
+            resource.SidecarManagementMode.Should().Be("readarrDeploymentSidecar");
+            resource.SidecarManagedByReadAIrr.Should().BeTrue();
+            resource.SidecarUpdateSupported.Should().BeFalse();
+            resource.SidecarUpdateAction.Should().Be("manualDockerImageUpdate");
+            resource.SidecarUpdateAvailable.Should().BeNull();
+            resource.SidecarVersionMessage.Should().Contain("does not expose version metadata");
+            resource.SidecarUpdateGuidance.Should().Contain("Docker deployments");
             resource.AutomaticMetadataDecisioningEnabled.Should().BeFalse();
             resource.ConfidenceMode.Should().Be("sourceRolesOnly");
             resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "localRReadingGlasses" && x.Role == "primary" && x.IsActive && x.ConfidenceWeight == 100);
@@ -58,6 +65,10 @@ namespace NzbDrone.Api.Test.System
 
             resource.SourceType.Should().Be("originalReadarr");
             resource.SourceLabel.Should().Contain("Original Readarr");
+            resource.SidecarManagementMode.Should().Be("legacyCompatibility");
+            resource.SidecarManagedByReadAIrr.Should().BeFalse();
+            resource.SidecarUpdateAction.Should().Be("switchMetadataSource");
+            resource.SidecarUpdateCheckMessage.Should().Contain("No sidecar update check applies");
             resource.ConfidenceSignals.Should().ContainSingle(x => x.SourceType == "originalReadarr" && x.Role == "primary" && x.IsActive);
             resource.Warnings.Should().Contain(x => x.Contains("legacy compatibility"));
         }
@@ -111,7 +122,35 @@ namespace NzbDrone.Api.Test.System
             resource.ServiceUrl.Should().Contain("redacted@metadata.example.test:8443");
             resource.ServiceUrl.Should().NotContain("secret");
             resource.ServiceUrl.Should().NotContain("token");
+            resource.SidecarManagementMode.Should().Be("externalCustom");
+            resource.SidecarUpdateSupported.Should().BeFalse();
+            resource.SidecarUpdateGuidance.Should().Contain("their own deployment process");
             resource.Warnings.Should().Contain("Metadata source returned HTTP 401");
+        }
+
+        [Test]
+        public void should_report_hosted_rreading_glasses_as_externally_managed()
+        {
+            var resource = MetadataServiceStatusResourceMapper.ToResource(MetadataSourceConfig.HardcoverHosted,
+                new MetadataSourceHealthResult
+                {
+                    IsHealthy = true,
+                    Message = "Metadata source is reachable"
+                },
+                null,
+                "No ReadAIrr app update is currently available.",
+                true,
+                "dev",
+                new Version(1, 0, 0));
+
+            resource.SourceType.Should().Be("hostedHardcover");
+            resource.SidecarManagementMode.Should().Be("externalHosted");
+            resource.SidecarManagementLabel.Should().Be("Externally managed hosted service");
+            resource.SidecarManagedByReadAIrr.Should().BeFalse();
+            resource.SidecarUpdateSupported.Should().BeFalse();
+            resource.SidecarUpdateAction.Should().Be("managedExternally");
+            resource.SidecarUpdateCheckMessage.Should().Contain("managed outside ReadAIrr");
+            resource.SidecarVersionMessage.Should().Contain("Hosted rreading-glasses services");
         }
 
         [Test]

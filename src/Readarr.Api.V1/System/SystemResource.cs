@@ -80,6 +80,17 @@ namespace Readarr.Api.V1.System
         public string LatestVersion { get; set; }
         public DateTime? LatestReleaseDate { get; set; }
         public string UpdateCheckMessage { get; set; }
+        public string SidecarManagementMode { get; set; }
+        public string SidecarManagementLabel { get; set; }
+        public bool SidecarManagedByReadAIrr { get; set; }
+        public bool SidecarUpdateSupported { get; set; }
+        public string SidecarUpdateAction { get; set; }
+        public string SidecarCurrentVersion { get; set; }
+        public string SidecarLatestVersion { get; set; }
+        public bool? SidecarUpdateAvailable { get; set; }
+        public string SidecarVersionMessage { get; set; }
+        public string SidecarUpdateCheckMessage { get; set; }
+        public string SidecarUpdateGuidance { get; set; }
         public string ConfidenceMode { get; set; }
         public string ConfidenceSummary { get; set; }
         public bool AutomaticMetadataDecisioningEnabled { get; set; }
@@ -274,6 +285,7 @@ namespace Readarr.Api.V1.System
             var readinessState = healthResult.IsHealthy ? "reachable" : "blocked";
             var readinessLabel = healthResult.IsHealthy ? "Metadata service reachable" : "Metadata service unreachable";
             var confidenceSignals = GetConfidenceSignals(sourceType, healthResult.IsHealthy);
+            var sidecarStatus = GetSidecarStatus(sourceType);
 
             if (sourceType == "originalReadarr")
             {
@@ -310,6 +322,17 @@ namespace Readarr.Api.V1.System
                 LatestVersion = latestUpdate?.Version?.ToString(),
                 LatestReleaseDate = latestUpdate?.ReleaseDate,
                 UpdateCheckMessage = updateCheckMessage,
+                SidecarManagementMode = sidecarStatus.ManagementMode,
+                SidecarManagementLabel = sidecarStatus.ManagementLabel,
+                SidecarManagedByReadAIrr = sidecarStatus.ManagedByReadAIrr,
+                SidecarUpdateSupported = sidecarStatus.UpdateSupported,
+                SidecarUpdateAction = sidecarStatus.UpdateAction,
+                SidecarCurrentVersion = sidecarStatus.CurrentVersion,
+                SidecarLatestVersion = sidecarStatus.LatestVersion,
+                SidecarUpdateAvailable = sidecarStatus.UpdateAvailable,
+                SidecarVersionMessage = sidecarStatus.VersionMessage,
+                SidecarUpdateCheckMessage = sidecarStatus.UpdateCheckMessage,
+                SidecarUpdateGuidance = sidecarStatus.UpdateGuidance,
                 ConfidenceMode = "sourceRolesOnly",
                 ConfidenceSummary = "Confidence foundation is recording source roles only. Automatic metadata decisioning is disabled, so matching/import behavior is unchanged.",
                 AutomaticMetadataDecisioningEnabled = false,
@@ -320,10 +343,79 @@ namespace Readarr.Api.V1.System
                     "Keep the configured metadata source reachable from the ReadAIrr container.",
                     "Use a ReadAIrr-compatible rreading-glasses endpoint for metadata lookups.",
                     "Use ReadAIrr-owned update metadata before upgrading the app.",
+                    sidecarStatus.UpdateGuidance,
                     "Treat confidence signals as audit evidence only until an explicit metadata policy enables cross-source decisions.",
                     "Upgrade metadata services manually; this page never restarts or mutates services."
                 }
             };
+        }
+
+        private static SidecarStatus GetSidecarStatus(string sourceType)
+        {
+            switch (sourceType)
+            {
+                case "localRReadingGlasses":
+                    return new SidecarStatus
+                    {
+                        ManagementMode = "readarrDeploymentSidecar",
+                        ManagementLabel = "ReadAIrr deployment sidecar",
+                        ManagedByReadAIrr = true,
+                        UpdateSupported = false,
+                        UpdateAction = "manualDockerImageUpdate",
+                        CurrentVersion = null,
+                        LatestVersion = null,
+                        UpdateAvailable = null,
+                        VersionMessage = "The configured rreading-glasses endpoint does not expose version metadata to ReadAIrr yet.",
+                        UpdateCheckMessage = "ReadAIrr can refresh sidecar reachability here, but does not mutate or restart the sidecar.",
+                        UpdateGuidance = "For Docker deployments, update rreading-glasses by pulling the newer sidecar image and restarting the compose/deployment outside ReadAIrr."
+                    };
+                case "hostedGoodreads":
+                case "hostedHardcover":
+                    return new SidecarStatus
+                    {
+                        ManagementMode = "externalHosted",
+                        ManagementLabel = "Externally managed hosted service",
+                        ManagedByReadAIrr = false,
+                        UpdateSupported = false,
+                        UpdateAction = "managedExternally",
+                        CurrentVersion = null,
+                        LatestVersion = null,
+                        UpdateAvailable = null,
+                        VersionMessage = "Hosted rreading-glasses services do not expose version metadata to this ReadAIrr instance.",
+                        UpdateCheckMessage = "Hosted metadata service updates are managed outside ReadAIrr.",
+                        UpdateGuidance = "ReadAIrr can report hosted service reachability, but hosted rreading-glasses updates are controlled by the service operator."
+                    };
+                case "originalReadarr":
+                    return new SidecarStatus
+                    {
+                        ManagementMode = "legacyCompatibility",
+                        ManagementLabel = "Legacy compatibility metadata",
+                        ManagedByReadAIrr = false,
+                        UpdateSupported = false,
+                        UpdateAction = "switchMetadataSource",
+                        CurrentVersion = null,
+                        LatestVersion = null,
+                        UpdateAvailable = null,
+                        VersionMessage = "Original Readarr metadata compatibility is not a rreading-glasses sidecar.",
+                        UpdateCheckMessage = "No sidecar update check applies while using original Readarr compatibility metadata.",
+                        UpdateGuidance = "Switch to a ReadAIrr-compatible rreading-glasses endpoint before using sidecar update guidance."
+                    };
+                default:
+                    return new SidecarStatus
+                    {
+                        ManagementMode = "externalCustom",
+                        ManagementLabel = "Custom external metadata service",
+                        ManagedByReadAIrr = false,
+                        UpdateSupported = false,
+                        UpdateAction = "managedExternally",
+                        CurrentVersion = null,
+                        LatestVersion = null,
+                        UpdateAvailable = null,
+                        VersionMessage = "Custom metadata services do not expose version metadata through this status surface.",
+                        UpdateCheckMessage = "Custom metadata service updates are managed outside ReadAIrr.",
+                        UpdateGuidance = "Update custom metadata services using their own deployment process; ReadAIrr only checks reachability."
+                    };
+            }
         }
 
         private static List<MetadataSourceConfidenceSignalResource> GetConfidenceSignals(string activeSourceType, bool activeSourceHealthy)
@@ -468,6 +560,21 @@ namespace Readarr.Api.V1.System
             }
 
             return value.Replace(rawSource, redactedSource);
+        }
+
+        private class SidecarStatus
+        {
+            public string ManagementMode { get; set; }
+            public string ManagementLabel { get; set; }
+            public bool ManagedByReadAIrr { get; set; }
+            public bool UpdateSupported { get; set; }
+            public string UpdateAction { get; set; }
+            public string CurrentVersion { get; set; }
+            public string LatestVersion { get; set; }
+            public bool? UpdateAvailable { get; set; }
+            public string VersionMessage { get; set; }
+            public string UpdateCheckMessage { get; set; }
+            public string UpdateGuidance { get; set; }
         }
     }
 }

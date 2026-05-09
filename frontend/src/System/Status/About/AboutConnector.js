@@ -73,6 +73,10 @@ class AboutConnector extends Component {
     });
   };
 
+  onRefreshMetadataServiceStatusPress = () => {
+    this.fetchMetadataServiceStatus();
+  };
+
   //
   // Render
 
@@ -81,6 +85,7 @@ class AboutConnector extends Component {
       <About
         {...this.props}
         {...this.state}
+        onRefreshMetadataServiceStatusPress={this.onRefreshMetadataServiceStatusPress}
       />
     );
   }

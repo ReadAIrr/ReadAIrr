@@ -4,6 +4,7 @@ import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import FieldSet from 'Components/FieldSet';
 import Label from 'Components/Label';
+import SpinnerButton from 'Components/Link/SpinnerButton';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import { kinds } from 'Helpers/Props';
 import titleCase from 'Utilities/String/titleCase';
@@ -75,7 +76,8 @@ class About extends Component {
       databaseStatus,
       metadataServiceStatus,
       isFetchingMetadataServiceStatus,
-      metadataServiceStatusError
+      metadataServiceStatusError,
+      onRefreshMetadataServiceStatusPress
     } = this.props;
     const postgres = databaseStatus?.postgres || {};
 
@@ -364,6 +366,51 @@ class About extends Component {
                       }
                     />
 
+                    <DescriptionListItem
+                      title="Sidecar management"
+                      data={
+                        <div>
+                          <Label kind={metadataServiceStatus.sidecarManagedByReadAIrr ? kinds.INFO : kinds.DEFAULT}>
+                            {metadataServiceStatus.sidecarManagementLabel}
+                          </Label>
+                          {' '}
+                          {metadataServiceStatus.sidecarManagementMode}
+                        </div>
+                      }
+                    />
+
+                    <DescriptionListItem
+                      title="Sidecar version"
+                      data={
+                        metadataServiceStatus.sidecarCurrentVersion ?
+                          `${metadataServiceStatus.sidecarCurrentVersion}${metadataServiceStatus.sidecarLatestVersion ? ` / latest ${metadataServiceStatus.sidecarLatestVersion}` : ''}` :
+                          metadataServiceStatus.sidecarVersionMessage
+                      }
+                    />
+
+                    <DescriptionListItem
+                      title="Sidecar update"
+                      data={
+                        <div>
+                          <div>{metadataServiceStatus.sidecarUpdateCheckMessage}</div>
+                          <div>{metadataServiceStatus.sidecarUpdateGuidance}</div>
+                        </div>
+                      }
+                    />
+
+                    <DescriptionListItem
+                      title="Status refresh"
+                      data={
+                        <SpinnerButton
+                          kind={kinds.PRIMARY}
+                          isSpinning={isFetchingMetadataServiceStatus}
+                          onPress={onRefreshMetadataServiceStatusPress}
+                        >
+                          Refresh metadata status
+                        </SpinnerButton>
+                      }
+                    />
+
                     {
                       metadataServiceStatus.warnings?.length > 0 &&
                         <DescriptionListItem
@@ -429,7 +476,8 @@ About.propTypes = {
   databaseStatus: PropTypes.object,
   metadataServiceStatus: PropTypes.object,
   isFetchingMetadataServiceStatus: PropTypes.bool.isRequired,
-  metadataServiceStatusError: PropTypes.object
+  metadataServiceStatusError: PropTypes.object,
+  onRefreshMetadataServiceStatusPress: PropTypes.func.isRequired
 };
 
 export default About;
