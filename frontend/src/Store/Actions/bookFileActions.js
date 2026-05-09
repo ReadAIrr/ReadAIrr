@@ -26,6 +26,10 @@ export const section = 'bookFiles';
 export const defaultState = {
   isFetching: false,
   isPopulated: false,
+  page: 1,
+  pageSize: 250,
+  totalRecords: 0,
+  totalPages: 1,
   sortKey: 'path',
   sortDirection: sortDirections.ASCENDING,
 
@@ -127,7 +131,8 @@ export const defaultState = {
 
 export const persistState = [
   'bookFiles.sortKey',
-  'bookFiles.sortDirection'
+  'bookFiles.sortDirection',
+  'bookFiles.pageSize'
 ];
 
 //
@@ -168,6 +173,7 @@ export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
 // Helpers
 
 const deleteBookFileHelper = createRemoveItemHandler(section, '/bookFile');
+const fetchBookFilesHandler = createFetchHandler(section, '/bookFile');
 
 function handleUnmappedSuggestionRequest(url, payload, dispatch) {
   const {
@@ -295,7 +301,50 @@ function handleBulkDeepIdentifyRequest(payload, dispatch) {
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  [FETCH_BOOK_FILES]: createFetchHandler(section, '/bookFile'),
+  [FETCH_BOOK_FILES]: function(getState, payload = {}, dispatch) {
+    if (!payload.unmapped) {
+      return fetchBookFilesHandler(getState, payload, dispatch);
+    }
+
+    const state = getState()[section];
+    const page = payload.page || state.page || defaultState.page;
+    const pageSize = payload.pageSize || state.pageSize || defaultState.pageSize;
+
+    dispatch(set({ section, isFetching: true }));
+
+    const { request, abortRequest } = createAjaxRequest({
+      url: '/bookFile/unmapped/paged',
+      data: {
+        page,
+        pageSize
+      }
+    });
+
+    request.done((data) => {
+      dispatch(set({
+        section,
+        items: data.records || [],
+        page: data.page,
+        pageSize: data.pageSize,
+        totalRecords: data.totalRecords,
+        totalPages: Math.max(Math.ceil(data.totalRecords / data.pageSize), 1),
+        isFetching: false,
+        isPopulated: true,
+        error: null
+      }));
+    });
+
+    request.fail((xhr) => {
+      dispatch(set({
+        section,
+        isFetching: false,
+        isPopulated: false,
+        error: xhr.aborted ? null : xhr
+      }));
+    });
+
+    return abortRequest;
+  },
 
   [DELETE_BOOK_FILE]: function(getState, payload, dispatch) {
     const {

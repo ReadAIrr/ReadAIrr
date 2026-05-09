@@ -5,6 +5,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common;
 using NzbDrone.Core.Books.Events;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec);
         List<IFileInfo> FilterUnchangedFiles(List<IFileInfo> files, FilterFilesType filter);
         BookFile Get(int id);
         List<BookFile> Get(IEnumerable<int> ids);
@@ -200,6 +202,11 @@ namespace NzbDrone.Core.MediaFiles
         public List<BookFile> GetUnmappedFiles()
         {
             return _mediaFileRepository.GetUnmappedFiles();
+        }
+
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec)
+        {
+            return _mediaFileRepository.GetUnmappedFiles(pagingSpec);
         }
 
         public void UpdateMediaInfo(List<BookFile> bookFiles)

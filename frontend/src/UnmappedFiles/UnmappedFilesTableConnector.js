@@ -54,8 +54,8 @@ function createMapDispatchToProps(dispatch, props) {
       dispatch(setBookFilesSort({ sortKey }));
     },
 
-    fetchUnmappedFiles() {
-      dispatch(fetchBookFiles({ unmapped: true }));
+    fetchUnmappedFiles(page) {
+      dispatch(fetchBookFiles({ unmapped: true, page }));
     },
 
     deleteUnmappedFile(id) {

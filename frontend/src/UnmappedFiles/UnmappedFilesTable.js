@@ -15,6 +15,7 @@ import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInp
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
+import TablePager from 'Components/Table/TablePager';
 import VirtualTable from 'Components/Table/VirtualTable';
 import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import { align, icons, kinds, sortDirections } from 'Helpers/Props';
@@ -214,6 +215,7 @@ class UnmappedFilesTable extends Component {
   componentDidUpdate(prevProps) {
     const {
       items,
+      pageSize,
       sortKey,
       sortDirection,
       isDeleting,
@@ -225,6 +227,10 @@ class UnmappedFilesTable extends Component {
       hasDifferentItemsOrOrder(prevProps.items, items)
     ) {
       this.setSelectedState();
+    }
+
+    if (pageSize !== prevProps.pageSize) {
+      this.props.fetchUnmappedFiles(1);
     }
 
     const hasFinishedDeleting = prevProps.isDeleting &&
@@ -411,6 +417,26 @@ class UnmappedFilesTable extends Component {
     this.setState({ searchTerm });
   };
 
+  onFirstPagePress = () => {
+    this.props.fetchUnmappedFiles(1);
+  };
+
+  onPreviousPagePress = () => {
+    this.props.fetchUnmappedFiles(Math.max(this.props.page - 1, 1));
+  };
+
+  onNextPagePress = () => {
+    this.props.fetchUnmappedFiles(Math.min(this.props.page + 1, this.props.totalPages));
+  };
+
+  onLastPagePress = () => {
+    this.props.fetchUnmappedFiles(this.props.totalPages);
+  };
+
+  onPageSelect = (page) => {
+    this.props.fetchUnmappedFiles(page);
+  };
+
   rowRenderer = ({ key, rowIndex, style }) => {
     const {
       columns,
@@ -461,6 +487,9 @@ class UnmappedFilesTable extends Component {
       isSaving,
       error,
       items,
+      page,
+      totalPages,
+      totalRecords,
       columns,
       sortKey,
       sortDirection,
@@ -563,7 +592,7 @@ class UnmappedFilesTable extends Component {
             <PageToolbarSearchInput
               name="unmappedFilesSearch"
               value={searchTerm}
-              placeholder="Filter unmapped files"
+              placeholder="Filter loaded unmapped page"
               onChange={this.onSearchTermChange}
             />
 
@@ -640,6 +669,13 @@ class UnmappedFilesTable extends Component {
           }
 
           {
+            isPopulated && !error && !!items.length &&
+              <Alert kind={kinds.INFO}>
+                This page shows {items.length} loaded unmapped files out of {totalRecords}. Select all, search, filter, sorting, and row actions apply only to this loaded page.
+              </Alert>
+          }
+
+          {
             isPopulated && !error && deepIdentifySummary &&
               <Alert kind={isDeepIdentifyAudioRunning || deepIdentifySummary.running || deepIdentifySummary.queued ? kinds.INFO : kinds.SUCCESS}>
                 {formatDeepIdentifySummary(deepIdentifySummary, isDeepIdentifyAudioRunning)}
@@ -674,6 +710,21 @@ class UnmappedFilesTable extends Component {
               />
           }
 
+          {
+            isPopulated && !error && totalPages > 1 &&
+              <TablePager
+                page={page}
+                totalPages={totalPages}
+                totalRecords={totalRecords}
+                isFetching={isFetching}
+                onFirstPagePress={this.onFirstPagePress}
+                onPreviousPagePress={this.onPreviousPagePress}
+                onNextPagePress={this.onNextPagePress}
+                onLastPagePress={this.onLastPagePress}
+                onPageSelect={this.onPageSelect}
+              />
+          }
+
           <InteractiveImportModal
             isOpen={isManualMatchModalOpen}
             folder={manualMatchFolder}
@@ -698,6 +749,10 @@ UnmappedFilesTable.propTypes = {
   deleteError: PropTypes.object,
   error: PropTypes.object,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  page: PropTypes.number.isRequired,
+  pageSize: PropTypes.number.isRequired,
+  totalPages: PropTypes.number.isRequired,
+  totalRecords: PropTypes.number.isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   sortKey: PropTypes.string,
   sortDirection: PropTypes.oneOf(sortDirections.all),

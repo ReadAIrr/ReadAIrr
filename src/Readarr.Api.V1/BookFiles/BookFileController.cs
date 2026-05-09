@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Exceptions;
@@ -28,6 +29,8 @@ namespace Readarr.Api.V1.BookFiles
                                  IHandle<BookFileAddedEvent>,
                                  IHandle<BookFileDeletedEvent>
     {
+        private const int MaxUnmappedPageSize = 500;
+
         private readonly IMediaFileService _mediaFileService;
         private readonly IDeleteMediaFiles _mediaFileDeletionService;
         private readonly IMetadataTagService _metadataTagService;
@@ -128,6 +131,35 @@ namespace Readarr.Api.V1.BookFiles
                 var bookFiles = _mediaFileService.Get(bookFileIds);
                 return bookFiles.ConvertAll(e => MapToResource(e));
             }
+        }
+
+        [HttpGet("unmapped/paged")]
+        public PagingResource<BookFileResource> GetUnmappedFilesPaged([FromQuery] PagingRequestResource paging)
+        {
+            var requestedPage = paging?.Page ?? 1;
+            var requestedPageSize = paging?.PageSize ?? MaxUnmappedPageSize;
+            var page = global::System.Math.Max(1, requestedPage);
+            var pageSize = global::System.Math.Min(MaxUnmappedPageSize, global::System.Math.Max(1, requestedPageSize));
+
+            var pagingSpec = new PagingSpec<BookFile>
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortKey = nameof(BookFile.Path),
+                SortDirection = SortDirection.Ascending
+            };
+
+            var result = _mediaFileService.GetUnmappedFiles(pagingSpec);
+
+            return new PagingResource<BookFileResource>
+            {
+                Page = result.Page,
+                PageSize = result.PageSize,
+                SortKey = null,
+                SortDirection = SortDirection.Default,
+                TotalRecords = result.TotalRecords,
+                Records = MapUnmappedToResources(result.Records)
+            };
         }
 
         [RestPutById]

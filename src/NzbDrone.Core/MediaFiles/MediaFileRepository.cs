@@ -15,6 +15,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
+        PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec);
         List<BookFile> GetFilesWithBasePath(string path);
         List<BookFile> GetFileWithPath(List<string> paths);
         BookFile GetFileWithPath(string path);
@@ -87,6 +88,22 @@ namespace NzbDrone.Core.MediaFiles
         {
             return _database.Query<BookFile>(new SqlBuilder(_database.DatabaseType).Select(typeof(BookFile))
                                               .Where<BookFile>(t => t.EditionId == 0)).ToList();
+        }
+
+        public PagingSpec<BookFile> GetUnmappedFiles(PagingSpec<BookFile> pagingSpec)
+        {
+            var recordsBuilder = new SqlBuilder(_database.DatabaseType)
+                .Select(typeof(BookFile))
+                .Where<BookFile>(t => t.EditionId == 0);
+
+            var countBuilder = new SqlBuilder(_database.DatabaseType)
+                .SelectCount()
+                .Where<BookFile>(t => t.EditionId == 0);
+
+            pagingSpec.Records = GetPagedRecords(recordsBuilder, pagingSpec, builder => _database.Query<BookFile>(builder));
+            pagingSpec.TotalRecords = GetPagedRecordCount(countBuilder, pagingSpec);
+
+            return pagingSpec;
         }
 
         public void DeleteFilesByBook(int bookId)
