@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
@@ -211,9 +212,15 @@ namespace Readarr.Api.V1.BookFiles
 
                 var running = StatusSuggestion("deepAudio", resource.Path, "extractingIntro", "Deep Identify Audio is extracting the bounded intro clip.");
                 running.Stage = "extractingIntro";
+                running.Steps = new List<ManualImportReviewReasonResource>
+                {
+                    Step("queued", "Queued", "Deep Identify Audio was queued for background processing."),
+                    Step("extractingIntro", "Extracting intro clip", "Preparing the bounded local intro clip before sending anything to the configured provider.")
+                };
                 Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { running }, true);
 
                 var suggestion = DeepIdentifyResource(resource);
+                suggestion.Steps = MergeQueuedSteps(suggestion.Steps);
                 Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { suggestion }, true);
                 result.Add(suggestion);
             }
@@ -266,6 +273,8 @@ namespace Readarr.Api.V1.BookFiles
                 Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
                 RequiresManualConfirmation = true,
                 Explanation = transcription.Explanation,
+                Transcript = transcription.Transcript,
+                TranscriptIsTruncated = transcription.TranscriptIsTruncated,
                 TranscriptExcerpt = transcription.TranscriptExcerpt,
                 ContextSummary = transcription.ContextSummary,
                 Stage = transcription.Stage,
@@ -274,6 +283,9 @@ namespace Readarr.Api.V1.BookFiles
                 ProviderStatusCode = transcription.ProviderStatusCode,
                 ProviderDurationMs = transcription.ProviderDurationMs,
                 ProviderResponseExcerpt = transcription.ProviderResponseExcerpt,
+                Steps = (transcription.Steps ?? new List<AudioIntroTranscriptionStep>())
+                    .Select(x => Step(x.Kind, x.Label, x.Detail))
+                    .ToList(),
                 AudioPreviewUrl = $"/bookFile/unmapped/{resource.Id}/intro-preview"
             };
         }
@@ -413,6 +425,16 @@ namespace Readarr.Api.V1.BookFiles
 
         private static ManualImportIdentificationSuggestionResource StatusSuggestion(string type, string path, string status, string explanation)
         {
+            List<ManualImportReviewReasonResource> steps = null;
+
+            if (type == "deepAudio")
+            {
+                steps = new List<ManualImportReviewReasonResource>
+                {
+                    Step(status, GetStatusLabel(status), explanation)
+                };
+            }
+
             return new ManualImportIdentificationSuggestionResource
             {
                 Type = type,
@@ -420,7 +442,8 @@ namespace Readarr.Api.V1.BookFiles
                 Status = status,
                 Path = path,
                 RequiresManualConfirmation = true,
-                Explanation = explanation
+                Explanation = explanation,
+                Steps = steps
             };
         }
 
@@ -482,6 +505,8 @@ namespace Readarr.Api.V1.BookFiles
                     Confidence = suggestion.Confidence,
                     Explanation = suggestion.Explanation,
                     RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
+                    Transcript = suggestion.Transcript,
+                    TranscriptIsTruncated = suggestion.TranscriptIsTruncated,
                     TranscriptExcerpt = suggestion.TranscriptExcerpt,
                     ContextSummary = suggestion.ContextSummary,
                     Stage = suggestion.Stage,
@@ -490,6 +515,7 @@ namespace Readarr.Api.V1.BookFiles
                     ProviderStatusCode = suggestion.ProviderStatusCode,
                     ProviderDurationMs = suggestion.ProviderDurationMs,
                     ProviderResponseExcerpt = suggestion.ProviderResponseExcerpt,
+                    StepLog = suggestion.Steps?.ToJson(),
                     Created = now,
                     Updated = now
                 });
@@ -559,6 +585,8 @@ namespace Readarr.Api.V1.BookFiles
                 Confidence = suggestion.Confidence,
                 Explanation = suggestion.Explanation,
                 RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
+                Transcript = suggestion.Transcript,
+                TranscriptIsTruncated = suggestion.TranscriptIsTruncated,
                 TranscriptExcerpt = suggestion.TranscriptExcerpt,
                 ContextSummary = suggestion.ContextSummary,
                 Stage = suggestion.Stage,
@@ -568,6 +596,7 @@ namespace Readarr.Api.V1.BookFiles
                 ProviderDurationMs = suggestion.ProviderDurationMs,
                 ProviderResponseExcerpt = suggestion.ProviderResponseExcerpt,
                 AudioPreviewUrl = suggestion.Type == "deepAudio" ? $"/bookFile/unmapped/{resource.Id}/intro-preview" : null,
+                Steps = ParseSteps(suggestion.StepLog),
                 IsStale = isStale,
                 Created = suggestion.Created,
                 Updated = suggestion.Updated
@@ -601,6 +630,65 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             return value.Substring(0, maxLength);
+        }
+
+        private static ManualImportReviewReasonResource Step(string kind, string label, string detail)
+        {
+            return new ManualImportReviewReasonResource
+            {
+                Kind = kind,
+                Label = label,
+                Detail = detail
+            };
+        }
+
+        private static List<ManualImportReviewReasonResource> MergeQueuedSteps(List<ManualImportReviewReasonResource> steps)
+        {
+            var result = new List<ManualImportReviewReasonResource>
+            {
+                Step("queued", "Queued", "Deep Identify Audio was queued for background processing.")
+            };
+
+            if (steps != null)
+            {
+                result.AddRange(steps.Where(x => x.Kind != "queued"));
+            }
+
+            return result;
+        }
+
+        private static List<ManualImportReviewReasonResource> ParseSteps(string stepLog)
+        {
+            if (stepLog.IsNullOrWhiteSpace())
+            {
+                return new List<ManualImportReviewReasonResource>();
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<List<ManualImportReviewReasonResource>>(stepLog) ?? new List<ManualImportReviewReasonResource>();
+            }
+            catch
+            {
+                return new List<ManualImportReviewReasonResource>();
+            }
+        }
+
+        private static string GetStatusLabel(string status)
+        {
+            switch (status)
+            {
+                case "queued":
+                    return "Queued";
+                case "skipped":
+                    return "Skipped";
+                case "extractingIntro":
+                    return "Extracting intro clip";
+                case "disabled":
+                    return "Not configured";
+                default:
+                    return status;
+            }
         }
 
         private sealed class OpenRouterConfig

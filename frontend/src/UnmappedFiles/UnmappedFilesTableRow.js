@@ -269,6 +269,10 @@ function getAudioPreviewUrl(audioPreviewUrl) {
   return `${window.Readarr.apiRoot}${audioPreviewUrl}${separator}apikey=${encodeURIComponent(window.Readarr.apiKey)}`;
 }
 
+function getReviewSuggestion(review) {
+  return getDeepIdentifySuggestion(review) || review?.suggestions?.find((item) => item.status !== 'disabled');
+}
+
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -282,6 +286,8 @@ class UnmappedFilesTableRow extends Component {
       isInteractiveImportModalOpen: false,
       isConfirmDeleteModalOpen: false,
       isContributorEvidenceModalOpen: false,
+      isSuggestionReviewModalOpen: false,
+      manualMatchSuggestion: null,
       contributorDisplayName: ''
     };
   }
@@ -298,11 +304,17 @@ class UnmappedFilesTableRow extends Component {
   };
 
   onInteractiveImportPress = () => {
-    this.setState({ isInteractiveImportModalOpen: true });
+    this.setState({
+      isInteractiveImportModalOpen: true,
+      manualMatchSuggestion: null
+    });
   };
 
   onInteractiveImportModalClose = () => {
-    this.setState({ isInteractiveImportModalOpen: false });
+    this.setState({
+      isInteractiveImportModalOpen: false,
+      manualMatchSuggestion: null
+    });
   };
 
   onRetryIdentifyPress = () => {
@@ -319,6 +331,28 @@ class UnmappedFilesTableRow extends Component {
 
   onClearSuggestionsPress = () => {
     this.props.clearUnmappedSuggestions([this.props.id]);
+  };
+
+  onSuggestionReviewPress = () => {
+    this.setState({ isSuggestionReviewModalOpen: true });
+  };
+
+  onSuggestionReviewModalClose = () => {
+    this.setState({ isSuggestionReviewModalOpen: false });
+  };
+
+  onAcceptSuggestionPress = () => {
+    const suggestion = getReviewSuggestion(this.props.review);
+
+    if (suggestion?.narrator) {
+      this.props.setContributorEvidence(this.props.id, suggestion.narrator);
+    }
+
+    this.setState({
+      isSuggestionReviewModalOpen: false,
+      isInteractiveImportModalOpen: true,
+      manualMatchSuggestion: suggestion
+    });
   };
 
   onContributorEvidencePress = () => {
@@ -398,8 +432,13 @@ class UnmappedFilesTableRow extends Component {
       isDetailsModalOpen,
       isConfirmDeleteModalOpen,
       isContributorEvidenceModalOpen,
+      isSuggestionReviewModalOpen,
+      manualMatchSuggestion,
       contributorDisplayName
     } = this.state;
+
+    const reviewSuggestion = getReviewSuggestion(review);
+    const reviewAudioPreviewUrl = getAudioPreviewUrl(reviewSuggestion?.audioPreviewUrl);
 
     return (
       <>
@@ -538,54 +577,63 @@ class UnmappedFilesTableRow extends Component {
 
                   {
                     suggestion &&
-                      <Popover
-                        anchor={
-                          <div className={styles.suggestionMeta}>
-                            {getSuggestionSummary(suggestion)}
-                          </div>
-                        }
-                        title={`${getSuggestionSource(suggestion)} details`}
-                        body={
-                          <div className={styles.reasonList}>
-                            {
-                              audioPreviewUrl &&
-                                <div className={styles.reason}>
-                                  <div className={styles.reasonLabel}>
-                                    Intro preview
-                                  </div>
-
-                                  <div className={styles.reasonDetail}>
-                                    <audio
-                                      controls={true}
-                                      preload="none"
-                                      src={audioPreviewUrl}
-                                    />
-                                  </div>
-                                </div>
-                            }
-
-                            {
-                              getSuggestionDetails(suggestion).map((detail, index) => {
-                                return (
-                                  <div
-                                    key={index}
-                                    className={styles.reason}
-                                  >
+                      <div>
+                        <Popover
+                          anchor={
+                            <div className={styles.suggestionMeta}>
+                              {getSuggestionSummary(suggestion)}
+                            </div>
+                          }
+                          title={`${getSuggestionSource(suggestion)} details`}
+                          body={
+                            <div className={styles.reasonList}>
+                              {
+                                audioPreviewUrl &&
+                                  <div className={styles.reason}>
                                     <div className={styles.reasonLabel}>
-                                      {detail.label}
+                                      Intro preview
                                     </div>
 
                                     <div className={styles.reasonDetail}>
-                                      {detail.detail}
+                                      <audio
+                                        controls={true}
+                                        preload="none"
+                                        src={audioPreviewUrl}
+                                      />
                                     </div>
                                   </div>
-                                );
-                              })
-                            }
-                          </div>
-                        }
-                        position={tooltipPositions.LEFT}
-                      />
+                              }
+
+                              {
+                                getSuggestionDetails(suggestion).map((detail, index) => {
+                                  return (
+                                    <div
+                                      key={index}
+                                      className={styles.reason}
+                                    >
+                                      <div className={styles.reasonLabel}>
+                                        {detail.label}
+                                      </div>
+
+                                      <div className={styles.reasonDetail}>
+                                        {detail.detail}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              }
+                            </div>
+                          }
+                          position={tooltipPositions.LEFT}
+                        />
+
+                        <Button
+                          className={styles.reviewButton}
+                          onPress={this.onSuggestionReviewPress}
+                        >
+                          Review
+                        </Button>
+                      </div>
                   }
 
                   {
@@ -748,6 +796,8 @@ class UnmappedFilesTableRow extends Component {
           showImportMode={false}
           showReplaceExistingFiles={false}
           replaceExistingFiles={false}
+          acceptedSuggestion={manualMatchSuggestion}
+          acceptedPath={path}
           onModalClose={this.onInteractiveImportModalClose}
         />
 
@@ -807,6 +857,144 @@ class UnmappedFilesTableRow extends Component {
                 onPress={this.onContributorEvidenceSavePress}
               >
                 Save
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal
+          isOpen={isSuggestionReviewModalOpen}
+          onModalClose={this.onSuggestionReviewModalClose}
+        >
+          <ModalContent onModalClose={this.onSuggestionReviewModalClose}>
+            <ModalHeader>
+              Deep Identify Review
+            </ModalHeader>
+
+            <ModalBody>
+              {
+                reviewSuggestion ?
+                  <div className={styles.reviewModal}>
+                    <div className={styles.reviewSummary}>
+                      <div className={styles.reviewTitle}>
+                        {getSuggestionSummary(reviewSuggestion)}
+                      </div>
+
+                      <div className={styles.reviewMeta}>
+                        {[
+                          reviewSuggestion.likelyAuthor,
+                          reviewSuggestion.likelyBook,
+                          reviewSuggestion.narrator && `Narrator: ${reviewSuggestion.narrator}`,
+                          reviewSuggestion.confidence != null && `${reviewSuggestion.confidence}% confidence`
+                        ].filter(Boolean).join(' - ')}
+                      </div>
+                    </div>
+
+                    {
+                      reviewAudioPreviewUrl &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Intro clip
+                          </div>
+
+                          <audio
+                            controls={true}
+                            preload="none"
+                            src={reviewAudioPreviewUrl}
+                          />
+                        </div>
+                    }
+
+                    {
+                      reviewSuggestion.steps?.length > 0 &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Step log
+                          </div>
+
+                          <div className={styles.stepList}>
+                            {
+                              reviewSuggestion.steps.map((step, index) => {
+                                return (
+                                  <div
+                                    key={index}
+                                    className={styles.step}
+                                  >
+                                    <div className={styles.stepLabel}>
+                                      {step.label}
+                                    </div>
+
+                                    <div className={styles.stepDetail}>
+                                      {step.detail}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+                        </div>
+                    }
+
+                    {
+                      (reviewSuggestion.transcript || reviewSuggestion.transcriptExcerpt) &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Transcript
+                          </div>
+
+                          <pre className={styles.transcript}>
+                            {reviewSuggestion.transcript || reviewSuggestion.transcriptExcerpt}
+                            {reviewSuggestion.transcriptIsTruncated ? '\n\n[Transcript truncated for review storage]' : ''}
+                          </pre>
+                        </div>
+                    }
+
+                    {
+                      getSuggestionDetails(reviewSuggestion).length > 0 &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Details
+                          </div>
+
+                          <div className={styles.reasonList}>
+                            {
+                              getSuggestionDetails(reviewSuggestion).map((detail, index) => {
+                                return (
+                                  <div
+                                    key={index}
+                                    className={styles.reason}
+                                  >
+                                    <div className={styles.reasonLabel}>
+                                      {detail.label}
+                                    </div>
+
+                                    <div className={styles.reasonDetail}>
+                                      {detail.detail}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+                        </div>
+                    }
+                  </div> :
+                  <div>
+                    No suggestion is available for review.
+                  </div>
+              }
+            </ModalBody>
+
+            <ModalFooter>
+              <Button onPress={this.onSuggestionReviewModalClose}>
+                Close
+              </Button>
+
+              <Button
+                isDisabled={!reviewSuggestion || reviewSuggestion.status === 'disabled' || reviewSuggestion.status === 'queued' || reviewSuggestion.status === 'extractingIntro'}
+                onPress={this.onAcceptSuggestionPress}
+              >
+                Accept and Manual Match
               </Button>
             </ModalFooter>
           </ModalContent>

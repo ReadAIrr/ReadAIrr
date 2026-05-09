@@ -77,6 +77,10 @@
   white-space: nowrap;
 }
 
+.reviewButton {
+  margin-top: 4px;
+}
+
 .progressStatus {
   overflow: hidden;
   margin-top: 4px;
@@ -132,4 +136,71 @@
 .reasonDetail audio {
   width: 100%;
   max-width: 320px;
+}
+
+.reviewModal {
+  max-width: 820px;
+}
+
+.reviewSummary {
+  margin-bottom: 16px;
+}
+
+.reviewTitle {
+  font-weight: bold;
+}
+
+.reviewMeta {
+  margin-top: 4px;
+  color: var(--dimColor);
+  font-size: 13px;
+}
+
+.reviewSection {
+  margin-top: 18px;
+}
+
+.reviewSection:first-child {
+  margin-top: 0;
+}
+
+.reviewSectionTitle {
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.reviewSection audio {
+  width: 100%;
+  max-width: 520px;
+}
+
+.stepList {
+  border-left: 2px solid var(--borderColor);
+  padding-left: 12px;
+}
+
+.step {
+  margin-bottom: 10px;
+}
+
+.step:last-child {
+  margin-bottom: 0;
+}
+
+.stepLabel {
+  font-weight: bold;
+}
+
+.stepDetail {
+  color: var(--dimColor);
+}
+
+.transcript {
+  overflow: auto;
+  max-height: 280px;
+  padding: 12px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--inputBackgroundColor);
+  white-space: pre-wrap;
 }

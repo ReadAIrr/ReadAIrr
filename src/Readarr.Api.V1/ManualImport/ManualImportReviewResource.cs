@@ -75,6 +75,8 @@ namespace Readarr.Api.V1.ManualImport
         public int? Confidence { get; set; }
         public string Explanation { get; set; }
         public bool RequiresManualConfirmation { get; set; }
+        public string Transcript { get; set; }
+        public bool TranscriptIsTruncated { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
         public string Stage { get; set; }
@@ -84,6 +86,7 @@ namespace Readarr.Api.V1.ManualImport
         public int? ProviderDurationMs { get; set; }
         public string ProviderResponseExcerpt { get; set; }
         public string AudioPreviewUrl { get; set; }
+        public List<ManualImportReviewReasonResource> Steps { get; set; }
         public List<ManualImportReviewReasonResource> Evidence { get; set; }
         public List<ManualImportReviewReasonResource> Warnings { get; set; }
         public bool IsStale { get; set; }

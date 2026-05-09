@@ -301,6 +301,8 @@ class InteractiveImportModalContent extends Component {
       sortDirection,
       importMode,
       interactiveImportErrorMessage,
+      acceptedSuggestion,
+      acceptedPath,
       onSortPress,
       onModalClose,
       onSetContributorEvidencePress
@@ -433,6 +435,27 @@ class InteractiveImportModalContent extends Component {
                 </Menu>
             }
           </div>
+
+          {
+            acceptedSuggestion &&
+              <div className={styles.acceptedSuggestion}>
+                <div className={styles.acceptedSuggestionTitle}>
+                  Accepted Deep Identify suggestion
+                </div>
+
+                <div className={styles.acceptedSuggestionDetail}>
+                  {
+                    [
+                      acceptedSuggestion.likelyAuthor,
+                      acceptedSuggestion.likelyBook,
+                      acceptedSuggestion.likelyEdition,
+                      acceptedSuggestion.narrator && `Narrator: ${acceptedSuggestion.narrator}`,
+                      acceptedPath && `Path: ${acceptedPath}`
+                    ].filter(Boolean).join(' - ')
+                  }
+                </div>
+              </div>
+          }
 
           {
             isFetching &&
@@ -624,6 +647,8 @@ InteractiveImportModalContent.propTypes = {
   sortKey: PropTypes.string,
   sortDirection: PropTypes.string,
   interactiveImportErrorMessage: PropTypes.string,
+  acceptedSuggestion: PropTypes.object,
+  acceptedPath: PropTypes.string,
   onSortPress: PropTypes.func.isRequired,
   onFilterExistingFilesChange: PropTypes.func.isRequired,
   onReplaceExistingFilesChange: PropTypes.func.isRequired,

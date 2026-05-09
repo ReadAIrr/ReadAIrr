@@ -8,6 +8,26 @@
   margin-left: 5px;
 }
 
+.acceptedSuggestion {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--inputBackgroundColor);
+}
+
+.acceptedSuggestionTitle {
+  font-weight: bold;
+}
+
+.acceptedSuggestionDetail {
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--dimColor);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .footer {
   composes: modalFooter from '~Components/Modal/ModalFooter.css';
 

@@ -201,6 +201,11 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].ProviderStatusCode.Should().Be(200);
             result[0].ProviderDurationMs.Should().NotBeNull();
             result[0].ProviderResponseExcerpt.Should().Contain("The Hidden Book");
+            result[0].Transcript.Should().Contain("The Hidden Book");
+            result[0].TranscriptIsTruncated.Should().BeFalse();
+            result[0].Steps.Should().Contain(x => x.Kind == "introClipReady");
+            result[0].Steps.Should().Contain(x => x.Kind == "providerResponse");
+            result[0].Steps.Should().Contain(x => x.Kind == "final");
             postedRequest.Should().NotBeNull();
             postedRequest.Url.FullUri.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
             postedRequest.Headers.GetSingleValue("Authorization").Should().Be("Bearer openrouter-key");
@@ -209,7 +214,7 @@ namespace NzbDrone.Api.Test.BookFiles
             body.Value<string>("model").Should().Be("openai/whisper-1");
             body["input_audio"].Value<string>("data").Should().Be("YXVkaW8gYnl0ZXM=");
             body["input_audio"].Value<string>("format").Should().Be("mp3");
-            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1")), Times.Once);
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1" && s.Transcript.Contains("The Hidden Book") && s.StepLog.Contains("providerResponse"))), Times.Once);
             _contributorEvidenceRepository.Verify(x => x.Insert(It.Is<ContributorEvidence>(e => e.BookFileId == 1 && e.Role == "narrator" && e.DisplayName == "Jane Reader" && e.NormalizedName == "janereader" && e.Source == "sttTranscript")), Times.Once);
         }
 
@@ -242,7 +247,9 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].LikelyAuthor.Should().Be("Alice Writer");
             result[0].Narrator.Should().Be("Jane Reader");
             result[0].Confidence.Should().Be(100);
+            result[0].Transcript.Should().Contain("The Hidden Book");
             result[0].TranscriptExcerpt.Should().Contain("The Hidden Book");
+            result[0].Steps.Should().Contain(x => x.Kind == "parsingTranscript");
             result[0].RequiresManualConfirmation.Should().BeTrue();
             result[1].Status.Should().Be("disabled");
             _httpClient.Verify(x => x.Post(It.Is<HttpRequest>(r => r.Url.FullUri == "https://api.openai.com/v1/audio/transcriptions" && r.Headers.GetSingleValue("Authorization") == "Bearer test-key" && r.Headers.ContentType.StartsWith("multipart/form-data"))), Times.Once);
@@ -397,6 +404,9 @@ namespace NzbDrone.Api.Test.BookFiles
                         ProviderStatusCode = 200,
                         ProviderDurationMs = 123,
                         ProviderResponseExcerpt = "{\"text\":\"Hidden\"}",
+                        Transcript = "Hidden transcript",
+                        TranscriptIsTruncated = false,
+                        StepLog = "[{\"kind\":\"providerResponse\",\"label\":\"Provider response\",\"detail\":\"HTTP 200\"}]",
                         RequiresManualConfirmation = true,
                         Created = updated.AddMinutes(-10),
                         Updated = updated.AddMinutes(-10)
@@ -420,6 +430,8 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].Stage.Should().Be("transcriptCaptured");
             result[0].ProviderDurationMs.Should().Be(123);
             result[0].ProviderResponseExcerpt.Should().Contain("Hidden");
+            result[0].Transcript.Should().Be("Hidden transcript");
+            result[0].Steps.Should().ContainSingle(x => x.Kind == "providerResponse");
         }
     }
 }

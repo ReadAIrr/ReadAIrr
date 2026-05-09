@@ -20,9 +20,21 @@ interface CssExports {
   'reasonDetail': string;
   'reasonLabel': string;
   'reasonList': string;
+  'reviewButton': string;
+  'reviewMeta': string;
+  'reviewModal': string;
+  'reviewSection': string;
+  'reviewSectionTitle': string;
+  'reviewSummary': string;
+  'reviewTitle': string;
   'size': string;
   'status': string;
+  'step': string;
+  'stepDetail': string;
+  'stepLabel': string;
+  'stepList': string;
   'suggestionMeta': string;
+  'transcript': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

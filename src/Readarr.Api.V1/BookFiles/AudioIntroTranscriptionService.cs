@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -43,6 +44,8 @@ namespace Readarr.Api.V1.BookFiles
         public string Provider { get; set; }
         public string Status { get; set; }
         public string Explanation { get; set; }
+        public string Transcript { get; set; }
+        public bool TranscriptIsTruncated { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
         public int IntroSeconds { get; set; }
@@ -53,6 +56,14 @@ namespace Readarr.Api.V1.BookFiles
         public int? ProviderDurationMs { get; set; }
         public string ProviderResponseExcerpt { get; set; }
         public AudioIntroTranscriptClues Clues { get; set; }
+        public List<AudioIntroTranscriptionStep> Steps { get; set; }
+    }
+
+    public class AudioIntroTranscriptionStep
+    {
+        public string Kind { get; set; }
+        public string Label { get; set; }
+        public string Detail { get; set; }
     }
 
     public class AudioIntroTranscriptClues
@@ -68,6 +79,7 @@ namespace Readarr.Api.V1.BookFiles
     public class AudioIntroTranscriptionService : IAudioIntroTranscriptionService
     {
         private const int MaxIntroSeconds = 120;
+        private const int MaxTranscriptLength = 12000;
 
         private readonly IConfigService _configService;
         private readonly IHttpClient _httpClient;
@@ -94,7 +106,11 @@ namespace Readarr.Api.V1.BookFiles
                     IntroSeconds = _configService.SpeechToTextIntroSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "Speech-to-text provider is disabled. Configure a provider before Deep Identify Audio can transcribe intro evidence.",
-                    ContextSummary = "No audio or transcript was sent. Deep Identify Audio remains a manual review-only action."
+                    ContextSummary = "No audio or transcript was sent. Deep Identify Audio remains a manual review-only action.",
+                    Steps = new List<AudioIntroTranscriptionStep>
+                    {
+                        Step("disabled", "Provider disabled", "No audio or transcript was sent because speech-to-text is disabled.")
+                    }
                 };
             }
 
@@ -110,7 +126,11 @@ namespace Readarr.Api.V1.BookFiles
                         IntroSeconds = _configService.SpeechToTextIntroSeconds,
                         Clues = new AudioIntroTranscriptClues(),
                         Explanation = "OpenRouter speech-to-text is selected, but OpenRouter is disabled.",
-                        ContextSummary = "No audio or transcript was sent. Enable OpenRouter and add its API key before using Deep Identify Audio with OpenRouter STT."
+                        ContextSummary = "No audio or transcript was sent. Enable OpenRouter and add its API key before using Deep Identify Audio with OpenRouter STT.",
+                        Steps = new List<AudioIntroTranscriptionStep>
+                        {
+                            Step("disabled", "OpenRouter disabled", "No audio or transcript was sent because OpenRouter is disabled.")
+                        }
                     };
                 }
 
@@ -124,7 +144,11 @@ namespace Readarr.Api.V1.BookFiles
                         IntroSeconds = _configService.SpeechToTextIntroSeconds,
                         Clues = new AudioIntroTranscriptClues(),
                         Explanation = "OpenRouter speech-to-text is selected, but the OpenRouter API key is missing.",
-                        ContextSummary = "No audio or transcript was sent. OpenRouter STT shares the same BYO OpenRouter API key used by AI Review."
+                        ContextSummary = "No audio or transcript was sent. OpenRouter STT shares the same BYO OpenRouter API key used by AI Review.",
+                        Steps = new List<AudioIntroTranscriptionStep>
+                        {
+                            Step("disabled", "OpenRouter key missing", "No audio or transcript was sent because the OpenRouter API key is missing.")
+                        }
                     };
                 }
 
@@ -138,7 +162,11 @@ namespace Readarr.Api.V1.BookFiles
                     ProviderModel = GetSpeechToTextModel("openai/whisper-1"),
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "OpenRouter speech-to-text configuration is present. Intro extraction/transcription remains manual-triggered only.",
-                    ContextSummary = $"OpenRouter STT will receive only a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
+                    ContextSummary = $"OpenRouter STT will receive only a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run.",
+                    Steps = new List<AudioIntroTranscriptionStep>
+                    {
+                        Step("providerReady", "Provider ready", "OpenRouter speech-to-text is configured; audio is sent only after a user-triggered Deep Identify action.")
+                    }
                 };
             }
 
@@ -152,7 +180,11 @@ namespace Readarr.Api.V1.BookFiles
                     IntroSeconds = _configService.SpeechToTextIntroSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = "Speech-to-text provider is selected, but its API key is missing.",
-                    ContextSummary = "No audio or transcript was sent. Add the provider key to enable user-triggered intro transcription."
+                    ContextSummary = "No audio or transcript was sent. Add the provider key to enable user-triggered intro transcription.",
+                    Steps = new List<AudioIntroTranscriptionStep>
+                    {
+                        Step("disabled", "Provider key missing", "No audio or transcript was sent because the speech-to-text API key is missing.")
+                    }
                 };
             }
 
@@ -166,7 +198,11 @@ namespace Readarr.Api.V1.BookFiles
                 ProviderModel = GetSpeechToTextModel("whisper-1"),
                 Clues = new AudioIntroTranscriptClues(),
                 Explanation = "Speech-to-text provider configuration is present. Intro extraction/transcription is staged behind this provider boundary and remains manual-triggered only.",
-                ContextSummary = $"Provider boundary ready for a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run."
+                ContextSummary = $"Provider boundary ready for a short intro window of up to {_configService.SpeechToTextIntroSeconds} seconds. No automatic import, tag write, file move, or background transcription will run.",
+                Steps = new List<AudioIntroTranscriptionStep>
+                {
+                    Step("providerReady", "Provider ready", "Speech-to-text is configured; audio is sent only after a user-triggered Deep Identify action.")
+                }
             };
         }
 
@@ -186,10 +222,16 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             var introSeconds = BoundIntroSeconds(_configService.SpeechToTextIntroSeconds);
+            var steps = new List<AudioIntroTranscriptionStep>
+            {
+                Step("extractingIntro", "Extracting intro clip", $"Running ffmpeg locally against the selected file and limiting extraction to the first {introSeconds} seconds.")
+            };
             var segment = ExtractPreview(resource);
 
             if (!segment.IsSuccess)
             {
+                steps.Add(Step(segment.Status, "Intro extraction failed", segment.Explanation));
+
                 return new AudioIntroTranscriptionResult
                 {
                     Provider = ready.Provider,
@@ -198,16 +240,26 @@ namespace Readarr.Api.V1.BookFiles
                     IntroSeconds = introSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = segment.Explanation,
-                    ContextSummary = "No audio was sent to the speech-to-text provider because intro extraction did not complete."
+                    ContextSummary = "No audio was sent to the speech-to-text provider because intro extraction did not complete.",
+                    Steps = steps
                 };
             }
 
+            steps.Add(Step("introClipReady", "Intro clip ready", $"Prepared a {segment.Format ?? "mp3"} intro clip with {segment.Content.Length} bytes for manual review transcription."));
+
             try
             {
+                steps.Add(Step("providerRequest", "Provider request", $"Sending bounded intro audio to {ready.Provider}; request body contains model plus the extracted audio clip only."));
                 var response = SendTranscriptionRequest(segment, introSeconds);
+                steps.Add(Step("providerResponse", "Provider response", $"Received HTTP {(int)response.Response.StatusCode} from {response.Endpoint} model {response.Model} in {response.DurationMs} ms."));
                 var transcript = ExtractTranscript(response.Response.Content);
+                var transcriptForReview = Truncate(transcript, MaxTranscriptLength);
                 var excerpt = Truncate(transcript, 1000);
+                steps.Add(Step("parsingTranscript", "Parsing transcript", $"Parsed {transcript.Length} transcript characters for title, author, narrator, publisher, and series clues."));
                 var clues = ExtractClues(transcript);
+                steps.Add(Step("evidenceCreation", "Evidence created", BuildEvidenceSummary(clues)));
+                steps.Add(Step("suggestionCreation", "Suggestion created", "Created a review-only Deep Identify suggestion. Nothing was imported, moved, renamed, tagged, monitored, searched, or downloaded."));
+                steps.Add(Step("final", "Final state", "Transcript captured for manual confirmation."));
 
                 return new AudioIntroTranscriptionResult
                 {
@@ -215,6 +267,8 @@ namespace Readarr.Api.V1.BookFiles
                     Status = "transcriptCaptured",
                     Stage = "transcriptCaptured",
                     IntroSeconds = introSeconds,
+                    Transcript = transcriptForReview,
+                    TranscriptIsTruncated = transcript.Length > MaxTranscriptLength,
                     TranscriptExcerpt = excerpt,
                     ProviderEndpoint = response.Endpoint,
                     ProviderModel = response.Model,
@@ -223,11 +277,15 @@ namespace Readarr.Api.V1.BookFiles
                     ProviderResponseExcerpt = Truncate(response.Response.Content, 1000),
                     Clues = clues,
                     Explanation = "Speech-to-text captured a short intro transcript for manual review.",
-                    ContextSummary = $"Captured transcript evidence from the first {introSeconds} seconds only. This remains review-only and did not import, rename, retag, or move the file."
+                    ContextSummary = $"Captured transcript evidence from the first {introSeconds} seconds only. This remains review-only and did not import, rename, retag, or move the file.",
+                    Steps = steps
                 };
             }
             catch (TranscriptionProviderException ex)
             {
+                steps.Add(Step("providerResponse", "Provider response", $"Provider returned HTTP {ex.StatusCode} from {ex.Endpoint} model {ex.Model} in {ex.DurationMs} ms."));
+                steps.Add(Step("error", "Transcription failed", ex.Message));
+
                 return new AudioIntroTranscriptionResult
                 {
                     Provider = ready.Provider,
@@ -241,11 +299,14 @@ namespace Readarr.Api.V1.BookFiles
                     ProviderResponseExcerpt = ex.ResponseExcerpt,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = ex.Message,
-                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed."
+                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed.",
+                    Steps = steps
                 };
             }
             catch (Exception ex)
             {
+                steps.Add(Step("error", "Transcription failed", ex.Message));
+
                 return new AudioIntroTranscriptionResult
                 {
                     Provider = ready.Provider,
@@ -254,7 +315,8 @@ namespace Readarr.Api.V1.BookFiles
                     IntroSeconds = introSeconds,
                     Clues = new AudioIntroTranscriptClues(),
                     Explanation = ex.Message,
-                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed."
+                    ContextSummary = "The selected speech-to-text provider failed. No import, rename, tag write, or file move was performed.",
+                    Steps = steps
                 };
             }
         }
@@ -445,6 +507,35 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             return value.Substring(0, maxLength);
+        }
+
+        private static AudioIntroTranscriptionStep Step(string kind, string label, string detail)
+        {
+            return new AudioIntroTranscriptionStep
+            {
+                Kind = kind,
+                Label = label,
+                Detail = detail
+            };
+        }
+
+        private static string BuildEvidenceSummary(AudioIntroTranscriptClues clues)
+        {
+            var parts = new[]
+            {
+                clues?.Author.IsNotNullOrWhiteSpace() == true ? $"author '{clues.Author}'" : null,
+                clues?.Title.IsNotNullOrWhiteSpace() == true ? $"book '{clues.Title}'" : null,
+                clues?.Narrator.IsNotNullOrWhiteSpace() == true ? $"narrator '{clues.Narrator}'" : null,
+                clues?.Publisher.IsNotNullOrWhiteSpace() == true ? $"publisher '{clues.Publisher}'" : null,
+                clues?.Series.IsNotNullOrWhiteSpace() == true ? $"series '{clues.Series}'" : null
+            }.Where(x => x.IsNotNullOrWhiteSpace()).ToList();
+
+            if (!parts.Any())
+            {
+                return "No strong title, author, narrator, publisher, or series clues were detected.";
+            }
+
+            return $"Detected {parts.ConcatToString(", ")}.";
         }
 
         private static string BuildEndpointSummary(string baseUrl, string resource)

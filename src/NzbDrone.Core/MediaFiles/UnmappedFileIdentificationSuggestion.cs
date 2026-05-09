@@ -20,6 +20,8 @@ namespace NzbDrone.Core.MediaFiles
         public int? Confidence { get; set; }
         public string Explanation { get; set; }
         public bool RequiresManualConfirmation { get; set; }
+        public string Transcript { get; set; }
+        public bool TranscriptIsTruncated { get; set; }
         public string TranscriptExcerpt { get; set; }
         public string ContextSummary { get; set; }
         public string Stage { get; set; }
@@ -28,6 +30,7 @@ namespace NzbDrone.Core.MediaFiles
         public int? ProviderStatusCode { get; set; }
         public int? ProviderDurationMs { get; set; }
         public string ProviderResponseExcerpt { get; set; }
+        public string StepLog { get; set; }
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
     }
