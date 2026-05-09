@@ -9,6 +9,7 @@ import FormLabel from 'Components/Form/FormLabel';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
+import Link from 'Components/Link/Link';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import Modal from 'Components/Modal/Modal';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -594,94 +595,99 @@ class UnmappedFilesTableRow extends Component {
                   key={name}
                   className={styles[name]}
                 >
-                  <div className={styles.candidateTitle}>
-                    {candidateTitle}
-                  </div>
+                  <div className={styles.candidateContent}>
+                    <div className={styles.candidateTitle}>
+                      {candidateTitle}
+                    </div>
 
-                  {
-                    edition &&
-                      <div className={styles.candidateMeta}>
-                        {edition}
-                      </div>
-                  }
+                    <div className={styles.candidateSubline}>
+                      {
+                        edition &&
+                          <span className={styles.candidateMeta}>
+                            {edition}
+                          </span>
+                      }
 
-                  {
-                    suggestion &&
-                      <div>
-                        <Popover
-                          anchor={
-                            <div className={styles.suggestionMeta}>
-                              {getSuggestionSummary(suggestion)}
-                            </div>
-                          }
-                          title={`${getSuggestionSource(suggestion)} details`}
-                          body={
-                            <div className={styles.reasonList}>
-                              {
-                                audioPreviewUrl &&
-                                  <div className={styles.reason}>
-                                    <div className={styles.reasonLabel}>
-                                      Intro preview
-                                    </div>
-
-                                    <div className={styles.reasonDetail}>
-                                      <audio
-                                        controls={true}
-                                        preload="none"
-                                        src={audioPreviewUrl}
-                                      />
-                                    </div>
-                                  </div>
-                              }
-
-                              {
-                                getSuggestionDetails(suggestion).map((detail, index) => {
-                                  return (
-                                    <div
-                                      key={index}
-                                      className={styles.reason}
-                                    >
+                      {
+                        suggestion &&
+                          <Popover
+                            anchor={
+                              <span className={styles.suggestionMeta}>
+                                {getSuggestionSummary(suggestion)}
+                              </span>
+                            }
+                            title={`${getSuggestionSource(suggestion)} details`}
+                            body={
+                              <div className={styles.reasonList}>
+                                {
+                                  audioPreviewUrl &&
+                                    <div className={styles.reason}>
                                       <div className={styles.reasonLabel}>
-                                        {detail.label}
+                                        Intro preview
                                       </div>
 
                                       <div className={styles.reasonDetail}>
-                                        {detail.detail}
+                                        <audio
+                                          controls={true}
+                                          preload="none"
+                                          src={audioPreviewUrl}
+                                        />
                                       </div>
                                     </div>
-                                  );
-                                })
-                              }
-                            </div>
-                          }
-                          position={tooltipPositions.LEFT}
-                        />
+                                }
 
-                        <Button
-                          className={styles.reviewButton}
-                          onPress={this.onSuggestionReviewPress}
-                        >
-                          Review
-                        </Button>
-                      </div>
-                  }
+                                {
+                                  getSuggestionDetails(suggestion).map((detail, index) => {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className={styles.reason}
+                                      >
+                                        <div className={styles.reasonLabel}>
+                                          {detail.label}
+                                        </div>
 
-                  {
-                    contributorEvidenceDetails.length > 0 &&
-                      <div className={styles.suggestionMeta}>
-                        {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
-                      </div>
-                  }
+                                        <div className={styles.reasonDetail}>
+                                          {detail.detail}
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </div>
+                            }
+                            position={tooltipPositions.LEFT}
+                          />
+                      }
 
-                  {
-                    addAuthorCandidate &&
-                      <Button
-                        className={styles.addAuthorButton}
-                        to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
-                      >
-                        Add Author
-                      </Button>
-                  }
+                      {
+                        suggestion &&
+                          <Link
+                            className={styles.inlineAction}
+                            onPress={this.onSuggestionReviewPress}
+                          >
+                            Review
+                          </Link>
+                      }
+
+                      {
+                        contributorEvidenceDetails.length > 0 &&
+                          <span className={styles.suggestionMeta}>
+                            {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
+                          </span>
+                      }
+
+                      {
+                        addAuthorCandidate &&
+                          <Link
+                            className={styles.inlineAction}
+                            to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                          >
+                            Add Author
+                          </Link>
+                      }
+                    </div>
+                  </div>
                 </VirtualTableRowCell>
               );
             }
@@ -698,19 +704,23 @@ class UnmappedFilesTableRow extends Component {
                   key={name}
                   className={styles[name]}
                 >
-                  <div className={styles.candidateTitle}>
-                    {candidateAuthor}
-                  </div>
+                  <div className={styles.candidateContent}>
+                    <div className={styles.candidateTitle}>
+                      {candidateAuthor}
+                    </div>
 
-                  {
-                    addAuthorCandidate &&
-                      <Button
-                        className={styles.addAuthorButton}
-                        to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
-                      >
-                        Add Author
-                      </Button>
-                  }
+                    <div className={styles.candidateSubline}>
+                      {
+                        addAuthorCandidate &&
+                          <Link
+                            className={styles.inlineAction}
+                            to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                          >
+                            Add Author
+                          </Link>
+                      }
+                    </div>
+                  </div>
                 </VirtualTableRowCell>
               );
             }

@@ -2,10 +2,11 @@
 // Please do not change this file!
 interface CssExports {
   'actions': string;
-  'addAuthorButton': string;
   'candidate': string;
   'candidateAuthor': string;
+  'candidateContent': string;
   'candidateMeta': string;
+  'candidateSubline': string;
   'candidateTitle': string;
   'checkInput': string;
   'confidence': string;
@@ -13,6 +14,7 @@ interface CssExports {
   'confidenceTrack': string;
   'confidenceValue': string;
   'dateAdded': string;
+  'inlineAction': string;
   'noConfidence': string;
   'path': string;
   'progressStatus': string;
@@ -21,7 +23,6 @@ interface CssExports {
   'reasonDetail': string;
   'reasonLabel': string;
   'reasonList': string;
-  'reviewButton': string;
   'reviewMeta': string;
   'reviewModal': string;
   'reviewSection': string;

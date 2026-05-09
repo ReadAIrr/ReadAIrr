@@ -16,6 +16,7 @@
 .candidate {
   composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
 
+  overflow: hidden;
   flex: 2 0 220px;
   min-width: 0;
 }
@@ -23,6 +24,7 @@
 .candidateAuthor {
   composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
 
+  overflow: hidden;
   flex: 2 0 180px;
   min-width: 0;
 }
@@ -54,35 +56,60 @@
   margin-top: 0;
 }
 
+.candidateContent {
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
 .candidateTitle {
   overflow: hidden;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.candidateMeta {
+.candidateSubline {
+  display: flex;
   overflow: hidden;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  line-height: 14px;
+}
+
+.candidateMeta {
+  display: inline-block;
+  overflow: hidden;
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--dimColor);
   font-size: 12px;
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .suggestionMeta {
+  display: inline-block;
   overflow: hidden;
-  margin-top: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--linkColor);
   font-size: 12px;
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.reviewButton {
-  margin-top: 4px;
-}
-
-.addAuthorButton {
-  margin-top: 4px;
+.inlineAction {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--linkColor);
+  font-size: 12px;
+  line-height: 14px;
+  white-space: nowrap;
 }
 
 .progressStatus {
