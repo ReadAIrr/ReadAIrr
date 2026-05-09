@@ -135,7 +135,7 @@ fi
 docker compose --env-file .env -f compose.yml up -d --no-deps readarr
 
 for _ in \$(seq 1 20); do
-  if curl -fsS http://127.0.0.1:8789/ping >/dev/null; then
+  if curl --fail --silent --output /dev/null http://127.0.0.1:8789/ping; then
     docker compose --env-file .env -f compose.yml ps readarr
     exit 0
   fi
