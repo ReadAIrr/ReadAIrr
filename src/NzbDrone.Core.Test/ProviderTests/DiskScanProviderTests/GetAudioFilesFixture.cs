@@ -32,7 +32,7 @@ namespace NzbDrone.Core.Test.ProviderTests.DiskScanProviderTests
                         };
 
             Mocker.GetMock<IDiskProvider>()
-                .Setup(s => s.GetFileInfos(It.IsAny<string>(), It.IsAny<bool>()))
+                .Setup(s => s.EnumerateFileInfos(It.IsAny<string>(), It.IsAny<bool>()))
                 .Returns(new List<IFileInfo>());
         }
 
@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Test.ProviderTests.DiskScanProviderTests
             }
 
             Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.GetFileInfos(It.IsAny<string>(), true))
+                  .Setup(s => s.EnumerateFileInfos(It.IsAny<string>(), true))
                   .Returns(filesToReturn);
         }
 
@@ -60,8 +60,8 @@ namespace NzbDrone.Core.Test.ProviderTests.DiskScanProviderTests
         {
             Subject.GetBookFiles(_path);
 
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, true), Times.Once());
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, false), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, true), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, false), Times.Never());
         }
 
         [Test]
@@ -69,8 +69,8 @@ namespace NzbDrone.Core.Test.ProviderTests.DiskScanProviderTests
         {
             Subject.GetBookFiles(_path, true);
 
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, true), Times.Once());
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, false), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, true), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, false), Times.Never());
         }
 
         [Test]
@@ -78,8 +78,8 @@ namespace NzbDrone.Core.Test.ProviderTests.DiskScanProviderTests
         {
             Subject.GetBookFiles(_path, false);
 
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, true), Times.Never());
-            Mocker.GetMock<IDiskProvider>().Verify(s => s.GetFileInfos(_path, false), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, true), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(s => s.EnumerateFileInfos(_path, false), Times.Once());
         }
 
         [Test]

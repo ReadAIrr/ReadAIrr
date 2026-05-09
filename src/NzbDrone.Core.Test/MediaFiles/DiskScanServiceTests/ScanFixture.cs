@@ -115,7 +115,7 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             }
 
             Mocker.GetMock<IDiskProvider>()
-                .Setup(s => s.GetFileInfos(It.IsAny<string>(), true))
+                .Setup(s => s.EnumerateFileInfos(It.IsAny<string>(), true))
                 .Returns(files.Select(x => DiskProvider.GetFileInfo(x)).ToList());
         }
 
@@ -231,7 +231,7 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _author.Path });
 
             Mocker.GetMock<IDiskProvider>()
-                .Verify(v => v.GetFileInfos(It.IsAny<string>(), It.IsAny<bool>()), Times.Once());
+                .Verify(v => v.EnumerateFileInfos(It.IsAny<string>(), It.IsAny<bool>()), Times.Once());
 
             Mocker.GetMock<IMakeImportDecision>()
                 .Verify(v => v.GetImportDecisions(It.Is<List<IFileInfo>>(l => l.Count == 1), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
@@ -534,6 +534,52 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
         }
 
         [Test]
+        public void should_not_enumerate_entire_folder_before_first_import_decision_batch()
+        {
+            GivenAuthorFolder();
+
+            var files = Enumerable.Range(1, 101)
+                .Select(x => Path.Combine(_author.Path, "Season 1", $"file{x}.mobi"))
+                .ToList();
+
+            foreach (var file in files)
+            {
+                FileSystem.AddFile(file, new MockFileData(string.Empty));
+            }
+
+            var fileInfos = files.Select(x => DiskProvider.GetFileInfo(x)).ToList();
+            var enumerated = 0;
+            var expectedEnumerationCounts = new Queue<int>(new[] { 100, 101 });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.EnumerateFileInfos(It.IsAny<string>(), true))
+                .Returns(new CountingEnumerable<IFileInfo>(fileInfos, () => enumerated++));
+
+            GivenKnownFiles(new List<string>());
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Setup(x => x.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()))
+                .Returns((List<IFileInfo> fileList, IdentificationOverrides idOverrides, ImportDecisionMakerInfo idInfo, ImportDecisionMakerConfig idConfig) =>
+                {
+                    enumerated.Should().Be(expectedEnumerationCounts.Dequeue());
+
+                    return fileList.Select(x => new LocalBook
+                    {
+                        Author = _author,
+                        Path = x.FullName,
+                        Modified = x.LastWriteTimeUtc,
+                        FileTrackInfo = new ParsedTrackInfo()
+                    })
+                    .Select(x => new ImportDecision<LocalBook>(x, new Rejection("Reject")))
+                    .ToList();
+                });
+
+            Subject.Scan(new List<string> { _author.Path });
+
+            expectedEnumerationCounts.Should().BeEmpty();
+        }
+
+        [Test]
         public void should_update_info_for_changed_known_files()
         {
             GivenAuthorFolder();
@@ -593,6 +639,32 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
                                           l[0].Quality.Equals(localTrack.Quality) &&
                                           l[0].MediaInfo.AudioFormat == localTrack.FileTrackInfo.MediaInfo.AudioFormat)),
                         Times.Once());
+        }
+
+        private sealed class CountingEnumerable<T> : IEnumerable<T>
+        {
+            private readonly IEnumerable<T> _items;
+            private readonly Action _onMoveNext;
+
+            public CountingEnumerable(IEnumerable<T> items, Action onMoveNext)
+            {
+                _items = items;
+                _onMoveNext = onMoveNext;
+            }
+
+            public IEnumerator<T> GetEnumerator()
+            {
+                foreach (var item in _items)
+                {
+                    _onMoveNext();
+                    yield return item;
+                }
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
         }
     }
 }

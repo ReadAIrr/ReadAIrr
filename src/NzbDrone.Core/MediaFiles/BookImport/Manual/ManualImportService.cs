@@ -210,7 +210,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 }
             }
 
-            var authorFiles = _diskScanService.GetBookFiles(folder).ToList();
             var idOverrides = new IdentificationOverrides
             {
                 Author = author
@@ -230,20 +229,60 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 KeepAllEditions = true
             };
 
-            var decisions = _importDecisionMaker.GetImportDecisions(authorFiles, idOverrides, itemInfo, config);
+            var items = new List<ManualImportItem>();
+            var batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            var batchNumber = 0;
+
+            foreach (var file in _diskScanService.EnumerateBookFiles(folder))
+            {
+                batchFiles.Add(file);
+
+                if (batchFiles.Count < ImportDecisionBatchSize)
+                {
+                    continue;
+                }
+
+                batchNumber++;
+                items.AddRange(ProcessFolderBatch(batchFiles, batchNumber, downloadId, idOverrides, itemInfo, config, replaceExistingFiles));
+                batchFiles = new List<IFileInfo>(ImportDecisionBatchSize);
+            }
+
+            if (batchFiles.Any())
+            {
+                batchNumber++;
+                items.AddRange(ProcessFolderBatch(batchFiles, batchNumber, downloadId, idOverrides, itemInfo, config, replaceExistingFiles));
+            }
+
+            return items;
+        }
+
+        private IEnumerable<ManualImportItem> ProcessFolderBatch(List<IFileInfo> files, int batchNumber, string downloadId, IdentificationOverrides idOverrides, ImportDecisionMakerInfo itemInfo, ImportDecisionMakerConfig config, bool replaceExistingFiles)
+        {
+            var batchStopwatch = Stopwatch.StartNew();
+            var decisions = _importDecisionMaker.GetImportDecisions(files, idOverrides, itemInfo, config);
 
             // paths will be different for new and old files which is why we need to map separately
-            var newFiles = authorFiles.Join(decisions,
-                                            f => f.FullName,
-                                            d => d.Item.Path,
-                                            (f, d) => new { File = f, Decision = d },
-                                            PathEqualityComparer.Instance);
+            var newFiles = files.Join(decisions,
+                                      f => f.FullName,
+                                      d => d.Item.Path,
+                                      (f, d) => new { File = f, Decision = d },
+                                      PathEqualityComparer.Instance)
+                                .ToList();
 
             var newItems = newFiles.Select(x => MapItem(x.Decision, downloadId, replaceExistingFiles, false));
             var existingDecisions = decisions.Except(newFiles.Select(x => x.Decision));
             var existingItems = existingDecisions.Select(x => MapItem(x, null, replaceExistingFiles, false));
 
-            return newItems.Concat(existingItems).ToList();
+            batchStopwatch.Stop();
+            _logger.Debug("Completed manual import folder decision batch {0}: {1} files, {2} decisions, {3} accepted, {4} rejected [{5}]",
+                batchNumber,
+                files.Count,
+                decisions.Count,
+                decisions.Count(x => x.Approved),
+                decisions.Count(x => !x.Approved),
+                batchStopwatch.Elapsed);
+
+            return newItems.Concat(existingItems);
         }
 
         public List<ManualImportItem> UpdateItems(List<ManualImportItem> items)

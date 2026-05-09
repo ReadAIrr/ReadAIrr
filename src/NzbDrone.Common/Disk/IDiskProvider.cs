@@ -55,6 +55,7 @@ namespace NzbDrone.Common.Disk
         List<IDirectoryInfo> GetDirectoryInfos(string path);
         IFileInfo GetFileInfo(string path);
         List<IFileInfo> GetFileInfos(string path, bool recursive = false);
+        IEnumerable<IFileInfo> EnumerateFileInfos(string path, bool recursive = false);
         void RemoveEmptySubfolders(string path);
         void SaveStream(Stream stream, string path);
         bool IsValidFolderPermissionMask(string mask);
