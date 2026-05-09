@@ -19,4 +19,12 @@ namespace NzbDrone.Core.Profiles.Qualities
         NoPreference = 0,
         PreferFewerParts = 1
     }
+
+    public static class AudiobookShapePreference
+    {
+        public const string MultiFileMP3 = "multiFileMp3";
+        public const string MultiFileM4B = "multiFileM4B";
+        public const string SingleFileMP3 = "singleFileMp3";
+        public const string SingleFileM4B = "singleFileM4B";
+    }
 }

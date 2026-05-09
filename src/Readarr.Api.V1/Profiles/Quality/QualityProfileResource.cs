@@ -18,6 +18,7 @@ namespace Readarr.Api.V1.Profiles.Quality
         public AudiobookLayoutPreference AudiobookLayoutPreference { get; set; }
         public AudiobookFormatPreference AudiobookFormatPreference { get; set; }
         public AudiobookFileCountPreference AudiobookFileCountPreference { get; set; }
+        public List<string> AudiobookShapePreferenceOrder { get; set; }
         public List<ProfileFormatItemResource> FormatItems { get; set; }
     }
 
@@ -62,6 +63,7 @@ namespace Readarr.Api.V1.Profiles.Quality
                 AudiobookLayoutPreference = model.AudiobookLayoutPreference,
                 AudiobookFormatPreference = model.AudiobookFormatPreference,
                 AudiobookFileCountPreference = model.AudiobookFileCountPreference,
+                AudiobookShapePreferenceOrder = model.AudiobookShapePreferenceOrder ?? new List<string>(),
                 FormatItems = model.FormatItems.ConvertAll(ToResource)
             };
         }
@@ -112,6 +114,7 @@ namespace Readarr.Api.V1.Profiles.Quality
                 AudiobookLayoutPreference = resource.AudiobookLayoutPreference,
                 AudiobookFormatPreference = resource.AudiobookFormatPreference,
                 AudiobookFileCountPreference = resource.AudiobookFileCountPreference,
+                AudiobookShapePreferenceOrder = resource.AudiobookShapePreferenceOrder ?? new List<string>(),
                 FormatItems = resource.FormatItems.ConvertAll(ToModel)
             };
         }

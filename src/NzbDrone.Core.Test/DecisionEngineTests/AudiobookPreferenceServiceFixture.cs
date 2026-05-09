@@ -105,6 +105,93 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             Subject.Compare(_profile, currentFiles, candidate).Should().BePositive();
         }
 
+        [Test]
+        public void should_prefer_custom_shape_order_over_default_shape_assumptions()
+        {
+            _profile.AudiobookShapePreferenceOrder = new List<string>
+            {
+                AudiobookShapePreference.MultiFileMP3,
+                AudiobookShapePreference.MultiFileM4B,
+                AudiobookShapePreference.SingleFileMP3,
+                AudiobookShapePreference.SingleFileM4B
+            };
+
+            var currentFiles = new List<BookFile>
+            {
+                new BookFile { Path = "/books/current/book.m4b", Quality = new QualityModel(Quality.M4B) }
+            };
+
+            var candidate = GivenRemoteBook("Author Book mp3 12 files", Quality.UnknownAudio);
+
+            Subject.Compare(_profile, currentFiles, candidate).Should().BePositive();
+        }
+
+        [Test]
+        public void should_allow_custom_shape_order_to_prefer_single_m4b_over_multi_mp3()
+        {
+            _profile.AudiobookShapePreferenceOrder = new List<string>
+            {
+                AudiobookShapePreference.SingleFileM4B,
+                AudiobookShapePreference.SingleFileMP3,
+                AudiobookShapePreference.MultiFileM4B,
+                AudiobookShapePreference.MultiFileMP3
+            };
+
+            var currentFiles = new List<BookFile>
+            {
+                new BookFile { Path = "/books/current/part01.mp3", Quality = new QualityModel(Quality.MP3) },
+                new BookFile { Path = "/books/current/part02.mp3", Quality = new QualityModel(Quality.MP3) }
+            };
+
+            var candidate = GivenRemoteBook("Author Book single file m4b", Quality.UnknownAudio);
+
+            Subject.Compare(_profile, currentFiles, candidate).Should().BePositive();
+        }
+
+        [Test]
+        public void should_keep_unknown_custom_shape_neutral()
+        {
+            _profile.AudiobookShapePreferenceOrder = new List<string>
+            {
+                AudiobookShapePreference.SingleFileM4B,
+                AudiobookShapePreference.MultiFileMP3
+            };
+
+            var currentFiles = new List<BookFile>
+            {
+                new BookFile { Path = "/books/current/book.m4b", Quality = new QualityModel(Quality.M4B) }
+            };
+
+            var candidate = GivenRemoteBook("Author Book Audiobook", Quality.UnknownAudio);
+
+            Subject.Compare(_profile, currentFiles, candidate).Should().Be(0);
+        }
+
+        [Test]
+        public void should_prefer_fewer_parts_within_same_custom_shape_when_configured()
+        {
+            _profile.AudiobookShapePreferenceOrder = new List<string>
+            {
+                AudiobookShapePreference.MultiFileMP3,
+                AudiobookShapePreference.MultiFileM4B,
+                AudiobookShapePreference.SingleFileMP3,
+                AudiobookShapePreference.SingleFileM4B
+            };
+            _profile.AudiobookFileCountPreference = AudiobookFileCountPreference.PreferFewerParts;
+
+            var currentFiles = new List<BookFile>
+            {
+                new BookFile { Path = "/books/current/part01.mp3", Quality = new QualityModel(Quality.MP3) },
+                new BookFile { Path = "/books/current/part02.mp3", Quality = new QualityModel(Quality.MP3) },
+                new BookFile { Path = "/books/current/part03.mp3", Quality = new QualityModel(Quality.MP3) },
+                new BookFile { Path = "/books/current/part04.mp3", Quality = new QualityModel(Quality.MP3) }
+            };
+
+            var candidate = GivenRemoteBook("Author Book mp3 2 files", Quality.UnknownAudio);
+
+            Subject.Compare(_profile, currentFiles, candidate).Should().BePositive();
+        }
+
         private static RemoteBook GivenRemoteBook(string releaseTitle, Quality quality)
         {
             return new RemoteBook

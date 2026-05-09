@@ -38,6 +38,13 @@ const audiobookFileCountPreferenceOptions = [
   { key: 1, value: 'Prefer fewer parts' }
 ];
 
+const audiobookShapePreferenceOptions = [
+  { key: 'multiFileMp3', value: 'Multi-file MP3' },
+  { key: 'multiFileM4B', value: 'Multi-file M4B' },
+  { key: 'singleFileMp3', value: 'Single-file MP3' },
+  { key: 'singleFileM4B', value: 'Single-file M4B' }
+];
+
 function getCustomFormatRender(formatItems, otherProps) {
   return (
     <QualityProfileFormatItems
@@ -126,6 +133,8 @@ class EditQualityProfileModalContent extends Component {
       item,
       isInUse,
       onInputChange,
+      onAudiobookShapePreferenceOrderEnabledChange,
+      onAudiobookShapePreferenceOrderChange,
       onCutoffChange,
       onSavePress,
       onModalClose,
@@ -143,9 +152,12 @@ class EditQualityProfileModalContent extends Component {
       audiobookLayoutPreference = { value: 0 },
       audiobookFormatPreference = { value: 0 },
       audiobookFileCountPreference = { value: 0 },
+      audiobookShapePreferenceOrder = { value: [] },
       items,
       formatItems
     } = item;
+    const audiobookShapePreferenceOrderValue = audiobookShapePreferenceOrder.value || [];
+    const isCustomAudiobookShapeOrderEnabled = audiobookShapePreferenceOrderValue.length > 0;
 
     return (
       <ModalContent onModalClose={onModalClose}>
@@ -289,6 +301,44 @@ class EditQualityProfileModalContent extends Component {
 
                       <FormGroup size={sizes.EXTRA_SMALL}>
                         <FormLabel size={sizes.SMALL}>
+                          Audiobook Shape Ranking
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.CHECK}
+                          name="audiobookShapePreferenceOrderEnabled"
+                          value={isCustomAudiobookShapeOrderEnabled}
+                          helpText="Optionally rank combined audiobook shapes for equal-quality and equal-custom-format upgrade tie-breaks. Unknown shapes stay neutral."
+                          onChange={onAudiobookShapePreferenceOrderEnabledChange}
+                        />
+                      </FormGroup>
+
+                      {
+                        isCustomAudiobookShapeOrderEnabled &&
+                          audiobookShapePreferenceOrderValue.map((shape, index) => {
+                            return (
+                              <FormGroup
+                                key={index}
+                                size={sizes.EXTRA_SMALL}
+                              >
+                                <FormLabel size={sizes.SMALL}>
+                                  {`Shape Rank ${index + 1}`}
+                                </FormLabel>
+
+                                <FormInputGroup
+                                  type={inputTypes.SELECT}
+                                  name={`audiobookShapePreferenceOrder.${index}`}
+                                  value={shape}
+                                  values={audiobookShapePreferenceOptions}
+                                  onChange={({ value }) => onAudiobookShapePreferenceOrderChange(index, value)}
+                                />
+                              </FormGroup>
+                            );
+                          })
+                      }
+
+                      <FormGroup size={sizes.EXTRA_SMALL}>
+                        <FormLabel size={sizes.SMALL}>
                           Audiobook File Count
                         </FormLabel>
 
@@ -378,6 +428,8 @@ EditQualityProfileModalContent.propTypes = {
   item: PropTypes.object.isRequired,
   isInUse: PropTypes.bool.isRequired,
   onInputChange: PropTypes.func.isRequired,
+  onAudiobookShapePreferenceOrderEnabledChange: PropTypes.func.isRequired,
+  onAudiobookShapePreferenceOrderChange: PropTypes.func.isRequired,
   onCutoffChange: PropTypes.func.isRequired,
   onSavePress: PropTypes.func.isRequired,
   onContentHeightChange: PropTypes.func.isRequired,

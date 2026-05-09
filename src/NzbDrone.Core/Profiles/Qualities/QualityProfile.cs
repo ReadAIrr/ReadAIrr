@@ -11,6 +11,7 @@ namespace NzbDrone.Core.Profiles.Qualities
         public QualityProfile()
         {
             FormatItems = new List<ProfileFormatItem>();
+            AudiobookShapePreferenceOrder = new List<string>();
         }
 
         public string Name { get; set; }
@@ -21,6 +22,7 @@ namespace NzbDrone.Core.Profiles.Qualities
         public AudiobookLayoutPreference AudiobookLayoutPreference { get; set; }
         public AudiobookFormatPreference AudiobookFormatPreference { get; set; }
         public AudiobookFileCountPreference AudiobookFileCountPreference { get; set; }
+        public List<string> AudiobookShapePreferenceOrder { get; set; }
         public List<ProfileFormatItem> FormatItems { get; set; }
         public List<QualityProfileQualityItem> Items { get; set; }
 

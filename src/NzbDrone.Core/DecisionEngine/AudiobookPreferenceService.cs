@@ -30,7 +30,8 @@ namespace NzbDrone.Core.DecisionEngine
         {
             return profile.AudiobookLayoutPreference != AudiobookLayoutPreference.NoPreference ||
                    profile.AudiobookFormatPreference != AudiobookFormatPreference.NoPreference ||
-                   profile.AudiobookFileCountPreference != AudiobookFileCountPreference.NoPreference;
+                   profile.AudiobookFileCountPreference != AudiobookFileCountPreference.NoPreference ||
+                   profile.AudiobookShapePreferenceOrder?.Any() == true;
         }
 
         public int Compare(QualityProfile profile, IEnumerable<BookFile> currentFiles, RemoteBook candidate)
@@ -89,6 +90,13 @@ namespace NzbDrone.Core.DecisionEngine
 
         private static int Compare(QualityProfile profile, AudiobookPreferenceDescriptor current, AudiobookPreferenceDescriptor proposed)
         {
+            var shapeCompare = CompareShapeOrder(profile, current, proposed);
+
+            if (shapeCompare != 0)
+            {
+                return shapeCompare;
+            }
+
             var compare = 0;
 
             if (profile.AudiobookLayoutPreference == AudiobookLayoutPreference.PreferSingleFile)
@@ -117,6 +125,62 @@ namespace NzbDrone.Core.DecisionEngine
             }
 
             return compare.CompareTo(0);
+        }
+
+        private static int CompareShapeOrder(QualityProfile profile, AudiobookPreferenceDescriptor current, AudiobookPreferenceDescriptor proposed)
+        {
+            if (profile.AudiobookShapePreferenceOrder?.Any() != true)
+            {
+                return 0;
+            }
+
+            var currentShape = GetShape(current);
+            var proposedShape = GetShape(proposed);
+
+            if (currentShape == null || proposedShape == null)
+            {
+                return 0;
+            }
+
+            var order = profile.AudiobookShapePreferenceOrder
+                               .Where(x => x.IsNotNullOrWhiteSpace())
+                               .Select((shape, index) => new { Shape = shape, Index = index })
+                               .GroupBy(x => x.Shape)
+                               .ToDictionary(x => x.Key, x => x.First().Index);
+
+            if (!order.TryGetValue(currentShape, out var currentIndex) ||
+                !order.TryGetValue(proposedShape, out var proposedIndex) ||
+                currentIndex == proposedIndex)
+            {
+                return 0;
+            }
+
+            return currentIndex.CompareTo(proposedIndex);
+        }
+
+        private static string GetShape(AudiobookPreferenceDescriptor descriptor)
+        {
+            if (descriptor.Layout == AudiobookLayout.MultiFile && descriptor.Format == AudiobookFormat.MP3)
+            {
+                return AudiobookShapePreference.MultiFileMP3;
+            }
+
+            if (descriptor.Layout == AudiobookLayout.MultiFile && descriptor.Format == AudiobookFormat.M4B)
+            {
+                return AudiobookShapePreference.MultiFileM4B;
+            }
+
+            if (descriptor.Layout == AudiobookLayout.SingleFile && descriptor.Format == AudiobookFormat.MP3)
+            {
+                return AudiobookShapePreference.SingleFileMP3;
+            }
+
+            if (descriptor.Layout == AudiobookLayout.SingleFile && descriptor.Format == AudiobookFormat.M4B)
+            {
+                return AudiobookShapePreference.SingleFileM4B;
+            }
+
+            return null;
         }
 
         private static int CompareKnown<T>(T current, T proposed, T preferred)

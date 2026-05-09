@@ -31,6 +31,13 @@ function parseIndex(index) {
   ];
 }
 
+const DEFAULT_AUDIOBOOK_SHAPE_PREFERENCE_ORDER = [
+  'multiFileMp3',
+  'multiFileM4B',
+  'singleFileMp3',
+  'singleFileM4B'
+];
+
 function createQualitiesSelector() {
   return createSelector(
     createProviderSettingsSelector('qualityProfiles'),
@@ -174,6 +181,30 @@ class EditQualityProfileModalContentConnector extends Component {
 
   onInputChange = ({ name, value }) => {
     this.props.setQualityProfileValue({ name, value });
+  };
+
+  onAudiobookShapePreferenceOrderEnabledChange = ({ value }) => {
+    this.props.setQualityProfileValue({
+      name: 'audiobookShapePreferenceOrder',
+      value: value ? DEFAULT_AUDIOBOOK_SHAPE_PREFERENCE_ORDER : []
+    });
+  };
+
+  onAudiobookShapePreferenceOrderChange = (index, value) => {
+    const currentOrder = this.props.item.audiobookShapePreferenceOrder.value || DEFAULT_AUDIOBOOK_SHAPE_PREFERENCE_ORDER;
+    const nextOrder = [...currentOrder];
+    const existingIndex = nextOrder.indexOf(value);
+
+    if (existingIndex >= 0) {
+      nextOrder[existingIndex] = nextOrder[index];
+    }
+
+    nextOrder[index] = value;
+
+    this.props.setQualityProfileValue({
+      name: 'audiobookShapePreferenceOrder',
+      value: nextOrder
+    });
   };
 
   onCutoffChange = ({ name, value }) => {
@@ -457,6 +488,8 @@ class EditQualityProfileModalContentConnector extends Component {
         {...this.props}
         onSavePress={this.onSavePress}
         onInputChange={this.onInputChange}
+        onAudiobookShapePreferenceOrderEnabledChange={this.onAudiobookShapePreferenceOrderEnabledChange}
+        onAudiobookShapePreferenceOrderChange={this.onAudiobookShapePreferenceOrderChange}
         onCutoffChange={this.onCutoffChange}
         onCreateGroupPress={this.onCreateGroupPress}
         onDeleteGroupPress={this.onDeleteGroupPress}
