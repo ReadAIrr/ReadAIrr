@@ -5,6 +5,7 @@ interface CssExports {
   'helpText': string;
   'message': string;
   'noResults': string;
+  'returnContext': string;
   'searchContainer': string;
   'searchIconContainer': string;
   'searchInput': string;

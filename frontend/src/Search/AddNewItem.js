@@ -83,6 +83,9 @@ class AddNewItem extends Component {
     const {
       error,
       items,
+      returnUrl,
+      returnLabel,
+      contextBook,
       hasExistingAuthors
     } = this.props;
 
@@ -92,6 +95,24 @@ class AddNewItem extends Component {
     return (
       <PageContent title={translate('AddNewItem')}>
         <PageContentBody>
+          {
+            returnUrl &&
+              <div className={styles.returnContext}>
+                <div>
+                  Adding author from {returnLabel || 'previous workflow'}
+                  {
+                    contextBook ?
+                      ` for "${contextBook}"` :
+                      ''
+                  }
+                </div>
+
+                <Link to={returnUrl}>
+                  Return to {returnLabel || 'previous workflow'}
+                </Link>
+              </div>
+          }
+
           <div className={styles.searchContainer}>
             <div className={styles.searchIconContainer}>
               <Icon
@@ -228,6 +249,9 @@ class AddNewItem extends Component {
 
 AddNewItem.propTypes = {
   term: PropTypes.string,
+  returnUrl: PropTypes.string,
+  returnLabel: PropTypes.string,
+  contextBook: PropTypes.string,
   isFetching: PropTypes.bool.isRequired,
   error: PropTypes.object,
   isAdding: PropTypes.bool.isRequired,

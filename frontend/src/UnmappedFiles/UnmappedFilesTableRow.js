@@ -273,6 +273,34 @@ function getReviewSuggestion(review) {
   return getDeepIdentifySuggestion(review) || review?.suggestions?.find((item) => item.status !== 'disabled');
 }
 
+function getAuthorAddCandidate(review, suggestion) {
+  const candidate = review?.candidate || {};
+
+  if (candidate.authorId) {
+    return null;
+  }
+
+  return suggestion?.likelyAuthor || candidate.authorName || review?.parsed?.author || '';
+}
+
+function getBookContext(review, suggestion) {
+  return suggestion?.likelyBook || review?.candidate?.bookTitle || review?.parsed?.book || '';
+}
+
+function getAddAuthorUrl(authorName, bookTitle) {
+  const params = [
+    `term=${encodeURIComponent(authorName)}`,
+    `returnUrl=${encodeURIComponent('/unmapped')}`,
+    `returnLabel=${encodeURIComponent('Unmapped Files')}`
+  ];
+
+  if (bookTitle) {
+    params.push(`contextBook=${encodeURIComponent(bookTitle)}`);
+  }
+
+  return `/add/search?${params.join('&')}`;
+}
+
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -558,6 +586,8 @@ class UnmappedFilesTableRow extends Component {
               const edition = candidate.editionTitle || candidate.editionFormat || candidate.editionLanguage;
               const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
               const contributorEvidenceDetails = getContributorEvidenceDetails(review?.contributorEvidence || contributorEvidence);
+              const addAuthorCandidate = getAuthorAddCandidate(review, suggestion);
+              const bookContext = getBookContext(review, suggestion);
 
               return (
                 <VirtualTableRowCell
@@ -642,6 +672,16 @@ class UnmappedFilesTableRow extends Component {
                         {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
                       </div>
                   }
+
+                  {
+                    addAuthorCandidate &&
+                      <Button
+                        className={styles.addAuthorButton}
+                        to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                      >
+                        Add Author
+                      </Button>
+                  }
                 </VirtualTableRowCell>
               );
             }
@@ -650,6 +690,8 @@ class UnmappedFilesTableRow extends Component {
               const parsed = review?.parsed || {};
               const candidate = review?.candidate || {};
               const candidateAuthor = candidate.authorName || parsed.author || 'No author candidate';
+              const addAuthorCandidate = getAuthorAddCandidate(review, reviewSuggestion);
+              const bookContext = getBookContext(review, reviewSuggestion);
 
               return (
                 <VirtualTableRowCell
@@ -659,6 +701,16 @@ class UnmappedFilesTableRow extends Component {
                   <div className={styles.candidateTitle}>
                     {candidateAuthor}
                   </div>
+
+                  {
+                    addAuthorCandidate &&
+                      <Button
+                        className={styles.addAuthorButton}
+                        to={getAddAuthorUrl(addAuthorCandidate, bookContext)}
+                      >
+                        Add Author
+                      </Button>
+                  }
                 </VirtualTableRowCell>
               );
             }
@@ -978,6 +1030,19 @@ class UnmappedFilesTableRow extends Component {
                           </div>
                         </div>
                     }
+
+                    {
+                      getAuthorAddCandidate(review, reviewSuggestion) &&
+                        <div className={styles.reviewSection}>
+                          <div className={styles.reviewSectionTitle}>
+                            Missing author
+                          </div>
+
+                          <div className={styles.reasonDetail}>
+                            Add the likely author using the existing add flow, then return here and retry identify or manual match.
+                          </div>
+                        </div>
+                    }
                   </div> :
                   <div>
                     No suggestion is available for review.
@@ -996,6 +1061,15 @@ class UnmappedFilesTableRow extends Component {
               >
                 Accept and Manual Match
               </Button>
+
+              {
+                getAuthorAddCandidate(review, reviewSuggestion) &&
+                  <Button
+                    to={getAddAuthorUrl(getAuthorAddCandidate(review, reviewSuggestion), getBookContext(review, reviewSuggestion))}
+                  >
+                    Add Author
+                  </Button>
+              }
             </ModalFooter>
           </ModalContent>
         </Modal>

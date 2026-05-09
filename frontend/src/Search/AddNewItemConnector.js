@@ -18,6 +18,9 @@ function createMapStateToProps() {
       return {
         ...search,
         term: params.term,
+        returnUrl: params.returnUrl,
+        returnLabel: params.returnLabel,
+        contextBook: params.contextBook,
         hasExistingAuthors: existingAuthorsCount > 0
       };
     }

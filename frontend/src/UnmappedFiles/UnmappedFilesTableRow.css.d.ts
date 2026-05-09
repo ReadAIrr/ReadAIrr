@@ -2,6 +2,7 @@
 // Please do not change this file!
 interface CssExports {
   'actions': string;
+  'addAuthorButton': string;
   'candidate': string;
   'candidateAuthor': string;
   'candidateMeta': string;
