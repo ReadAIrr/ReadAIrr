@@ -3,8 +3,8 @@ using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
@@ -104,13 +104,16 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             var suggestionMatchedId = InsertUnmappedFile(@"/search/SuggestionOnlyMatch.m4b".AsOsAgnostic()).Id;
 
-            var spec = Subject.GetUnmappedFiles(new PagingSpec<BookFile>
-            {
-                Page = 1,
-                PageSize = 10,
-                SortKey = "path",
-                SortDirection = SortDirection.Ascending
-            }, "not-in-path", new[] { suggestionMatchedId });
+            var spec = Subject.GetUnmappedFiles(
+                new PagingSpec<BookFile>
+                {
+                    Page = 1,
+                    PageSize = 10,
+                    SortKey = "path",
+                    SortDirection = SortDirection.Ascending
+                },
+                "not-in-path",
+                new[] { suggestionMatchedId });
 
             spec.TotalRecords.Should().Be(1);
             spec.Records.Should().ContainSingle();
