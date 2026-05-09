@@ -16,13 +16,23 @@ namespace Readarr.Api.V1.Metadata
         public string ProviderStatus { get; set; }
         public string SummaryStatus { get; set; }
         public string Summary { get; set; }
+        public List<MetadataComparisonStatusCountResource> StatusCounts { get; set; }
         public List<MetadataComparisonFieldResource> Fields { get; set; }
+    }
+
+    public class MetadataComparisonStatusCountResource
+    {
+        public string Status { get; set; }
+        public string Label { get; set; }
+        public int Count { get; set; }
     }
 
     public class MetadataComparisonFieldResource
     {
         public string Field { get; set; }
         public string Label { get; set; }
+        public string Section { get; set; }
+        public string SectionLabel { get; set; }
         public string Status { get; set; }
         public string LocalValue { get; set; }
         public string ProviderValue { get; set; }
@@ -30,6 +40,7 @@ namespace Readarr.Api.V1.Metadata
         public string Source { get; set; }
         public int Confidence { get; set; }
         public string Explanation { get; set; }
+        public string ActionHint { get; set; }
     }
 
     public static class MetadataComparisonResourceMapper
@@ -44,25 +55,23 @@ namespace Readarr.Api.V1.Metadata
         {
             var fields = new List<MetadataComparisonFieldResource>
             {
-                Compare("title", "Book title", localBook?.Title, providerBook?.Title, "book metadata"),
-                Compare("author", "Author", localBook?.AuthorMetadata?.Value?.Name, providerBook?.AuthorMetadata?.Value?.Name, "author metadata"),
-                Compare("editionTitle", "Edition title", localEdition?.Title, providerEdition?.Title, "edition metadata"),
-                Compare("language", "Language", localEdition?.Language, providerEdition?.Language, "edition metadata"),
-                Compare("isbn13", "ISBN-13", localEdition?.Isbn13, providerEdition?.Isbn13, "edition identifiers"),
-                Compare("asin", "ASIN", localEdition?.Asin, providerEdition?.Asin, "edition identifiers"),
-                Compare("publisher", "Publisher", localEdition?.Publisher, providerEdition?.Publisher, "edition metadata"),
-                Compare("pageCount", "Page count", FormatNumber(localEdition?.PageCount), FormatNumber(providerEdition?.PageCount), "edition metadata"),
-                Compare("publicationDate", "Publication date", FormatDate(localEdition?.ReleaseDate ?? localBook?.ReleaseDate), FormatDate(providerEdition?.ReleaseDate ?? providerBook?.ReleaseDate), "release metadata"),
-                Compare("series", "Series", FormatSeries(localBook), FormatSeries(providerBook), "series metadata"),
-                Compare("overview", "Overview", localEdition?.Overview, providerEdition?.Overview, "description metadata", true),
-                Compare("cover", "Cover artwork", HasImages(localEdition) ? "present" : null, HasImages(providerEdition) ? "present" : null, "cover metadata")
+                Compare("title", "Book title", "coreIdentity", "Core book identity", localBook?.Title, providerBook?.Title, "book metadata"),
+                Compare("author", "Author", "coreIdentity", "Core book identity", localBook?.AuthorMetadata?.Value?.Name, providerBook?.AuthorMetadata?.Value?.Name, "author metadata"),
+                Compare("editionTitle", "Edition title", "editionIdentifiers", "Edition identifiers", localEdition?.Title, providerEdition?.Title, "edition metadata"),
+                Compare("language", "Language", "editionIdentifiers", "Edition identifiers", localEdition?.Language, providerEdition?.Language, "edition metadata"),
+                Compare("isbn13", "ISBN-13", "editionIdentifiers", "Edition identifiers", localEdition?.Isbn13, providerEdition?.Isbn13, "edition identifiers"),
+                Compare("asin", "ASIN", "editionIdentifiers", "Edition identifiers", localEdition?.Asin, providerEdition?.Asin, "edition identifiers"),
+                Compare("publisher", "Publisher", "publication", "Publication details", localEdition?.Publisher, providerEdition?.Publisher, "edition metadata"),
+                Compare("pageCount", "Page count", "publication", "Publication details", FormatNumber(localEdition?.PageCount), FormatNumber(providerEdition?.PageCount), "edition metadata"),
+                Compare("publicationDate", "Publication date", "publication", "Publication details", FormatDate(localEdition?.ReleaseDate ?? localBook?.ReleaseDate), FormatDate(providerEdition?.ReleaseDate ?? providerBook?.ReleaseDate), "release metadata"),
+                Compare("series", "Series", "series", "Series", FormatSeries(localBook), FormatSeries(providerBook), "series metadata"),
+                Compare("overview", "Overview", "coverOverview", "Cover and overview", localEdition?.Overview, providerEdition?.Overview, "description metadata", true),
+                Compare("cover", "Cover artwork", "coverOverview", "Cover and overview", HasImages(localEdition) ? "present" : null, HasImages(providerEdition) ? "present" : null, "cover metadata")
             };
 
             fields.Add(CompareNarrators(evidence));
 
-            var reviewFields = fields.Count(x => x.Status == "conflicting" || x.Status == "provider-only" || x.Status == "missing" || x.Status == "needs-review" || x.Status == "low-confidence");
-            var confirmedFields = fields.Count(x => x.Status == "confirmed");
-            var summaryStatus = reviewFields > 0 ? "needs-review" : "confirmed";
+            var summaryStatus = fields.Any(x => IsReviewStatus(x.Status)) ? "needs-review" : "confirmed";
 
             if (providerBook == null && providerError.IsNotNullOrWhiteSpace())
             {
@@ -71,12 +80,18 @@ namespace Readarr.Api.V1.Metadata
                 {
                     Field = "providerAvailability",
                     Label = "Provider metadata",
+                    Section = "provider",
+                    SectionLabel = "Provider availability",
                     Status = "needs-review",
                     Source = metadataSource,
                     Confidence = 0,
-                    Explanation = providerError
+                    Explanation = providerError,
+                    ActionHint = "Check provider reachability or review this book using local metadata and stored evidence only."
                 });
             }
+
+            var reviewFields = fields.Count(x => IsReviewStatus(x.Status));
+            var confirmedFields = fields.Count(x => x.Status == "confirmed");
 
             return new MetadataComparisonResource
             {
@@ -89,11 +104,12 @@ namespace Readarr.Api.V1.Metadata
                 Summary = reviewFields > 0 ?
                     $"{reviewFields} field{(reviewFields == 1 ? string.Empty : "s")} need review; {confirmedFields} confirmed." :
                     $"{confirmedFields} field{(confirmedFields == 1 ? string.Empty : "s")} confirmed; no disagreements found.",
+                StatusCounts = BuildStatusCounts(fields),
                 Fields = fields
             };
         }
 
-        private static MetadataComparisonFieldResource Compare(string field, string label, string localValue, string providerValue, string source, bool longValue = false)
+        private static MetadataComparisonFieldResource Compare(string field, string label, string section, string sectionLabel, string localValue, string providerValue, string source, bool longValue = false)
         {
             localValue = NormalizeDisplay(localValue, longValue);
             providerValue = NormalizeDisplay(providerValue, longValue);
@@ -109,12 +125,15 @@ namespace Readarr.Api.V1.Metadata
             {
                 Field = field,
                 Label = label,
+                Section = section,
+                SectionLabel = sectionLabel,
                 Status = status,
                 LocalValue = localValue,
                 ProviderValue = providerValue,
                 Source = source,
                 Confidence = confidence,
-                Explanation = Explain(label, status)
+                Explanation = Explain(label, status),
+                ActionHint = ActionHint(label, status)
             };
         }
 
@@ -137,6 +156,8 @@ namespace Readarr.Api.V1.Metadata
             {
                 Field = "narrators",
                 Label = "Narrator evidence",
+                Section = "contributors",
+                SectionLabel = "Narrator and contributor evidence",
                 Status = status,
                 LocalValue = local,
                 ProviderValue = provider,
@@ -145,8 +166,34 @@ namespace Readarr.Api.V1.Metadata
                 Confidence = status == "confirmed" ? 90 : status == "missing" ? 0 : 50,
                 Explanation = status == "confirmed" ?
                     "Narrator evidence agrees across available sources." :
-                    "Narrator evidence is review-only and should be confirmed before using it for library decisions."
+                    "Narrator evidence is review-only and should be confirmed before using it for library decisions.",
+                ActionHint = status == "confirmed" ?
+                    "No review needed unless the narrator identity looks wrong." :
+                    "Review narrator evidence before relying on it for matching, tagging, or completeness decisions."
             };
+        }
+
+        private static List<MetadataComparisonStatusCountResource> BuildStatusCounts(List<MetadataComparisonFieldResource> fields)
+        {
+            return fields.GroupBy(x => x.Status)
+                .Select(x => new MetadataComparisonStatusCountResource
+                {
+                    Status = x.Key,
+                    Label = StatusLabel(x.Key),
+                    Count = x.Count()
+                })
+                .OrderBy(x => StatusSortOrder(x.Status))
+                .ThenBy(x => x.Label)
+                .ToList();
+        }
+
+        private static bool IsReviewStatus(string status)
+        {
+            return status == "conflicting" ||
+                   status == "provider-only" ||
+                   status == "missing" ||
+                   status == "needs-review" ||
+                   status == "low-confidence";
         }
 
         private static string GetStatus(string localValue, string providerValue)
@@ -186,6 +233,67 @@ namespace Readarr.Api.V1.Metadata
                     return $"{label} exists locally but was not present in the provider metadata.";
                 default:
                     return $"{label} is missing from both local and provider metadata.";
+            }
+        }
+
+        private static string ActionHint(string label, string status)
+        {
+            switch (status)
+            {
+                case "confirmed":
+                    return "No action needed unless the matched metadata source is wrong.";
+                case "conflicting":
+                    return $"Review {label.ToLowerInvariant()} before accepting provider metadata or editing local metadata.";
+                case "provider-only":
+                    return $"Provider has {label.ToLowerInvariant()}; review before filling the local value.";
+                case "local-only":
+                    return $"Keep the local {label.ToLowerInvariant()} if it is intentional, or verify the provider record.";
+                default:
+                    return $"Add or verify {label.ToLowerInvariant()} if it matters for matching, completeness, or display.";
+            }
+        }
+
+        private static string StatusLabel(string status)
+        {
+            switch (status)
+            {
+                case "confirmed":
+                    return "Confirmed";
+                case "conflicting":
+                    return "Conflicting";
+                case "provider-only":
+                    return "Provider only";
+                case "local-only":
+                    return "Local only";
+                case "needs-review":
+                    return "Needs review";
+                case "low-confidence":
+                    return "Low confidence";
+                default:
+                    return "Missing";
+            }
+        }
+
+        private static int StatusSortOrder(string status)
+        {
+            switch (status)
+            {
+                case "needs-review":
+                    return 0;
+                case "conflicting":
+                    return 1;
+                case "provider-only":
+                    return 2;
+                case "missing":
+                    return 3;
+                case "local-only":
+                    return 4;
+                case "low-confidence":
+                    return 5;
+                case "confirmed":
+                    return 6;
+                default:
+                    return 7;
             }
         }
 

@@ -8,6 +8,7 @@ interface CssExports {
   'filterIcon': string;
   'innerContentBody': string;
   'metadataComparison': string;
+  'metadataComparisonActions': string;
   'metadataComparisonBadge': string;
   'metadataComparisonExplanation': string;
   'metadataComparisonField': string;
@@ -20,6 +21,16 @@ interface CssExports {
   'metadataComparisonSummary': string;
   'metadataComparisonTitle': string;
   'metadataComparisonValues': string;
+  'metadataDrillInField': string;
+  'metadataDrillInHint': string;
+  'metadataDrillInSection': string;
+  'metadataDrillInSectionTitle': string;
+  'metadataDrillInSummary': string;
+  'metadataDrillInTitle': string;
+  'metadataDrillInValues': string;
+  'metadataStatusCount': string;
+  'metadataStatusCounts': string;
+  'metadataStatusCountsCompact': string;
   'selectedTab': string;
   'tab': string;
   'tabContent': string;

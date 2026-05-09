@@ -5,8 +5,14 @@ import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
 import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
+import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
@@ -43,7 +49,149 @@ function getFieldStatusLabel(status) {
   }
 }
 
-function MetadataComparisonPanel({ comparison, isFetching, error }) {
+function getGroupedMetadataFields(fields = []) {
+  return fields.reduce((acc, field) => {
+    const section = field.section || 'other';
+    const sectionLabel = field.sectionLabel || 'Other metadata';
+    const existing = acc.find((item) => item.section === section);
+
+    if (existing) {
+      existing.fields.push(field);
+    } else {
+      acc.push({
+        section,
+        sectionLabel,
+        fields: [field]
+      });
+    }
+
+    return acc;
+  }, []);
+}
+
+function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
+  if (!comparison) {
+    return null;
+  }
+
+  const groups = getGroupedMetadataFields(comparison.fields || []);
+  const statusCounts = comparison.statusCounts || [];
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onModalClose={onModalClose}
+    >
+      <ModalContent onModalClose={onModalClose}>
+        <ModalHeader>
+          Metadata confidence review
+        </ModalHeader>
+
+        <ModalBody>
+          <div className={styles.metadataDrillInSummary}>
+            <div>
+              <div className={styles.metadataDrillInTitle}>{comparison.title}</div>
+              <div className={styles.metadataComparisonSummary}>{comparison.summary}</div>
+              <div className={styles.metadataComparisonNotice}>
+                Provider: {comparison.metadataSource || 'Not configured'} - {comparison.providerStatus}
+              </div>
+            </div>
+
+            <div className={styles.metadataStatusCounts}>
+              {
+                statusCounts.map((statusCount) => {
+                  return (
+                    <div
+                      key={statusCount.status}
+                      className={styles.metadataStatusCount}
+                    >
+                      <span>{statusCount.label}</span>
+                      <b>{statusCount.count}</b>
+                    </div>
+                  );
+                })
+              }
+            </div>
+          </div>
+
+          <div className={styles.metadataComparisonNotice}>
+            This is a read-only curation view. It does not update metadata, switch editions, add authors or books, import files, move files, rename, retag, monitor, search, download, change provider settings, or call AI decisioning.
+          </div>
+
+          {
+            groups.map((group) => {
+              return (
+                <div
+                  key={group.section}
+                  className={styles.metadataDrillInSection}
+                >
+                  <div className={styles.metadataDrillInSectionTitle}>
+                    {group.sectionLabel}
+                  </div>
+
+                  {
+                    group.fields.map((field) => {
+                      return (
+                        <div
+                          key={field.field}
+                          className={styles.metadataDrillInField}
+                        >
+                          <div className={styles.metadataComparisonField}>
+                            <span className={styles.metadataComparisonLabel}>{field.label}</span>
+                            <span className={styles.metadataComparisonStatus}>{getFieldStatusLabel(field.status)}</span>
+                          </div>
+
+                          <div className={styles.metadataDrillInValues}>
+                            <div>
+                              <span>Local</span>
+                              <p>{field.localValue || 'Not set'}</p>
+                            </div>
+
+                            <div>
+                              <span>Provider</span>
+                              <p>{field.providerValue || 'Not available'}</p>
+                            </div>
+
+                            <div>
+                              <span>Evidence</span>
+                              <p>{field.evidenceValue || field.source || 'No separate evidence'}</p>
+                            </div>
+                          </div>
+
+                          <div className={styles.metadataComparisonExplanation}>
+                            {field.explanation}
+                          </div>
+
+                          <div className={styles.metadataDrillInHint}>
+                            {field.actionHint}
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              );
+            })
+          }
+        </ModalBody>
+
+        <ModalFooter>
+          <Button onPress={onModalClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+MetadataComparisonDrillInModal.propTypes = {
+  comparison: PropTypes.object,
+  isOpen: PropTypes.bool.isRequired,
+  onModalClose: PropTypes.func.isRequired
+};
+
+function MetadataComparisonPanel({ comparison, isFetching, error, onOpenDrillIn }) {
   if (isFetching) {
     return (
       <div className={styles.metadataComparison}>
@@ -85,6 +233,18 @@ function MetadataComparisonPanel({ comparison, isFetching, error }) {
         </div>
       </div>
 
+      <div className={styles.metadataStatusCountsCompact}>
+        {
+          (comparison.statusCounts || []).map((statusCount) => {
+            return (
+              <span key={statusCount.status}>
+                <b>{statusCount.count}</b> {statusCount.label}
+              </span>
+            );
+          })
+        }
+      </div>
+
       <div className={styles.metadataComparisonNotice}>
         Opening this comparison does not update metadata, change editions, import files, rename, retag, search, monitor, or call AI providers.
       </div>
@@ -117,6 +277,12 @@ function MetadataComparisonPanel({ comparison, isFetching, error }) {
           })
         }
       </div>
+
+      <div className={styles.metadataComparisonActions}>
+        <Button onPress={onOpenDrillIn}>
+          Review Details
+        </Button>
+      </div>
     </div>
   );
 }
@@ -124,7 +290,8 @@ function MetadataComparisonPanel({ comparison, isFetching, error }) {
 MetadataComparisonPanel.propTypes = {
   comparison: PropTypes.object,
   isFetching: PropTypes.bool.isRequired,
-  error: PropTypes.object
+  error: PropTypes.object,
+  onOpenDrillIn: PropTypes.func.isRequired
 };
 
 class BookDetails extends Component {
@@ -143,7 +310,8 @@ class BookDetails extends Component {
       selectedTabIndex: 0,
       metadataComparison: null,
       isFetchingMetadataComparison: false,
-      metadataComparisonError: null
+      metadataComparisonError: null,
+      isMetadataDrillInModalOpen: false
     };
   }
 
@@ -244,6 +412,14 @@ class BookDetails extends Component {
     this.setState({ isDeleteBookModalOpen: false });
   };
 
+  onMetadataDrillInPress = () => {
+    this.setState({ isMetadataDrillInModalOpen: true });
+  };
+
+  onMetadataDrillInModalClose = () => {
+    this.setState({ isMetadataDrillInModalOpen: false });
+  };
+
   onTabSelect = (index, lastIndex) => {
     this.setState({ selectedTabIndex: index });
   };
@@ -281,7 +457,8 @@ class BookDetails extends Component {
       selectedTabIndex,
       metadataComparison,
       isFetchingMetadataComparison,
-      metadataComparisonError
+      metadataComparisonError,
+      isMetadataDrillInModalOpen
     } = this.state;
 
     return (
@@ -396,6 +573,7 @@ class BookDetails extends Component {
               comparison={metadataComparison}
               isFetching={isFetchingMetadataComparison}
               error={metadataComparisonError}
+              onOpenDrillIn={this.onMetadataDrillInPress}
             />
 
             {
@@ -496,6 +674,12 @@ class BookDetails extends Component {
             bookId={id}
             authorSlug={author.titleSlug}
             onModalClose={this.onDeleteBookModalClose}
+          />
+
+          <MetadataComparisonDrillInModal
+            comparison={metadataComparison}
+            isOpen={isMetadataDrillInModalOpen}
+            onModalClose={this.onMetadataDrillInModalClose}
           />
 
         </PageContentBody>

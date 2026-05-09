@@ -46,6 +46,22 @@
   color: var(--helpTextColor);
 }
 
+.metadataStatusCountsCompact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+
+  span {
+    padding: 3px 7px;
+    border: 1px solid var(--borderColor);
+    border-radius: 3px;
+    background: var(--white);
+    color: var(--helpTextColor);
+    font-size: 12px;
+  }
+}
+
 .metadataComparisonGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -79,6 +95,88 @@
 .metadataComparisonExplanation {
   margin-top: 8px;
   color: var(--helpTextColor);
+}
+
+.metadataComparisonActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.metadataDrillInSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.metadataDrillInTitle {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.metadataStatusCounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metadataStatusCount {
+  padding: 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+
+  span {
+    display: block;
+    color: var(--helpTextColor);
+    font-size: 12px;
+  }
+
+  b {
+    font-size: 18px;
+  }
+}
+
+.metadataDrillInSection {
+  margin-top: 18px;
+}
+
+.metadataDrillInSectionTitle {
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.metadataDrillInField {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.metadataDrillInValues {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+
+  span {
+    color: var(--helpTextColor);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 3px 0 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.metadataDrillInHint {
+  margin-top: 8px;
+  color: var(--helpTextColor);
+  font-style: italic;
 }
 
 .tabList {
@@ -148,5 +246,10 @@
 
   .bookNavigationButton {
     display: none;
+  }
+
+  .metadataDrillInSummary,
+  .metadataDrillInValues {
+    grid-template-columns: 1fr;
   }
 }

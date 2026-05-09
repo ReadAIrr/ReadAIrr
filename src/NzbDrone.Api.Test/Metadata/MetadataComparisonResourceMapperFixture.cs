@@ -43,9 +43,16 @@ namespace NzbDrone.Api.Test.Metadata
 
             result.ProviderAvailable.Should().BeTrue();
             result.SummaryStatus.Should().Be("needs-review");
+            result.StatusCounts.Should().Contain(x => x.Status == "confirmed" && x.Count > 0);
+            result.StatusCounts.Should().Contain(x => x.Status == "conflicting" && x.Count > 0);
             result.Fields.Should().Contain(x => x.Field == "author" && x.Status == "confirmed");
-            result.Fields.Should().Contain(x => x.Field == "title" && x.Status == "conflicting");
-            result.Fields.Should().Contain(x => x.Field == "isbn13" && x.Status == "provider-only");
+            result.Fields.Should().Contain(x => x.Field == "title" &&
+                                                x.Status == "conflicting" &&
+                                                x.Section == "coreIdentity" &&
+                                                x.ActionHint.Contains("Review"));
+            result.Fields.Should().Contain(x => x.Field == "isbn13" &&
+                                                x.Status == "provider-only" &&
+                                                x.Section == "editionIdentifiers");
             result.Fields.Should().Contain(x => x.Field == "publisher" && x.Status == "conflicting");
         }
 
@@ -64,7 +71,10 @@ namespace NzbDrone.Api.Test.Metadata
 
             result.ProviderAvailable.Should().BeFalse();
             result.SummaryStatus.Should().Be("needs-review");
-            result.Fields.Should().Contain(x => x.Field == "providerAvailability" && x.Status == "needs-review");
+            result.StatusCounts.Should().Contain(x => x.Status == "needs-review" && x.Count > 0);
+            result.Fields.Should().Contain(x => x.Field == "providerAvailability" &&
+                                                x.Status == "needs-review" &&
+                                                x.Section == "provider");
             result.Fields.Should().Contain(x => x.Field == "title" && x.Status == "local-only");
         }
 
@@ -89,7 +99,9 @@ namespace NzbDrone.Api.Test.Metadata
 
             result.Fields.Should().Contain(x => x.Field == "narrators" &&
                                                 x.Status == "conflicting" &&
-                                                x.Explanation.Contains("review-only"));
+                                                x.Section == "contributors" &&
+                                                x.Explanation.Contains("review-only") &&
+                                                x.ActionHint.Contains("Review narrator evidence"));
         }
 
         private static Book Book(string foreignBookId, string title, string authorName)
