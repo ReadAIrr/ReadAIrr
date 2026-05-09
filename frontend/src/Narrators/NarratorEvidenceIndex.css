@@ -66,3 +66,46 @@
 .exampleMeta {
   margin-left: 8px;
 }
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.detailPanel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borderColor);
+}
+
+.detailTitle {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.workList {
+  display: grid;
+  gap: 8px;
+}
+
+.workRow {
+  padding: 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.workTitle {
+  font-weight: 600;
+}
+
+.workMeta,
+.workPath {
+  margin-top: 3px;
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.workPath {
+  overflow-wrap: anywhere;
+}

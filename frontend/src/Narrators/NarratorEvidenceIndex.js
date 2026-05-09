@@ -91,6 +91,113 @@ EvidenceExamples.propTypes = {
   examples: PropTypes.arrayOf(PropTypes.object).isRequired
 };
 
+function WorkLink({ item }) {
+  const title = item.bookTitle || item.path || 'Evidence without matched book context';
+
+  if (item.bookTitleSlug) {
+    return (
+      <Link to={`/book/${item.bookTitleSlug}`}>
+        {title}
+      </Link>
+    );
+  }
+
+  if (item.bookFileId) {
+    return (
+      <Link to="/unmapped">
+        {title}
+      </Link>
+    );
+  }
+
+  return title;
+}
+
+WorkLink.propTypes = {
+  item: PropTypes.object.isRequired
+};
+
+function NarratorDetailPanel({ detail, isFetching, error }) {
+  if (isFetching) {
+    return (
+      <div className={styles.detailPanel}>
+        <LoadingIndicator />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert kind={kinds.DANGER}>
+        Unable to load narrator details.
+      </Alert>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  return (
+    <div className={styles.detailPanel}>
+      <div className={styles.detailTitle}>
+        Known works and review evidence
+      </div>
+
+      <div className={styles.workList}>
+        {
+          (detail.works || []).map((item) => {
+            const confidence = item.confidence == null ? 'Unknown confidence' : `${item.confidence}% confidence`;
+
+            return (
+              <div
+                key={item.evidenceId}
+                className={styles.workRow}
+              >
+                <div className={styles.workTitle}>
+                  <WorkLink item={item} />
+                </div>
+
+                <div className={styles.workMeta}>
+                  {
+                    item.authorTitleSlug ?
+                      <Link to={`/author/${item.authorTitleSlug}`}>
+                        {item.authorName}
+                      </Link> :
+                      (item.authorName || 'Unknown author')
+                  }
+
+                  {
+                    item.editionTitle &&
+                      <span> - {item.editionTitle}</span>
+                  }
+                </div>
+
+                {
+                  item.path &&
+                    <div className={styles.workPath}>
+                      {item.path}
+                    </div>
+                }
+
+                <div className={styles.workMeta}>
+                  {getSourceLabel(item.source)} - {confidence}
+                </div>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  );
+}
+
+NarratorDetailPanel.propTypes = {
+  detail: PropTypes.object,
+  error: PropTypes.object,
+  isFetching: PropTypes.bool.isRequired
+};
+
 class NarratorEvidenceIndex extends Component {
   constructor(props, context) {
     super(props, context);
@@ -100,10 +207,15 @@ class NarratorEvidenceIndex extends Component {
       error: null,
       items: [],
       searchTerm: '',
-      source: ''
+      source: '',
+      selectedNarrator: null,
+      isFetchingDetail: false,
+      detailError: null,
+      detail: null
     };
 
     this._abortRequest = null;
+    this._abortDetailRequest = null;
   }
 
   componentDidMount() {
@@ -113,6 +225,10 @@ class NarratorEvidenceIndex extends Component {
   componentWillUnmount() {
     if (this._abortRequest) {
       this._abortRequest();
+    }
+
+    if (this._abortDetailRequest) {
+      this._abortDetailRequest();
     }
   }
 
@@ -162,7 +278,64 @@ class NarratorEvidenceIndex extends Component {
   };
 
   onSourceFilterPress = (source) => {
-    this.setState({ source }, this.fetchNarrators);
+    this.setState({
+      source,
+      selectedNarrator: null,
+      detail: null,
+      detailError: null
+    }, this.fetchNarrators);
+  };
+
+  onDetailPress = (normalizedName) => {
+    const {
+      selectedNarrator,
+      source
+    } = this.state;
+
+    if (selectedNarrator === normalizedName) {
+      this.setState({
+        selectedNarrator: null,
+        detail: null,
+        detailError: null
+      });
+
+      return;
+    }
+
+    if (this._abortDetailRequest) {
+      this._abortDetailRequest();
+    }
+
+    this.setState({
+      selectedNarrator: normalizedName,
+      isFetchingDetail: true,
+      detailError: null,
+      detail: null
+    });
+
+    const { request, abortRequest } = createAjaxRequest({
+      url: `/narrator/${normalizedName}`,
+      data: {
+        source
+      }
+    });
+
+    this._abortDetailRequest = abortRequest;
+
+    request.done((detail) => {
+      this.setState({
+        isFetchingDetail: false,
+        detailError: null,
+        detail
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        isFetchingDetail: false,
+        detailError: xhr.aborted ? null : xhr
+      });
+    });
   };
 
   render() {
@@ -171,7 +344,11 @@ class NarratorEvidenceIndex extends Component {
       error,
       items,
       searchTerm,
-      source
+      source,
+      selectedNarrator,
+      isFetchingDetail,
+      detailError,
+      detail
     } = this.state;
 
     return (
@@ -258,6 +435,24 @@ class NarratorEvidenceIndex extends Component {
                         </div>
 
                         <EvidenceExamples examples={item.examples || []} />
+
+                        <div className={styles.rowActions}>
+                          <Button
+                            kind={selectedNarrator === item.normalizedName ? kinds.PRIMARY : kinds.DEFAULT}
+                            onPress={() => this.onDetailPress(item.normalizedName)}
+                          >
+                            {selectedNarrator === item.normalizedName ? 'Hide Details' : 'View Details'}
+                          </Button>
+                        </div>
+
+                        {
+                          selectedNarrator === item.normalizedName &&
+                            <NarratorDetailPanel
+                              detail={detail}
+                              error={detailError}
+                              isFetching={isFetchingDetail}
+                            />
+                        }
                       </div>
                     );
                   })

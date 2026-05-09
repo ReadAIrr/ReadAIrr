@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -68,6 +70,14 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IAudioTagService>()
                 .Setup(x => x.GetTrackMetadata(_bookFile))
                 .Returns(_suggestedTags);
+
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByBookFileIds(It.IsAny<IEnumerable<int>>()))
+                .Returns(new List<ContributorEvidence>());
+
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByEditionIds(It.IsAny<IEnumerable<int>>()))
+                .Returns(new List<ContributorEvidence>());
         }
 
         [Test]
@@ -138,6 +148,77 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             result.Warning.Should().Contain("incomplete audiobook part set");
             result.Suggested.TrackCount.Should().Be((int)_currentTags.TrackCount);
+        }
+
+        [Test]
+        public void should_use_manual_narrator_evidence_for_suggested_performer()
+        {
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByBookFileIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.Id }))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Id = 1,
+                        BookFileId = _bookFile.Id,
+                        Role = "narrator",
+                        DisplayName = "Manual Evidence Narrator",
+                        Source = "manual",
+                        Updated = DateTime.UtcNow
+                    }
+                });
+
+            var result = Subject.GetPreview(_bookFile.Id);
+
+            result.Suggested.Performers.Should().Be("Manual Evidence Narrator");
+        }
+
+        [Test]
+        public void should_use_high_confidence_review_narrator_evidence_for_suggested_performer()
+        {
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByEditionIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.EditionId }))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Id = 2,
+                        EditionId = _bookFile.EditionId,
+                        Role = "narrator",
+                        DisplayName = "Transcript Evidence Narrator",
+                        Source = "sttTranscript",
+                        Confidence = 91,
+                        Updated = DateTime.UtcNow
+                    }
+                });
+
+            var result = Subject.GetPreview(_bookFile.Id);
+
+            result.Suggested.Performers.Should().Be("Transcript Evidence Narrator");
+        }
+
+        [Test]
+        public void should_ignore_low_confidence_review_narrator_evidence_for_suggested_performer()
+        {
+            Mocker.GetMock<IContributorEvidenceRepository>()
+                .Setup(x => x.GetByBookFileIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.Id }))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Id = 3,
+                        BookFileId = _bookFile.Id,
+                        Role = "narrator",
+                        DisplayName = "Low Confidence Narrator",
+                        Source = "aiReview",
+                        Confidence = 62,
+                        Updated = DateTime.UtcNow
+                    }
+                });
+
+            var result = Subject.GetPreview(_bookFile.Id);
+
+            result.Suggested.Performers.Should().Be("Read Narrator");
         }
     }
 }

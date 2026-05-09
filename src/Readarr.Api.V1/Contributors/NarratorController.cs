@@ -28,5 +28,22 @@ namespace Readarr.Api.V1.Contributors
 
             return NarratorEvidenceResourceMapper.ToResource(evidence, bookFiles, term?.Trim(), source?.Trim());
         }
+
+        [HttpGet("{normalizedName}")]
+        public ActionResult<NarratorEvidenceDetailResource> GetNarratorEvidenceDetail(string normalizedName, [FromQuery] string source = null)
+        {
+            var normalized = ContributorEvidence.NormalizeName(normalizedName);
+            var evidence = _contributorEvidenceRepository.All().ToList();
+            var bookFileIds = evidence.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
+            var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
+            var resource = NarratorEvidenceResourceMapper.ToDetailResource(evidence, bookFiles, normalized, source?.Trim());
+
+            if (resource == null)
+            {
+                return NotFound();
+            }
+
+            return resource;
+        }
     }
 }

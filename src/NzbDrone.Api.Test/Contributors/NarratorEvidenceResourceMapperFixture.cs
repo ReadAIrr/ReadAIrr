@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles;
 using Readarr.Api.V1.Contributors;
 
@@ -76,6 +77,51 @@ namespace NzbDrone.Api.Test.Contributors
 
             result.Should().HaveCount(1);
             result[0].DisplayName.Should().Be("Robin Voice");
+        }
+
+        [Test]
+        public void should_shape_detail_rows_with_book_author_and_edition_context()
+        {
+            var now = DateTime.UtcNow;
+            var author = new Author { Id = 7, Name = "Alice Writer" };
+            author.Metadata.Value.TitleSlug = "alice-writer";
+            var book = new Book { Id = 8, Title = "The Hidden Book", TitleSlug = "the-hidden-book", Author = author };
+            var edition = new Edition { Id = 9, Title = "The Hidden Book Audio", Book = book };
+            var file = new BookFile
+            {
+                Id = 10,
+                Path = "/books/alice/the-hidden-book.m4b",
+                EditionId = edition.Id,
+                Edition = edition,
+                Author = author
+            };
+
+            var evidence = new List<ContributorEvidence>
+            {
+                new ContributorEvidence
+                {
+                    Id = 11,
+                    BookFileId = file.Id,
+                    EditionId = edition.Id,
+                    Role = "narrator",
+                    DisplayName = "Jane Reader",
+                    NormalizedName = "janereader",
+                    Source = "manual",
+                    Confidence = 100,
+                    Updated = now
+                }
+            };
+
+            var result = NarratorEvidenceResourceMapper.ToDetailResource(evidence, new List<BookFile> { file }, "janereader");
+
+            result.DisplayName.Should().Be("Jane Reader");
+            result.Works.Should().HaveCount(1);
+            result.Works[0].BookTitle.Should().Be("The Hidden Book");
+            result.Works[0].BookTitleSlug.Should().Be("the-hidden-book");
+            result.Works[0].AuthorName.Should().Be("Alice Writer");
+            result.Works[0].AuthorTitleSlug.Should().Be("alice-writer");
+            result.Works[0].EditionTitle.Should().Be("The Hidden Book Audio");
+            result.Works[0].Path.Should().Be("/books/alice/the-hidden-book.m4b");
         }
     }
 }

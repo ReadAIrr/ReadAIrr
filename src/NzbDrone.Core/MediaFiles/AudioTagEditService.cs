@@ -58,16 +58,19 @@ namespace NzbDrone.Core.MediaFiles
     {
         private readonly IMediaFileService _mediaFileService;
         private readonly IAudioTagService _audioTagService;
+        private readonly IContributorEvidenceRepository _contributorEvidenceRepository;
         private readonly IMultiFileBookFileCompletenessService _multiFileCompletenessService;
         private readonly Logger _logger;
 
         public AudioTagEditService(IMediaFileService mediaFileService,
                                    IAudioTagService audioTagService,
+                                   IContributorEvidenceRepository contributorEvidenceRepository,
                                    IMultiFileBookFileCompletenessService multiFileCompletenessService,
                                    Logger logger)
         {
             _mediaFileService = mediaFileService;
             _audioTagService = audioTagService;
+            _contributorEvidenceRepository = contributorEvidenceRepository;
             _multiFileCompletenessService = multiFileCompletenessService;
             _logger = logger;
         }
@@ -137,6 +140,13 @@ namespace NzbDrone.Core.MediaFiles
         {
             warning = null;
             var suggested = _audioTagService.GetTrackMetadata(bookFile);
+            var narrator = GetTrustedNarratorEvidence(bookFile);
+
+            if (narrator.IsNotNullOrWhiteSpace())
+            {
+                suggested.Performers = new[] { narrator };
+            }
+
             var issue = _multiFileCompletenessService.GetIssue(bookFile.Edition.Value.BookFiles.Value);
 
             if (issue != null)
@@ -146,6 +156,30 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return suggested;
+        }
+
+        private string GetTrustedNarratorEvidence(BookFile bookFile)
+        {
+            var evidence = _contributorEvidenceRepository.GetByBookFileIds(new[] { bookFile.Id })
+                .Concat(_contributorEvidenceRepository.GetByEditionIds(new[] { bookFile.EditionId }))
+                .Where(x => x.Role == "narrator" && x.DisplayName.IsNotNullOrWhiteSpace())
+                .Where(x => IsManualEvidence(x) || IsHighConfidenceReviewEvidence(x))
+                .OrderByDescending(x => IsManualEvidence(x))
+                .ThenByDescending(x => x.Confidence ?? 0)
+                .ThenByDescending(x => x.Updated)
+                .FirstOrDefault();
+
+            return evidence?.DisplayName;
+        }
+
+        private static bool IsManualEvidence(ContributorEvidence evidence)
+        {
+            return evidence.Source == "manual";
+        }
+
+        private static bool IsHighConfidenceReviewEvidence(ContributorEvidence evidence)
+        {
+            return (evidence.Source == "aiReview" || evidence.Source == "sttTranscript") && (evidence.Confidence ?? 0) >= 80;
         }
 
         private AudioTagEditPreview BuildPreview(BookFile bookFile, AudioTag current, AudioTag suggested, AudioTag proposed, string warning)
