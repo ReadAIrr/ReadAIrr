@@ -32,6 +32,17 @@
   color: var(--textSecondaryColor);
 }
 
+.reasonContext {
+  margin-top: 2px;
+  color: var(--dimColor);
+  font-size: 12px;
+}
+
+.inlineAction {
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 .reviewDetails {
   margin-top: 10px;
   padding-top: 8px;

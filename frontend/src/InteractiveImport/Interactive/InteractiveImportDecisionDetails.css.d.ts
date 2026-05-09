@@ -5,7 +5,9 @@ interface CssExports {
   'candidateMeta': string;
   'candidateTitle': string;
   'decisionSummary': string;
+  'inlineAction': string;
   'reason': string;
+  'reasonContext': string;
   'reasonDetail': string;
   'reasonLabel': string;
   'reasonList': string;

@@ -33,6 +33,12 @@ const DISPLAY_PREFERENCE_OPTIONS = [
   { key: 'both', value: 'Both' }
 ];
 
+function getInitialSearchTerm() {
+  const params = new URLSearchParams(window.location.search);
+
+  return params.get('term') || '';
+}
+
 function normalizeName(value) {
   return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
@@ -454,7 +460,7 @@ class NarratorEvidenceIndex extends Component {
       pageSize: 50,
       totalRecords: 0,
       narratorOptions: [],
-      searchTerm: '',
+      searchTerm: getInitialSearchTerm(),
       source: '',
       selectedNarrator: null,
       isFetchingDetail: false,
@@ -551,6 +557,12 @@ class NarratorEvidenceIndex extends Component {
   };
 
   onSearchTermChange = (searchTerm) => {
+    const url = searchTerm ?
+      `/narrators?term=${encodeURIComponent(searchTerm)}` :
+      '/narrators';
+
+    window.history.replaceState(null, '', url);
+
     this.setState({
       searchTerm,
       page: 1,

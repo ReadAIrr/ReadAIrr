@@ -1,29 +1,17 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import { getContributorEvidenceLabel, getContributorEvidenceReviewReason, getContributorEvidenceSourceLabel, renderContributorEvidenceSummary } from 'Utilities/ContributorEvidence/getContributorEvidenceDisplay';
 import { getManualImportDecision } from './manualImportReviewContext';
 import styles from './InteractiveImportDecisionDetails.css';
 
-function getContributorEvidenceSourceLabel(source) {
-  switch (source) {
-    case 'manual':
-      return 'Manual';
-    case 'aiReview':
-      return 'AI Review';
-    case 'sttTranscript':
-      return 'STT transcript';
-    default:
-      return source || 'Unknown source';
-  }
-}
-
 function getContributorEvidenceDetails(contributorEvidence) {
   const details = (contributorEvidence || []).map((item) => {
-    const confidence = item.confidence == null ? '' : ` (${item.confidence}%)`;
-    const source = getContributorEvidenceSourceLabel(item.source);
+    const reviewReason = getContributorEvidenceReviewReason(item);
 
     return {
-      label: `${item.role || 'Contributor'} evidence`,
-      detail: `${source}: ${item.displayName}${confidence}`
+      label: getContributorEvidenceLabel(item),
+      detail: renderContributorEvidenceSummary(item, styles.inlineAction),
+      context: reviewReason
     };
   });
 
@@ -34,7 +22,7 @@ function getContributorEvidenceDetails(contributorEvidence) {
         acc[item.normalizedName] = [];
       }
 
-      acc[item.normalizedName].push(`${getContributorEvidenceSourceLabel(item.source)}: ${item.displayName}`);
+      acc[item.normalizedName].push(`${item.sourceLabel || getContributorEvidenceSourceLabel(item.source)}: ${item.displayName}`);
 
       return acc;
     }, {});
@@ -159,6 +147,13 @@ function InteractiveImportDecisionDetails(props) {
                       <div className={styles.reasonDetail}>
                         {item.detail}
                       </div>
+
+                      {
+                        item.context &&
+                          <div className={styles.reasonContext}>
+                            {item.context}
+                          </div>
+                      }
                     </li>
                   );
                 })

@@ -22,6 +22,7 @@ import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCel
 import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
+import { getContributorEvidenceLabel, getContributorEvidenceReviewReason, getContributorEvidenceSourceLabel, renderContributorEvidenceSummary } from 'Utilities/ContributorEvidence/getContributorEvidenceDisplay';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import { buildAddSearchLinks } from './unmappedAddSearchUtils';
@@ -208,26 +209,12 @@ function getSuggestionDetails(suggestion) {
 }
 
 function getContributorEvidenceDetails(contributorEvidence) {
-  function getSourceLabel(source) {
-    switch (source) {
-      case 'manual':
-        return 'Manual';
-      case 'aiReview':
-        return 'AI Review';
-      case 'sttTranscript':
-        return 'STT transcript';
-      default:
-        return source || 'Unknown source';
-    }
-  }
-
   const details = (contributorEvidence || []).map((item) => {
-    const confidence = item.confidence == null ? '' : ` (${item.confidence}%)`;
-    const source = getSourceLabel(item.source);
-
     return {
-      label: `${item.role || 'Contributor'} evidence`,
-      detail: `${source}: ${item.displayName}${confidence}`
+      label: getContributorEvidenceLabel(item),
+      detail: renderContributorEvidenceSummary(item, styles.inlineAction),
+      context: getContributorEvidenceReviewReason(item),
+      summary: `${item.sourceLabel || getContributorEvidenceSourceLabel(item.source)}: ${item.displayName}`
     };
   });
 
@@ -238,7 +225,7 @@ function getContributorEvidenceDetails(contributorEvidence) {
         acc[item.normalizedName] = [];
       }
 
-      acc[item.normalizedName].push(`${getSourceLabel(item.source)}: ${item.displayName}`);
+      acc[item.normalizedName].push(`${item.sourceLabel || getContributorEvidenceSourceLabel(item.source)}: ${item.displayName}`);
 
       return acc;
     }, {});
@@ -647,9 +634,44 @@ class UnmappedFilesTableRow extends Component {
 
                       {
                         contributorEvidenceDetails.length > 0 &&
-                          <span className={styles.suggestionMeta}>
-                            {contributorEvidenceDetails.map((item) => item.detail).join(' - ')}
-                          </span>
+                          <Popover
+                            anchor={
+                              <span className={styles.suggestionMeta}>
+                                {contributorEvidenceDetails.map((item) => item.summary || item.detail).join(' - ')}
+                              </span>
+                            }
+                            title="Narrator evidence"
+                            body={
+                              <div className={styles.reasonList}>
+                                {
+                                  contributorEvidenceDetails.map((detail, index) => {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className={styles.reason}
+                                      >
+                                        <div className={styles.reasonLabel}>
+                                          {detail.label}
+                                        </div>
+
+                                        <div className={styles.reasonDetail}>
+                                          {detail.detail}
+                                        </div>
+
+                                        {
+                                          detail.context &&
+                                            <div className={styles.reasonContext}>
+                                              {detail.context}
+                                            </div>
+                                        }
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </div>
+                            }
+                            position={tooltipPositions.LEFT}
+                          />
                       }
 
                       {

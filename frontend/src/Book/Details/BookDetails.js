@@ -7,6 +7,7 @@ import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
 import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
+import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import Modal from 'Components/Modal/Modal';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -77,6 +78,35 @@ function getGroupedMetadataFields(fields = []) {
 
     return acc;
   }, []);
+}
+
+function renderMetadataFieldValue(field, value, emptyValue) {
+  const displayValue = value || emptyValue;
+
+  if (field.field !== 'narrators' || !value) {
+    return displayValue;
+  }
+
+  const names = value.split(';').map((item) => item.trim()).filter(Boolean);
+
+  if (!names.length) {
+    return displayValue;
+  }
+
+  return names.map((name, index) => {
+    return (
+      <React.Fragment key={name}>
+        {
+          index > 0 &&
+            '; '
+        }
+
+        <Link to={`/narrators?term=${encodeURIComponent(name)}`}>
+          {name}
+        </Link>
+      </React.Fragment>
+    );
+  });
 }
 
 function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
@@ -197,12 +227,12 @@ function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
                           <div className={styles.metadataDrillInValues}>
                             <div>
                               <span>Local</span>
-                              <p>{field.localValue || 'Not set'}</p>
+                              <p>{renderMetadataFieldValue(field, field.localValue, 'Not set')}</p>
                             </div>
 
                             <div>
                               <span>Provider</span>
-                              <p>{field.providerValue || 'Not available'}</p>
+                              <p>{renderMetadataFieldValue(field, field.providerValue, 'Not available')}</p>
                             </div>
 
                             <div>

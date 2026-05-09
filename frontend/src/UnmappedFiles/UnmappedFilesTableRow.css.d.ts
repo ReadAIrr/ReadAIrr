@@ -20,6 +20,7 @@ interface CssExports {
   'progressStatus': string;
   'quality': string;
   'reason': string;
+  'reasonContext': string;
   'reasonDetail': string;
   'reasonLabel': string;
   'reasonList': string;
