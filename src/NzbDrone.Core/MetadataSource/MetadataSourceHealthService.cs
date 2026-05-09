@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.MetadataSource
     public class MetadataSourceHealthService : IMetadataSourceHealthService
     {
         private const string TestAuthorId = "3389";
+        private static readonly Regex PlainVersionRegex = new Regex(@"^[0-9A-Za-z][0-9A-Za-z._+-]{0,79}$", RegexOptions.Compiled);
 
         private readonly IMetadataRequestBuilder _requestBuilder;
         private readonly IHttpClient _httpClient;
@@ -171,7 +173,9 @@ namespace NzbDrone.Core.MetadataSource
 
             if (!trimmed.StartsWith("{") && !trimmed.StartsWith("["))
             {
-                return Truncate(trimmed.Trim('"'));
+                var plainVersion = trimmed.Trim('"');
+
+                return PlainVersionRegex.IsMatch(plainVersion) ? plainVersion : null;
             }
 
             try
