@@ -13,6 +13,8 @@ ARG TARGETARCH
 
 ENV BUILD_SOURCEBRANCHNAME=${BUILD_SOURCEBRANCHNAME} \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    EnableSourceControlManagerQueries=false \
+    EnableSourceLink=false \
     READARRVERSION=${READARR_VERSION}
 
 COPY --from=node /usr/local /usr/local
