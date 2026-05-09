@@ -12,6 +12,7 @@ import FormLabel from 'Components/Form/FormLabel';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
+import Link from 'Components/Link/Link';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import Modal from 'Components/Modal/Modal';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -21,7 +22,9 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRowCellButton from 'Components/Table/Cells/TableRowCellButton';
 import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
+import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import TableRow from 'Components/Table/TableRow';
+import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import { icons, inputTypes, kinds, sizes, tooltipPositions } from 'Helpers/Props';
@@ -41,6 +44,24 @@ function getPreferredNarratorEvidence(contributorEvidence) {
   return (contributorEvidence || []).find((item) => item.role === 'narrator' && item.source === 'manual') ||
     (contributorEvidence || []).find((item) => item.role === 'narrator');
 }
+
+export function VirtualTableRowCellButton({ className, ...otherProps }) {
+  return (
+    <Link
+      className={className}
+      component={VirtualTableRowCell}
+      {...otherProps}
+    />
+  );
+}
+
+VirtualTableRowCellButton.propTypes = {
+  className: PropTypes.string
+};
+
+VirtualTableRowCellButton.defaultProps = {
+  className: styles.virtualButtonCell
+};
 
 class InteractiveImportRow extends Component {
 
@@ -69,10 +90,11 @@ class InteractiveImportRow extends Component {
       book,
       foreignEditionId,
       quality,
-      size
+      size,
+      selectOnMount
     } = this.props;
 
-    if (
+    if (selectOnMount &&
       author &&
       book != null &&
       foreignEditionId &&
@@ -248,6 +270,15 @@ class InteractiveImportRow extends Component {
       audioTags,
       review
     } = this.props;
+    const {
+      style
+    } = this.props;
+
+    const RowComponent = this.props.component;
+    const RowCell = this.props.rowCellComponent;
+    const RowCellButton = this.props.rowCellButtonComponent;
+    const SelectCell = this.props.selectCellComponent;
+    const isVirtual = RowComponent === VirtualTableRow;
 
     const {
       isDetailsModalOpen,
@@ -361,28 +392,31 @@ class InteractiveImportRow extends Component {
     }
 
     return (
-      <TableRow
+      <RowComponent
         className={classNames(
-          additionalFile && styles.additionalFile,
-          isImporting && styles.importing,
-          importError && styles.importError
+          isVirtual && styles.virtualRow,
+          additionalFile && (isVirtual ? styles.virtualAdditionalFile : styles.additionalFile),
+          isImporting && (isVirtual ? styles.virtualImporting : styles.importing),
+          importError && (isVirtual ? styles.virtualImportError : styles.importError)
         )}
+        style={style}
       >
-        <TableSelectCell
+        <SelectCell
           id={id}
           isSelected={isSelected}
           isDisabled={isImporting}
           onSelectedChange={onSelectedChange}
         />
 
-        <TableRowCell
-          className={styles.path}
+        <RowCell
+          className={isVirtual ? styles.virtualPath : styles.path}
           title={path}
         >
           {pathCell}
-        </TableRowCell>
+        </RowCell>
 
-        <TableRowCellButton
+        <RowCellButton
+          className={isVirtual ? styles.virtualAuthor : undefined}
           isDisabled={!allowAuthorChange || isImporting}
           title={allowAuthorChange ? translate('AllowAuthorChangeClickToChangeAuthor') : undefined}
           onPress={this.onSelectAuthorPress}
@@ -390,9 +424,10 @@ class InteractiveImportRow extends Component {
           {
             showAuthorPlaceholder ? <InteractiveImportRowCellPlaceholder /> : authorName
           }
-        </TableRowCellButton>
+        </RowCellButton>
 
-        <TableRowCellButton
+        <RowCellButton
+          className={isVirtual ? styles.virtualBook : undefined}
           isDisabled={!author || isImporting}
           title={author ? translate('AuthorClickToChangeBook') : undefined}
           onPress={this.onSelectBookPress}
@@ -400,9 +435,10 @@ class InteractiveImportRow extends Component {
           {
             showBookNumberPlaceholder ? <InteractiveImportRowCellPlaceholder /> : bookTitle
           }
-        </TableRowCellButton>
+        </RowCellButton>
 
-        <TableRowCellButton
+        <RowCellButton
+          className={isVirtual ? styles.virtualReleaseGroup : undefined}
           isDisabled={isImporting}
           title={translate('ClickToChangeReleaseGroup')}
           onPress={this.onSelectReleaseGroupPress}
@@ -414,10 +450,10 @@ class InteractiveImportRow extends Component {
               /> :
               releaseGroup
           }
-        </TableRowCellButton>
+        </RowCellButton>
 
-        <TableRowCellButton
-          className={styles.quality}
+        <RowCellButton
+          className={isVirtual ? styles.virtualQuality : styles.quality}
           isDisabled={isImporting}
           title={translate('ClickToChangeQuality')}
           onPress={this.onSelectQualityPress}
@@ -434,13 +470,13 @@ class InteractiveImportRow extends Component {
                 quality={quality}
               />
           }
-        </TableRowCellButton>
+        </RowCellButton>
 
-        <TableRowCell>
+        <RowCell className={isVirtual ? styles.virtualSize : undefined}>
           {formatBytes(size)}
-        </TableRowCell>
+        </RowCell>
 
-        <TableRowCell>
+        <RowCell className={isVirtual ? styles.virtualIconCell : undefined}>
           {
             customFormats?.length ?
               <Popover
@@ -457,10 +493,11 @@ class InteractiveImportRow extends Component {
               /> :
               null
           }
-        </TableRowCell>
+        </RowCell>
 
         {isIndexerFlagsColumnVisible ? (
-          <TableRowCellButton
+          <RowCellButton
+            className={isVirtual ? styles.virtualIconButtonCell : undefined}
             isDisabled={isImporting}
             title={translate('ClickToChangeIndexerFlags')}
             onPress={this.onSelectIndexerFlagsPress}
@@ -479,10 +516,10 @@ class InteractiveImportRow extends Component {
                 ) : null}
               </>
             )}
-          </TableRowCellButton>
+          </RowCellButton>
         ) : null}
 
-        <TableRowCell>
+        <RowCell className={isVirtual ? styles.virtualStatusCell : undefined}>
           {statusCell}
           {
             review?.canEditContributorEvidence &&
@@ -493,7 +530,7 @@ class InteractiveImportRow extends Component {
                 onPress={this.onContributorEvidencePress}
               />
           }
-        </TableRowCell>
+        </RowCell>
 
         <ConfirmModal
           isOpen={isDetailsModalOpen}
@@ -584,7 +621,7 @@ class InteractiveImportRow extends Component {
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </TableRow>
+      </RowComponent>
     );
   }
 
@@ -612,9 +649,23 @@ InteractiveImportRow.propTypes = {
   importError: PropTypes.string,
   review: PropTypes.object,
   isSelected: PropTypes.bool,
+  style: PropTypes.object,
+  selectOnMount: PropTypes.bool.isRequired,
+  component: PropTypes.elementType.isRequired,
+  rowCellComponent: PropTypes.elementType.isRequired,
+  rowCellButtonComponent: PropTypes.elementType.isRequired,
+  selectCellComponent: PropTypes.elementType.isRequired,
   onSelectedChange: PropTypes.func.isRequired,
   onValidRowChange: PropTypes.func.isRequired,
   onSetContributorEvidencePress: PropTypes.func.isRequired
+};
+
+InteractiveImportRow.defaultProps = {
+  selectOnMount: true,
+  component: TableRow,
+  rowCellComponent: TableRowCell,
+  rowCellButtonComponent: TableRowCellButton,
+  selectCellComponent: TableSelectCell
 };
 
 export default InteractiveImportRow;

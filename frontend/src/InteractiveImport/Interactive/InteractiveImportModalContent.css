@@ -35,6 +35,60 @@
   margin-top: 8px;
 }
 
+.tableContainer {
+  composes: tableContainer from '~Components/Table/VirtualTable.css';
+}
+
+.headerCell {
+  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
+}
+
+.pathHeaderCell {
+  composes: headerCell;
+
+  flex: 1 0 280px;
+}
+
+.authorHeaderCell,
+.bookHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 190px;
+}
+
+.releaseGroupHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 150px;
+}
+
+.qualityHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 120px;
+  text-align: center;
+}
+
+.sizeHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 90px;
+}
+
+.customFormatsHeaderCell,
+.indexerFlagsHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 70px;
+  text-align: center;
+}
+
+.rejectionsHeaderCell {
+  composes: headerCell;
+
+  flex: 0 0 90px;
+}
+
 .footer {
   composes: modalFooter from '~Components/Modal/ModalFooter.css';
 

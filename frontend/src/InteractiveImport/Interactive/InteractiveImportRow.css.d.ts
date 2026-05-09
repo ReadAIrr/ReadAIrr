@@ -9,6 +9,21 @@ interface CssExports {
   'path': string;
   'quality': string;
   'reprocessing': string;
+  'virtualAdditionalFile': string;
+  'virtualAuthor': string;
+  'virtualBook': string;
+  'virtualButtonCell': string;
+  'virtualCell': string;
+  'virtualIconButtonCell': string;
+  'virtualIconCell': string;
+  'virtualImportError': string;
+  'virtualImporting': string;
+  'virtualPath': string;
+  'virtualQuality': string;
+  'virtualReleaseGroup': string;
+  'virtualRow': string;
+  'virtualSize': string;
+  'virtualStatusCell': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

@@ -5,14 +5,25 @@ interface CssExports {
   'acceptedSuggestionActions': string;
   'acceptedSuggestionDetail': string;
   'acceptedSuggestionTitle': string;
+  'authorHeaderCell': string;
+  'bookHeaderCell': string;
   'bulkSelect': string;
+  'customFormatsHeaderCell': string;
   'errorMessage': string;
   'filterContainer': string;
   'filterText': string;
   'footer': string;
+  'headerCell': string;
   'importMode': string;
+  'indexerFlagsHeaderCell': string;
   'leftButtons': string;
+  'pathHeaderCell': string;
+  'qualityHeaderCell': string;
+  'rejectionsHeaderCell': string;
+  'releaseGroupHeaderCell': string;
   'rightButtons': string;
+  'sizeHeaderCell': string;
+  'tableContainer': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

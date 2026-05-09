@@ -13,8 +13,13 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import Table from 'Components/Table/Table';
-import TableBody from 'Components/Table/TableBody';
+import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
+import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
+import VirtualTable from 'Components/Table/VirtualTable';
+import VirtualTableHeader from 'Components/Table/VirtualTableHeader';
+import VirtualTableHeaderCell from 'Components/Table/VirtualTableHeaderCell';
+import VirtualTableRow from 'Components/Table/VirtualTableRow';
+import VirtualTableSelectAllHeaderCell from 'Components/Table/VirtualTableSelectAllHeaderCell';
 import { align, icons, kinds, scrollDirections } from 'Helpers/Props';
 import SelectAuthorModal from 'InteractiveImport/Author/SelectAuthorModal';
 import SelectBookModal from 'InteractiveImport/Book/SelectBookModal';
@@ -29,7 +34,7 @@ import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import selectAll from 'Utilities/Table/selectAll';
 import toggleSelected from 'Utilities/Table/toggleSelected';
-import InteractiveImportRow from './InteractiveImportRow';
+import InteractiveImportRow, { VirtualTableRowCellButton } from './InteractiveImportRow';
 import styles from './InteractiveImportModalContent.css';
 
 const COLUMNS = [
@@ -139,6 +144,81 @@ function hasNarratorEvidence(contributorEvidence, displayName) {
   });
 }
 
+function isValidImportItem(item) {
+  return !!(
+    item.author &&
+    item.book &&
+    item.foreignEditionId &&
+    item.quality &&
+    item.size > 0
+  );
+}
+
+function getColumnClassName(name) {
+  return styles[`${name}HeaderCell`] || styles.headerCell;
+}
+
+function InteractiveImportTableHeader(props) {
+  const {
+    columns,
+    allSelected,
+    allUnselected,
+    sortKey,
+    sortDirection,
+    onSortPress,
+    onSelectAllChange
+  } = props;
+
+  return (
+    <VirtualTableHeader>
+      <VirtualTableSelectAllHeaderCell
+        allSelected={allSelected}
+        allUnselected={allUnselected}
+        onSelectAllChange={onSelectAllChange}
+      />
+
+      {
+        columns.map((column) => {
+          const {
+            name,
+            label,
+            isVisible,
+            isSortable
+          } = column;
+
+          if (!isVisible) {
+            return null;
+          }
+
+          return (
+            <VirtualTableHeaderCell
+              key={name}
+              name={name}
+              className={getColumnClassName(name)}
+              isSortable={isSortable}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortPress={onSortPress}
+            >
+              {label}
+            </VirtualTableHeaderCell>
+          );
+        })
+      }
+    </VirtualTableHeader>
+  );
+}
+
+InteractiveImportTableHeader.propTypes = {
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  allSelected: PropTypes.bool.isRequired,
+  allUnselected: PropTypes.bool.isRequired,
+  sortKey: PropTypes.string,
+  sortDirection: PropTypes.string,
+  onSortPress: PropTypes.func.isRequired,
+  onSelectAllChange: PropTypes.func.isRequired
+};
+
 class InteractiveImportModalContent extends Component {
 
   //
@@ -157,11 +237,13 @@ class InteractiveImportModalContent extends Component {
       booksImported: [],
       isConfirmImportModalOpen: false,
       inconsistentBookReleases: false,
-      acceptedNarratorEvidenceKey: null
+      acceptedNarratorEvidenceKey: null,
+      scroller: null
     };
   }
 
   componentDidMount() {
+    this.setSelectedState();
     this.applyAcceptedNarratorEvidence();
   }
 
@@ -187,6 +269,10 @@ class InteractiveImportModalContent extends Component {
     ) {
       this.applyAcceptedNarratorEvidence();
     }
+
+    if (prevProps.items !== this.props.items) {
+      this.setSelectedState();
+    }
   }
 
   //
@@ -194,6 +280,35 @@ class InteractiveImportModalContent extends Component {
 
   getSelectedIds = () => {
     return getSelectedIds(this.state.selectedState);
+  };
+
+  setScrollerRef = (ref) => {
+    this.setState({ scroller: ref });
+  };
+
+  setSelectedState = () => {
+    this.setState((state, props) => {
+      const selectedState = {};
+
+      props.items.forEach((item) => {
+        selectedState[item.id] = state.selectedState.hasOwnProperty(item.id) ?
+          state.selectedState[item.id] :
+          isValidImportItem(item);
+      });
+
+      const selectedIds = getSelectedIds(selectedState);
+      const selectedCount = selectedIds.length;
+      const totalCount = Object.keys(selectedState).length;
+
+      return {
+        selectedState,
+        allSelected: totalCount > 0 && selectedCount === totalCount,
+        allUnselected: selectedCount === 0,
+        invalidRowsSelected: props.items
+          .filter((item) => selectedState[item.id] && !isValidImportItem(item))
+          .map((item) => item.id)
+      };
+    });
   };
 
   applyAcceptedNarratorEvidence = () => {
@@ -351,6 +466,53 @@ class InteractiveImportModalContent extends Component {
     this.setState({ isConfirmImportModalOpen: false });
   };
 
+  rowRenderer = ({ key, rowIndex, style }) => {
+    const {
+      allowAuthorChange,
+      items,
+      isSaving,
+      onSetContributorEvidencePress
+    } = this.props;
+
+    const item = items[rowIndex];
+    const columns = this._columns || this.getColumns();
+
+    return (
+      <InteractiveImportRow
+        key={key}
+        style={style}
+        component={VirtualTableRow}
+        rowCellComponent={VirtualTableRowCell}
+        rowCellButtonComponent={VirtualTableRowCellButton}
+        selectCellComponent={VirtualTableSelectCell}
+        selectOnMount={false}
+        isSelected={this.state.selectedState[item.id]}
+        isSaving={isSaving}
+        {...item}
+        allowAuthorChange={allowAuthorChange}
+        columns={columns}
+        onSelectedChange={this.onSelectedChange}
+        onValidRowChange={this.onValidRowChange}
+        onSetContributorEvidencePress={onSetContributorEvidencePress}
+      />
+    );
+  };
+
+  getColumns = () => {
+    const allColumns = _.cloneDeep(COLUMNS);
+    const showIndexerFlags = this.props.items.some((item) => item.indexerFlags);
+
+    if (!showIndexerFlags) {
+      const indexerFlagsColumn = allColumns.find((c) => c.name === 'indexerFlags');
+
+      if (indexerFlagsColumn) {
+        indexerFlagsColumn.isVisible = false;
+      }
+    }
+
+    return allColumns;
+  };
+
   //
   // Render
 
@@ -377,40 +539,27 @@ class InteractiveImportModalContent extends Component {
       acceptedSuggestion,
       acceptedPath,
       onSortPress,
-      onModalClose,
-      onSetContributorEvidencePress
+      onModalClose
     } = this.props;
 
     const {
       allSelected,
       allUnselected,
-      selectedState,
       invalidRowsSelected,
       selectModalOpen,
       booksImported,
       isConfirmImportModalOpen,
-      inconsistentBookReleases
+      inconsistentBookReleases,
+      scroller
     } = this.state;
 
-    const allColumns = _.cloneDeep(COLUMNS);
     const acceptedItem = acceptedPath ? items.find((item) => item.path === acceptedPath) : null;
     const acceptedReview = acceptedItem?.review;
     const acceptedAddLinks = buildAddSearchLinks(acceptedReview, acceptedSuggestion, acceptedItem?.contributorEvidence);
     const acceptedAddAuthorUrl = acceptedAddLinks.addAuthorUrl;
     const acceptedAddBookUrl = acceptedAddLinks.addBookUrl;
-    const columns = allColumns.map((column) => {
-      const showIndexerFlags = items.some((item) => item.indexerFlags);
-
-      if (!showIndexerFlags) {
-        const indexerFlagsColumn = allColumns.find((c) => c.name === 'indexerFlags');
-
-        if (indexerFlagsColumn) {
-          indexerFlagsColumn.isVisible = false;
-        }
-      }
-
-      return column;
-    });
+    const columns = this.getColumns();
+    this._columns = columns;
 
     const selectedIds = this.getSelectedIds();
     const selectedItem = selectedIds.length ? _.find(items, { id: selectedIds[0] }) : null;
@@ -440,7 +589,10 @@ class InteractiveImportModalContent extends Component {
           Manual Import - {title || folder}
         </ModalHeader>
 
-        <ModalBody scrollDirection={scrollDirections.BOTH}>
+        <ModalBody
+          scrollDirection={scrollDirections.VERTICAL}
+          registerScroller={this.setScrollerRef}
+        >
           <div className={styles.filterContainer}>
             {
               showFilterExistingFiles &&
@@ -571,38 +723,31 @@ class InteractiveImportModalContent extends Component {
           }
 
           {
-            isPopulated && !!items.length && !isFetching && !isFetching &&
-              <Table
+            isPopulated && !!items.length && !isFetching && scroller &&
+              <VirtualTable
+                className={styles.tableContainer}
+                items={items}
                 columns={columns}
-                horizontalScroll={true}
-                selectAll={true}
+                scroller={scroller}
+                isSmallScreen={false}
+                rowHeight={54}
+                rowRenderer={this.rowRenderer}
                 allSelected={allSelected}
                 allUnselected={allUnselected}
                 sortKey={sortKey}
                 sortDirection={sortDirection}
-                onSortPress={onSortPress}
-                onSelectAllChange={this.onSelectAllChange}
-              >
-                <TableBody>
-                  {
-                    items.map((item) => {
-                      return (
-                        <InteractiveImportRow
-                          key={item.id}
-                          isSelected={selectedState[item.id]}
-                          isSaving={isSaving}
-                          {...item}
-                          allowAuthorChange={allowAuthorChange}
-                          columns={columns}
-                          onSelectedChange={this.onSelectedChange}
-                          onValidRowChange={this.onValidRowChange}
-                          onSetContributorEvidencePress={onSetContributorEvidencePress}
-                        />
-                      );
-                    })
-                  }
-                </TableBody>
-              </Table>
+                header={
+                  <InteractiveImportTableHeader
+                    columns={columns}
+                    allSelected={allSelected}
+                    allUnselected={allUnselected}
+                    sortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSortPress={onSortPress}
+                    onSelectAllChange={this.onSelectAllChange}
+                  />
+                }
+              />
           }
 
           {

@@ -5,10 +5,66 @@
   cursor: pointer;
 }
 
+.virtualPath {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+
+  flex: 1 0 280px;
+  cursor: pointer;
+}
+
 .quality {
   composes: cell from '~Components/Table/Cells/TableRowCell.css';
 
   text-align: center;
+}
+
+.virtualCell {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+}
+
+.virtualButtonCell {
+  composes: cell from '~Components/Table/Cells/VirtualTableRowCell.css';
+  composes: link from '~Components/Link/Link.css';
+}
+
+.virtualAuthor,
+.virtualBook {
+  composes: virtualButtonCell;
+
+  flex: 0 0 190px;
+}
+
+.virtualReleaseGroup {
+  composes: virtualButtonCell;
+
+  flex: 0 0 150px;
+}
+
+.virtualQuality {
+  composes: virtualButtonCell;
+
+  flex: 0 0 120px;
+  text-align: center;
+}
+
+.virtualSize {
+  composes: virtualCell;
+
+  flex: 0 0 90px;
+}
+
+.virtualIconCell,
+.virtualIconButtonCell {
+  composes: virtualCell;
+
+  flex: 0 0 70px;
+  text-align: center;
+}
+
+.virtualStatusCell {
+  composes: virtualCell;
+
+  flex: 0 0 90px;
 }
 
 .label {
@@ -39,6 +95,22 @@
 .importError {
   composes: row from '~Components/Table/TableRow.css';
 
+  background-color: var(--alertDangerBackgroundColor);
+}
+
+.virtualRow {
+  composes: row from '~Components/Table/VirtualTableRow.css';
+}
+
+.virtualAdditionalFile {
+  color: var(--disabledColor);
+}
+
+.virtualImporting {
+  background-color: var(--alertInfoBackgroundColor);
+}
+
+.virtualImportError {
   background-color: var(--alertDangerBackgroundColor);
 }
 
