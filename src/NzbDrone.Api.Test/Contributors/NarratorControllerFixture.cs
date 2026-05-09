@@ -8,8 +8,8 @@ using NUnit.Framework;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Test.Common;
-using Readarr.Http;
 using Readarr.Api.V1.Contributors;
+using Readarr.Http;
 
 namespace NzbDrone.Api.Test.Contributors
 {
