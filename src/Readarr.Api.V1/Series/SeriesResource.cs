@@ -80,7 +80,7 @@ namespace Readarr.Api.V1.Series
         {
             var fileEditionIds = files.Select(x => x.EditionId).ToHashSet();
 
-            return links
+            return links.Where(HasBook)
                 .OrderBy(x => x.SeriesPosition)
                 .ThenBy(x => x.Position)
                 .Select(x => ToBookResource(x, fileEditionIds))
@@ -99,6 +99,11 @@ namespace Readarr.Api.V1.Series
                 UnmonitoredBooks = books.Count(x => !x.Monitored),
                 UnmonitoredAuthors = books.Count(x => !x.AuthorMonitored)
             };
+        }
+
+        private static bool HasBook(SeriesBookLink link)
+        {
+            return link?.Book?.Value != null;
         }
 
         private static SeriesBookResource ToBookResource(SeriesBookLink link, HashSet<int> fileEditionIds)

@@ -11,7 +11,7 @@
 
 .overviewItem {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(260px, auto) minmax(180px, 240px);
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 0.8fr) minmax(260px, auto) minmax(180px, 240px);
   gap: 20px;
   align-items: center;
   padding: 14px 16px;
@@ -27,6 +27,17 @@
 
 .overviewMain {
   min-width: 0;
+}
+
+.overviewAuthors {
+  min-width: 0;
+}
+
+.overviewLabel {
+  margin-bottom: 3px;
+  color: var(--textSecondaryColor);
+  text-transform: uppercase;
+  font-size: 10px;
 }
 
 .overviewStats {

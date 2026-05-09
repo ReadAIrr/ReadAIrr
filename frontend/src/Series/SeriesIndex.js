@@ -267,8 +267,18 @@ function SeriesOverviewView({ items }) {
               to={`/series/${series.id}`}
             >
               <div className={styles.overviewMain}>
+                <div className={styles.overviewLabel}>
+                  Series
+                </div>
+
                 <div className={styles.seriesTitle}>
                   {series.title}
+                </div>
+              </div>
+
+              <div className={styles.overviewAuthors}>
+                <div className={styles.overviewLabel}>
+                  Authors
                 </div>
 
                 <div className={styles.seriesMeta}>

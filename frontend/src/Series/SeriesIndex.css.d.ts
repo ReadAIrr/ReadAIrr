@@ -5,7 +5,9 @@ interface CssExports {
   'availableText': string;
   'emptyMessage': string;
   'muted': string;
+  'overviewAuthors': string;
   'overviewItem': string;
+  'overviewLabel': string;
   'overviewList': string;
   'overviewMain': string;
   'overviewStats': string;

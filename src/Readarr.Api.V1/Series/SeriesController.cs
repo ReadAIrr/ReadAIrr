@@ -36,7 +36,7 @@ namespace Readarr.Api.V1.Series
                 _seriesService.All();
             var links = series.ToDictionary(x => x.Id, x => _seriesBookLinkService.GetLinksBySeries(x.Id));
             var files = links.SelectMany(x => x.Value)
-                .Select(x => x.Book.Value.Id)
+                .Select(x => x.BookId)
                 .Distinct()
                 .SelectMany(x => _mediaFileService.GetFilesByBook(x))
                 .ToList();
@@ -49,7 +49,7 @@ namespace Readarr.Api.V1.Series
         {
             var series = _seriesService.Get(id);
             var links = _seriesBookLinkService.GetLinksBySeries(id);
-            var files = links.Select(x => x.Book.Value.Id)
+            var files = links.Select(x => x.BookId)
                 .Distinct()
                 .SelectMany(x => _mediaFileService.GetFilesByBook(x))
                 .ToList();
