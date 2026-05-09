@@ -4,6 +4,7 @@ import Alert from 'Components/Alert';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
+import SelectInput from 'Components/Form/SelectInput';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { inputTypes, kinds } from 'Helpers/Props';
@@ -56,7 +57,9 @@ class AudioTagEditor extends Component {
       error: null,
       saveError: null,
       preview: null,
-      proposed: null
+      proposed: null,
+      templates: [],
+      selectedTemplate: 'readarr'
     };
   }
 
@@ -84,6 +87,18 @@ class AudioTagEditor extends Component {
       this.setState({
         isFetching: false,
         error: xhr
+      });
+    });
+
+    const templatePromise = createAjaxRequest({
+      url: '/bookFile/audioTag/templates',
+      method: 'GET',
+      dataType: 'json'
+    }).request;
+
+    templatePromise.done((templates) => {
+      this.setState({
+        templates
       });
     });
   };
@@ -132,6 +147,47 @@ class AudioTagEditor extends Component {
 
     this.setState({ proposed });
     this.previewTags(proposed);
+  };
+
+  onTemplateChange = ({ value }) => {
+    this.setState({ selectedTemplate: value });
+  };
+
+  previewTemplate = (write = false) => {
+    this.setState({
+      isPreviewing: !write,
+      isSaving: write,
+      saveError: null
+    });
+
+    const promise = createAjaxRequest({
+      url: write ? '/bookFile/audioTag/templates' : '/bookFile/audioTag/templates/preview',
+      method: write ? 'PUT' : 'POST',
+      dataType: 'json',
+      data: JSON.stringify({
+        bookFileIds: [this.props.id],
+        template: this.state.selectedTemplate
+      })
+    }).request;
+
+    promise.done((result) => {
+      const preview = result.files[0];
+
+      this.setState({
+        isPreviewing: false,
+        isSaving: false,
+        preview,
+        proposed: preview.proposed
+      });
+    });
+
+    promise.fail((xhr) => {
+      this.setState({
+        isPreviewing: false,
+        isSaving: false,
+        saveError: xhr
+      });
+    });
   };
 
   onPreviewPress = () => {
@@ -212,7 +268,9 @@ class AudioTagEditor extends Component {
       error,
       saveError,
       preview,
-      proposed
+      proposed,
+      templates,
+      selectedTemplate
     } = this.state;
 
     if (isFetching) {
@@ -247,6 +305,56 @@ class AudioTagEditor extends Component {
             <Alert kind={kinds.DANGER}>
               {getErrorMessage(saveError, 'Unable to write audio tags')}
             </Alert>
+        }
+
+        {
+          preview.writeWarnings?.length ?
+            <Alert kind={kinds.WARNING}>
+              <div>Some fields did not persist after writing tags.</div>
+              <ul>
+                {
+                  preview.writeWarnings.map((warning) => {
+                    return (
+                      <li key={warning}>{warning}</li>
+                    );
+                  })
+                }
+              </ul>
+            </Alert> :
+            null
+        }
+
+        {
+          templates.length ?
+            <div className={styles.templateControls}>
+              <FormLabel>Audio Tag Template</FormLabel>
+              <SelectInput
+                name="selectedTemplate"
+                value={selectedTemplate}
+                values={templates.map((template) => {
+                  return {
+                    key: template.name,
+                    value: template.label
+                  };
+                })}
+                isDisabled={isPreviewing || isSaving}
+                onChange={this.onTemplateChange}
+              />
+              <Button
+                onPress={() => this.previewTemplate(false)}
+                isDisabled={isPreviewing || isSaving}
+              >
+                Preview Template
+              </Button>
+              <Button
+                kind={kinds.PRIMARY}
+                onPress={() => this.previewTemplate(true)}
+                isDisabled={isPreviewing || isSaving}
+              >
+                Apply Template
+              </Button>
+            </div> :
+            null
         }
 
         {

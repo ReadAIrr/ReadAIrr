@@ -3,12 +3,20 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
 import SelectInput from 'Components/Form/SelectInput';
+import Button from 'Components/Link/Button';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import { kinds } from 'Helpers/Props';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
+import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import hasDifferentItems from 'Utilities/Object/hasDifferentItems';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -31,7 +39,14 @@ class BookFileEditorTableContent extends Component {
       allUnselected: false,
       lastToggled: null,
       selectedState: {},
-      isConfirmDeleteModalOpen: false
+      isConfirmDeleteModalOpen: false,
+      isAudioTagTemplateModalOpen: false,
+      isAudioTagTemplateFetching: false,
+      isAudioTagTemplateWriting: false,
+      audioTagTemplateError: null,
+      audioTagTemplatePreview: null,
+      audioTagTemplates: [],
+      selectedAudioTagTemplate: 'readarr'
     };
   }
 
@@ -86,6 +101,193 @@ class BookFileEditorTableContent extends Component {
 
     this.props.onQualityChange(selectedIds, parseInt(value));
   };
+
+  onAudioTagTemplatesPress = () => {
+    this.setState({ isAudioTagTemplateModalOpen: true }, () => {
+      this.previewAudioTagTemplate(false);
+    });
+  };
+
+  onAudioTagTemplateModalClose = () => {
+    this.setState({
+      isAudioTagTemplateModalOpen: false,
+      audioTagTemplateError: null
+    });
+  };
+
+  onAudioTagTemplateChange = ({ value }) => {
+    this.setState({ selectedAudioTagTemplate: value }, () => {
+      this.previewAudioTagTemplate(false);
+    });
+  };
+
+  previewAudioTagTemplate = (write = false) => {
+    const selectedIds = this.getSelectedIds();
+
+    if (!selectedIds.length) {
+      return;
+    }
+
+    this.setState({
+      isAudioTagTemplateFetching: !write,
+      isAudioTagTemplateWriting: write,
+      audioTagTemplateError: null
+    });
+
+    const promise = createAjaxRequest({
+      url: write ? '/bookFile/audioTag/templates' : '/bookFile/audioTag/templates/preview',
+      method: write ? 'PUT' : 'POST',
+      dataType: 'json',
+      data: JSON.stringify({
+        bookFileIds: selectedIds,
+        template: this.state.selectedAudioTagTemplate
+      })
+    }).request;
+
+    promise.done((preview) => {
+      this.setState({
+        isAudioTagTemplateFetching: false,
+        isAudioTagTemplateWriting: false,
+        audioTagTemplatePreview: preview,
+        audioTagTemplates: preview.templates || []
+      });
+    });
+
+    promise.fail((xhr) => {
+      this.setState({
+        isAudioTagTemplateFetching: false,
+        isAudioTagTemplateWriting: false,
+        audioTagTemplateError: xhr
+      });
+    });
+  };
+
+  renderAudioTagTemplateModal() {
+    const {
+      isAudioTagTemplateModalOpen,
+      isAudioTagTemplateFetching,
+      isAudioTagTemplateWriting,
+      audioTagTemplateError,
+      audioTagTemplatePreview,
+      audioTagTemplates,
+      selectedAudioTagTemplate
+    } = this.state;
+
+    return (
+      <Modal
+        isOpen={isAudioTagTemplateModalOpen}
+        onModalClose={this.onAudioTagTemplateModalClose}
+      >
+        <ModalContent onModalClose={this.onAudioTagTemplateModalClose}>
+          <ModalHeader>
+            Audio Tag Templates
+          </ModalHeader>
+
+          <ModalBody>
+            {
+              audioTagTemplateError ?
+                <Alert kind={kinds.DANGER}>
+                  {getErrorMessage(audioTagTemplateError, 'Unable to preview audio tag template')}
+                </Alert> :
+                null
+            }
+
+            {
+              audioTagTemplatePreview?.warning ?
+                <Alert kind={kinds.WARNING}>
+                  {audioTagTemplatePreview.warning}
+                </Alert> :
+                null
+            }
+
+            <div className={styles.templateControls}>
+              <SelectInput
+                name="selectedAudioTagTemplate"
+                value={selectedAudioTagTemplate}
+                values={(audioTagTemplates.length ? audioTagTemplates : [{ name: 'readarr', label: 'ReadAIrr metadata' }]).map((template) => {
+                  return {
+                    key: template.name,
+                    value: template.label
+                  };
+                })}
+                isDisabled={isAudioTagTemplateFetching || isAudioTagTemplateWriting}
+                onChange={this.onAudioTagTemplateChange}
+              />
+
+              <Button
+                isDisabled={isAudioTagTemplateFetching || isAudioTagTemplateWriting}
+                onPress={() => this.previewAudioTagTemplate(false)}
+              >
+                Preview
+              </Button>
+            </div>
+
+            {
+              isAudioTagTemplateFetching ?
+                <LoadingIndicator /> :
+                null
+            }
+
+            {
+              audioTagTemplatePreview ?
+                <div>
+                  <div className={styles.templateSummary}>
+                    {audioTagTemplatePreview.changedFiles} of {audioTagTemplatePreview.totalFiles} selected files would change.
+                  </div>
+
+                  <table className={styles.templatePreviewTable}>
+                    <thead>
+                      <tr>
+                        <th>File</th>
+                        <th>Changes</th>
+                        <th>Warnings</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {
+                        audioTagTemplatePreview.files.map((file) => {
+                          const fileName = file.path ? file.path.split('/').pop() : file.bookFileId;
+
+                          return (
+                            <tr key={file.bookFileId}>
+                              <td>{fileName}</td>
+                              <td>{file.changes.length}</td>
+                              <td>
+                                {
+                                  file.warning ||
+                                  (file.writeWarnings && file.writeWarnings.length ? file.writeWarnings.join(' ') : null) ||
+                                  null
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })
+                      }
+                    </tbody>
+                  </table>
+                </div> :
+                null
+            }
+          </ModalBody>
+
+          <ModalFooter>
+            <Button onPress={this.onAudioTagTemplateModalClose}>
+              Close
+            </Button>
+
+            <SpinnerButton
+              kind={kinds.PRIMARY}
+              isSpinning={isAudioTagTemplateWriting}
+              isDisabled={!audioTagTemplatePreview || !audioTagTemplatePreview.changedFiles || isAudioTagTemplateFetching}
+              onPress={() => this.previewAudioTagTemplate(true)}
+            >
+              Apply Template
+            </SpinnerButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    );
+  }
 
   //
   // Render
@@ -195,6 +397,13 @@ class BookFileEditorTableContent extends Component {
                   onChange={this.onQualityChange}
                 />
               </div>
+
+              <Button
+                isDisabled={!hasSelectedFiles}
+                onPress={this.onAudioTagTemplatesPress}
+              >
+                Audio Tag Templates
+              </Button>
             </div>
           ) : null
         }
@@ -208,6 +417,8 @@ class BookFileEditorTableContent extends Component {
           onConfirm={this.onConfirmDelete}
           onCancel={this.onConfirmDeleteModalClose}
         />
+
+        {this.renderAudioTagTemplateModal()}
       </div>
     );
   }

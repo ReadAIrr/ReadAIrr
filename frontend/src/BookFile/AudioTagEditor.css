@@ -19,6 +19,14 @@
   margin-top: 14px;
 }
 
+.templateControls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 2fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 .changesTable {
   width: 100%;
   border-collapse: collapse;

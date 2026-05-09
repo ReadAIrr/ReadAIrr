@@ -13,11 +13,38 @@
 
 .actions {
   display: flex;
+  gap: 10px;
   margin: 10px;
 }
 
 .selectInput {
-  margin-left: 10px;
+  min-width: 180px;
+}
+
+.templateControls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.templateSummary {
+  margin-bottom: 8px;
+  color: var(--helpTextColor);
+}
+
+.templatePreviewTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.templatePreviewTable th,
+.templatePreviewTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--borderColor);
+  text-align: left;
+  vertical-align: top;
 }
 
 .blankpad {

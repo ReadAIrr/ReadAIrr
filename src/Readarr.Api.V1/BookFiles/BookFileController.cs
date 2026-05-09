@@ -157,6 +157,24 @@ namespace Readarr.Api.V1.BookFiles
             return Accepted(_audioTagEditService.Write(id, resource));
         }
 
+        [HttpGet("audioTag/templates")]
+        public ActionResult<List<AudioTagTemplateOption>> GetAudioTagTemplates()
+        {
+            return _audioTagEditService.GetTemplates();
+        }
+
+        [HttpPost("audioTag/templates/preview")]
+        public ActionResult<AudioTagTemplatePreview> PreviewAudioTagTemplate([FromBody] AudioTagTemplateRequest resource)
+        {
+            return _audioTagEditService.PreviewTemplate(resource);
+        }
+
+        [HttpPut("audioTag/templates")]
+        public ActionResult<AudioTagTemplatePreview> WriteAudioTagTemplate([FromBody] AudioTagTemplateRequest resource)
+        {
+            return Accepted(_audioTagEditService.WriteTemplate(resource));
+        }
+
         [HttpPut("editor")]
         public IActionResult SetQuality([FromBody] BookFileListResource resource)
         {

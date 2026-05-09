@@ -5,6 +5,9 @@ interface CssExports {
   'blankpad': string;
   'filesTable': string;
   'selectInput': string;
+  'templateControls': string;
+  'templatePreviewTable': string;
+  'templateSummary': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

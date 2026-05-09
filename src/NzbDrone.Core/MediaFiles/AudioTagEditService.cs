@@ -41,10 +41,37 @@ namespace NzbDrone.Core.MediaFiles
         public bool IsAudioFile { get; set; }
         public bool CanWrite { get; set; }
         public string Warning { get; set; }
+        public List<string> WriteWarnings { get; set; }
         public AudioTagValues Current { get; set; }
         public AudioTagValues Suggested { get; set; }
         public AudioTagValues Proposed { get; set; }
         public List<AudioTagEditDifference> Changes { get; set; }
+    }
+
+    public class AudioTagTemplateOption
+    {
+        public string Name { get; set; }
+        public string Label { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class AudioTagTemplateRequest
+    {
+        public int? BookId { get; set; }
+        public List<int> BookFileIds { get; set; }
+        public string Template { get; set; }
+    }
+
+    public class AudioTagTemplatePreview
+    {
+        public string Template { get; set; }
+        public List<AudioTagTemplateOption> Templates { get; set; }
+        public string Warning { get; set; }
+        public int TotalFiles { get; set; }
+        public int WritableFiles { get; set; }
+        public int ChangedFiles { get; set; }
+        public int WarningFiles { get; set; }
+        public List<AudioTagEditPreview> Files { get; set; }
     }
 
     public interface IAudioTagEditService
@@ -52,6 +79,9 @@ namespace NzbDrone.Core.MediaFiles
         AudioTagEditPreview GetPreview(int bookFileId);
         AudioTagEditPreview Preview(int bookFileId, AudioTagValues proposed);
         AudioTagEditPreview Write(int bookFileId, AudioTagValues proposed);
+        List<AudioTagTemplateOption> GetTemplates();
+        AudioTagTemplatePreview PreviewTemplate(AudioTagTemplateRequest request);
+        AudioTagTemplatePreview WriteTemplate(AudioTagTemplateRequest request);
     }
 
     public class AudioTagEditService : IAudioTagEditService
@@ -111,7 +141,45 @@ namespace NzbDrone.Core.MediaFiles
             _audioTagService.WriteManualTags(bookFile, proposedTag);
 
             var updatedCurrent = _audioTagService.ReadAudioTag(bookFile.Path);
-            return BuildPreview(bookFile, updatedCurrent, suggested, updatedCurrent, warning);
+            var writeWarnings = GetWriteWarnings(updatedCurrent, proposedTag);
+            LogWriteWarnings(bookFile, writeWarnings);
+
+            return BuildPreview(bookFile, updatedCurrent, suggested, proposedTag, warning, writeWarnings);
+        }
+
+        public List<AudioTagTemplateOption> GetTemplates()
+        {
+            return new List<AudioTagTemplateOption>
+            {
+                new AudioTagTemplateOption
+                {
+                    Name = "readarr",
+                    Label = "ReadAIrr metadata",
+                    Description = "Use ReadAIrr's matched edition, author, narrator evidence, publisher, release date, and current file order."
+                },
+                new AudioTagTemplateOption
+                {
+                    Name = "plexAudiobook",
+                    Label = "Plex audiobook",
+                    Description = "Use book title as album, author as album artist, narrator as performer, Audiobook genre fallback, and preserved safe file order."
+                },
+                new AudioTagTemplateOption
+                {
+                    Name = "minimal",
+                    Label = "Minimal audiobook",
+                    Description = "Write only title, book, author, narrator, and safe part numbering; leave publisher, genres, comment, and disc fields from current tags."
+                }
+            };
+        }
+
+        public AudioTagTemplatePreview PreviewTemplate(AudioTagTemplateRequest request)
+        {
+            return BuildTemplatePreview(request, false);
+        }
+
+        public AudioTagTemplatePreview WriteTemplate(AudioTagTemplateRequest request)
+        {
+            return BuildTemplatePreview(request, true);
         }
 
         private BookFile GetAudioBookFile(int bookFileId)
@@ -158,6 +226,148 @@ namespace NzbDrone.Core.MediaFiles
             return suggested;
         }
 
+        private AudioTagTemplatePreview BuildTemplatePreview(AudioTagTemplateRequest request, bool write)
+        {
+            request = request ?? new AudioTagTemplateRequest();
+            var template = NormalizeTemplate(request.Template);
+            var bookFiles = GetAudioBookFiles(request);
+            var files = new List<AudioTagEditPreview>();
+
+            foreach (var bookFile in bookFiles)
+            {
+                var current = _audioTagService.ReadAudioTag(bookFile.Path);
+                var suggested = GetSuggestedTags(bookFile, current, out var warning);
+                var proposed = ApplyTemplate(template, current, suggested);
+                var preview = BuildPreview(bookFile, current, suggested, proposed, warning);
+
+                if (write && preview.Changes.Any())
+                {
+                    _logger.ProgressInfo("Writing {0} audio tag template for {1}", template, bookFile.Path);
+                    _audioTagService.WriteManualTags(bookFile, proposed);
+
+                    var updatedCurrent = _audioTagService.ReadAudioTag(bookFile.Path);
+                    var writeWarnings = GetWriteWarnings(updatedCurrent, proposed);
+                    LogWriteWarnings(bookFile, writeWarnings);
+
+                    preview = BuildPreview(bookFile, updatedCurrent, suggested, proposed, warning, writeWarnings);
+                }
+
+                files.Add(preview);
+            }
+
+            return new AudioTagTemplatePreview
+            {
+                Template = template,
+                Templates = GetTemplates(),
+                Warning = GetBulkWarning(files),
+                TotalFiles = files.Count,
+                WritableFiles = files.Count(x => x.CanWrite),
+                ChangedFiles = files.Count(x => x.Changes.Any()),
+                WarningFiles = files.Count(x => x.Warning.IsNotNullOrWhiteSpace() || (x.WriteWarnings != null && x.WriteWarnings.Any())),
+                Files = files
+            };
+        }
+
+        private List<BookFile> GetAudioBookFiles(AudioTagTemplateRequest request)
+        {
+            var bookFiles = new List<BookFile>();
+
+            if (request.BookFileIds != null && request.BookFileIds.Any())
+            {
+                bookFiles.AddRange(_mediaFileService.Get(request.BookFileIds) ?? new List<BookFile>());
+            }
+            else if (request.BookId.HasValue)
+            {
+                bookFiles.AddRange(_mediaFileService.GetFilesByBook(request.BookId.Value) ?? new List<BookFile>());
+            }
+            else
+            {
+                throw new BadRequestException("bookId or bookFileIds must be provided");
+            }
+
+            return bookFiles
+                .Where(x => x != null)
+                .Select(x => GetAudioBookFile(x.Id))
+                .OrderBy(x => x.Part)
+                .ThenBy(x => x.Path)
+                .ToList();
+        }
+
+        private AudioTag ApplyTemplate(string template, AudioTag current, AudioTag suggested)
+        {
+            switch (template)
+            {
+                case "minimal":
+                    return new AudioTag
+                    {
+                        Title = suggested.Title,
+                        Book = suggested.Book,
+                        BookAuthors = suggested.BookAuthors,
+                        Performers = suggested.Performers,
+                        Track = suggested.Track,
+                        TrackCount = suggested.TrackCount,
+                        Disc = current.Disc,
+                        DiscCount = current.DiscCount,
+                        Date = current.Date,
+                        Year = current.Year,
+                        OriginalReleaseDate = current.OriginalReleaseDate,
+                        OriginalYear = current.OriginalYear,
+                        Publisher = current.Publisher,
+                        Genres = current.Genres,
+                        Comment = current.Comment,
+                        Media = current.Media,
+                        Duration = current.Duration,
+                        ImageSize = current.ImageSize,
+                        Quality = current.Quality,
+                        MediaInfo = current.MediaInfo
+                    };
+
+                case "plexAudiobook":
+                    return new AudioTag
+                    {
+                        Title = suggested.Title,
+                        Book = suggested.Book,
+                        BookAuthors = suggested.BookAuthors,
+                        Performers = suggested.Performers,
+                        Track = suggested.Track,
+                        TrackCount = suggested.TrackCount,
+                        Disc = suggested.Disc > 0 ? suggested.Disc : current.Disc,
+                        DiscCount = suggested.DiscCount > 0 ? suggested.DiscCount : current.DiscCount,
+                        Date = suggested.Date,
+                        Year = suggested.Year,
+                        OriginalReleaseDate = suggested.OriginalReleaseDate,
+                        OriginalYear = suggested.OriginalYear,
+                        Publisher = suggested.Publisher,
+                        Genres = current.Genres != null && current.Genres.Any() ? current.Genres : new[] { "Audiobook" },
+                        Comment = current.Comment,
+                        Media = current.Media,
+                        Duration = current.Duration,
+                        ImageSize = current.ImageSize,
+                        Quality = current.Quality,
+                        MediaInfo = current.MediaInfo
+                    };
+
+                case "readarr":
+                default:
+                    return suggested;
+            }
+        }
+
+        private string NormalizeTemplate(string template)
+        {
+            if (template.IsNullOrWhiteSpace())
+            {
+                return "readarr";
+            }
+
+            if (GetTemplates().Any(x => x.Name == template))
+            {
+                return template;
+            }
+
+            throw new BadRequestException($"Unknown audio tag template '{template}'");
+        }
+
         private string GetTrustedNarratorEvidence(BookFile bookFile)
         {
             var evidence = _contributorEvidenceRepository.GetByBookFileIds(new[] { bookFile.Id })
@@ -182,7 +392,7 @@ namespace NzbDrone.Core.MediaFiles
             return (evidence.Source == "aiReview" || evidence.Source == "sttTranscript") && (evidence.Confidence ?? 0) >= 80;
         }
 
-        private AudioTagEditPreview BuildPreview(BookFile bookFile, AudioTag current, AudioTag suggested, AudioTag proposed, string warning)
+        private AudioTagEditPreview BuildPreview(BookFile bookFile, AudioTag current, AudioTag suggested, AudioTag proposed, string warning, List<string> writeWarnings = null)
         {
             return new AudioTagEditPreview
             {
@@ -191,6 +401,7 @@ namespace NzbDrone.Core.MediaFiles
                 IsAudioFile = true,
                 CanWrite = current.IsValid && proposed.IsValid,
                 Warning = warning,
+                WriteWarnings = writeWarnings ?? new List<string>(),
                 Current = ToValues(current),
                 Suggested = ToValues(suggested),
                 Proposed = ToValues(proposed),
@@ -201,6 +412,38 @@ namespace NzbDrone.Core.MediaFiles
                     ProposedValue = x.Value.Item2
                 }).ToList()
             };
+        }
+
+        private static List<string> GetWriteWarnings(AudioTag updatedCurrent, AudioTag proposed)
+        {
+            return updatedCurrent.Diff(proposed)
+                .Select(x => $"{x.Key} did not persist. Expected '{x.Value.Item2}', read back '{x.Value.Item1}'.")
+                .ToList();
+        }
+
+        private static string GetBulkWarning(List<AudioTagEditPreview> files)
+        {
+            if (files.Any(x => x.Warning.IsNotNullOrWhiteSpace()))
+            {
+                return "One or more files belong to an incomplete audiobook part set. Track counts are preserved for those files.";
+            }
+
+            if (files.Any(x => x.WriteWarnings != null && x.WriteWarnings.Any()))
+            {
+                return "One or more tag writes did not fully persist. Review the per-file warnings before retrying.";
+            }
+
+            return null;
+        }
+
+        private void LogWriteWarnings(BookFile bookFile, List<string> writeWarnings)
+        {
+            if (writeWarnings == null || !writeWarnings.Any())
+            {
+                return;
+            }
+
+            _logger.Warn("Audio tag write for book file {0} did not persist {1} field(s): {2}", bookFile.Id, writeWarnings.Count, string.Join("; ", writeWarnings));
         }
 
         private static AudioTagValues ToValues(AudioTag tag)

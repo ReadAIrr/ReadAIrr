@@ -7,6 +7,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaFiles
 {
@@ -62,6 +63,10 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Setup(x => x.Get(_bookFile.Id))
                 .Returns(_bookFile);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(x => x.Get(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _bookFile.Id }))))
+                .Returns(new List<BookFile> { _bookFile });
 
             Mocker.GetMock<IAudioTagService>()
                 .Setup(x => x.ReadAudioTag(_bookFile.Path))
@@ -119,6 +124,21 @@ namespace NzbDrone.Core.Test.MediaFiles
         [Test]
         public void should_write_manual_values_when_diff_exists()
         {
+            Mocker.GetMock<IAudioTagService>()
+                .SetupSequence(x => x.ReadAudioTag(_bookFile.Path))
+                .Returns(_currentTags)
+                .Returns(new AudioTag
+                {
+                    Title = "Manual Title",
+                    Book = "Old Book",
+                    BookAuthors = new[] { "Old Author" },
+                    Performers = new[] { "Old Narrator" },
+                    Track = 1,
+                    TrackCount = 1,
+                    Genres = new[] { "Audiobook" },
+                    Comment = "Old comment"
+                });
+
             var result = Subject.Write(_bookFile.Id, new AudioTagValues
             {
                 Title = "Manual Title",
@@ -132,9 +152,87 @@ namespace NzbDrone.Core.Test.MediaFiles
             });
 
             result.Changes.Should().BeEmpty();
+            result.WriteWarnings.Should().BeEmpty();
 
             Mocker.GetMock<IAudioTagService>()
                 .Verify(x => x.WriteManualTags(_bookFile, It.Is<AudioTag>(t => t.Title == "Manual Title")), Times.Once());
+        }
+
+        [Test]
+        public void should_warn_when_written_values_do_not_persist()
+        {
+            var result = Subject.Write(_bookFile.Id, new AudioTagValues
+            {
+                Title = "Manual Title",
+                Book = "Old Book",
+                Author = "Old Author",
+                Performers = "Old Narrator",
+                Track = 1,
+                TrackCount = 1,
+                Genres = "Audiobook",
+                Comment = "Old comment"
+            });
+
+            result.Changes.Should().Contain(x => x.Field == "Title" && x.ProposedValue == "Manual Title");
+            result.WriteWarnings.Should().Contain(x => x.Contains("Title did not persist"));
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_preview_template_for_selected_book_files_without_writing()
+        {
+            var result = Subject.PreviewTemplate(new AudioTagTemplateRequest
+            {
+                BookFileIds = new List<int> { _bookFile.Id },
+                Template = "readarr"
+            });
+
+            result.Template.Should().Be("readarr");
+            result.TotalFiles.Should().Be(1);
+            result.ChangedFiles.Should().Be(1);
+            result.Files.Single().Proposed.Title.Should().Be("Read Edition");
+
+            Mocker.GetMock<IAudioTagService>()
+                .Verify(x => x.WriteManualTags(It.IsAny<BookFile>(), It.IsAny<AudioTag>()), Times.Never());
+        }
+
+        [Test]
+        public void should_apply_plex_template_with_audiobook_genre_fallback()
+        {
+            _currentTags.Genres = new string[0];
+
+            var result = Subject.PreviewTemplate(new AudioTagTemplateRequest
+            {
+                BookFileIds = new List<int> { _bookFile.Id },
+                Template = "plexAudiobook"
+            });
+
+            var proposed = result.Files.Single().Proposed;
+            proposed.Book.Should().Be("Read Book");
+            proposed.Author.Should().Be("Read Author");
+            proposed.Performers.Should().Be("Read Narrator");
+            proposed.Genres.Should().Be("Audiobook");
+        }
+
+        [Test]
+        public void should_write_template_and_report_remaining_unpersisted_fields()
+        {
+            var result = Subject.WriteTemplate(new AudioTagTemplateRequest
+            {
+                BookFileIds = new List<int> { _bookFile.Id },
+                Template = "readarr"
+            });
+
+            result.TotalFiles.Should().Be(1);
+            result.WarningFiles.Should().Be(1);
+            result.Warning.Should().Contain("did not fully persist");
+            result.Files.Single().WriteWarnings.Should().NotBeEmpty();
+
+            Mocker.GetMock<IAudioTagService>()
+                .Verify(x => x.WriteManualTags(_bookFile, It.Is<AudioTag>(t => t.Title == "Read Edition")), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

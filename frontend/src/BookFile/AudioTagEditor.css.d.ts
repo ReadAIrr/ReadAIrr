@@ -7,6 +7,7 @@ interface CssExports {
   'editor': string;
   'emptyChanges': string;
   'heading': string;
+  'templateControls': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
