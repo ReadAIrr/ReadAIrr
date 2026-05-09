@@ -93,6 +93,12 @@
   margin-top: 10px;
 }
 
+.loadMore {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
 .detailPanel {
   margin-top: 12px;
   padding-top: 12px;

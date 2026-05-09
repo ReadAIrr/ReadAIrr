@@ -66,6 +66,9 @@ namespace NzbDrone.Api.Test.Contributors
             result[0].ReviewOnlyReason.Should().Contain("not provider-confirmed");
             result[0].SourceCounts.Should().Contain(x => x.Source == "manual" && x.Count == 1);
             result[0].SourceCounts.Should().Contain(x => x.Source == "sttTranscript" && x.Count == 1);
+            result[0].BucketCounts.Should().Contain(x => x.Bucket == "manualEvidence" && x.Count == 1);
+            result[0].BucketCounts.Should().Contain(x => x.Bucket == "reviewEvidence" && x.Count == 1);
+            result[0].BucketCounts.Should().Contain(x => x.Bucket == "unmappedFiles" && x.Count == 2);
             result[0].Examples.Should().Contain(x => x.BookFileId == 2 && x.Path == "/books/two.m4b" && x.Confidence == 82);
         }
 
@@ -189,6 +192,9 @@ namespace NzbDrone.Api.Test.Contributors
             result.DisplayName.Should().Be("Jane Reader");
             result.MatchedBookCount.Should().Be(1);
             result.UnmappedFileCount.Should().Be(0);
+            result.BucketCounts.Should().Contain(x => x.Bucket == "matchedLibraryBooks" && x.Count == 1);
+            result.BucketCounts.Should().Contain(x => x.Bucket == "importedFiles" && x.Count == 1);
+            result.BucketCounts.Should().Contain(x => x.Bucket == "unmappedFiles" && x.Count == 0);
             result.ManualEvidenceCount.Should().Be(1);
             result.IsCanonicalIdentity.Should().BeFalse();
             result.Works.Should().HaveCount(1);

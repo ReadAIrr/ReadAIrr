@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using Readarr.Http;
 
@@ -26,7 +27,14 @@ namespace Readarr.Api.V1.Contributors
         [HttpGet]
         public List<NarratorEvidenceResource> GetNarratorEvidence([FromQuery] string term = null, [FromQuery] string source = null)
         {
-            var evidence = _contributorEvidenceRepository.All().ToList();
+            var pagingSpec = new PagingSpec<ContributorEvidence>
+            {
+                Page = 1,
+                PageSize = 500,
+                SortKey = "updated",
+                SortDirection = SortDirection.Descending
+            };
+            var evidence = _contributorEvidenceRepository.GetNarratorEvidence(pagingSpec, term?.Trim(), source?.Trim()).Records;
             var aliases = _narratorIdentityLinkRepository.All().ToList();
             var bookFileIds = evidence.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
             var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
@@ -34,12 +42,43 @@ namespace Readarr.Api.V1.Contributors
             return NarratorEvidenceResourceMapper.ToResource(evidence, bookFiles, aliases, term?.Trim(), source?.Trim());
         }
 
+        [HttpGet("paged")]
+        public PagingResource<NarratorEvidenceResource> GetNarratorEvidencePaged([FromQuery] PagingRequestResource paging, [FromQuery] string term = null, [FromQuery] string source = null)
+        {
+            var pagingResource = new PagingResource<NarratorEvidenceResource>(paging);
+            var pagingSpec = new PagingSpec<ContributorEvidence>
+            {
+                Page = pagingResource.Page,
+                PageSize = pagingResource.PageSize,
+                SortKey = pagingResource.SortKey ?? "updated",
+                SortDirection = pagingResource.SortDirection == SortDirection.Default ? SortDirection.Descending : pagingResource.SortDirection
+            };
+
+            pagingSpec = _contributorEvidenceRepository.GetNarratorEvidence(pagingSpec, term?.Trim(), source?.Trim());
+
+            var aliases = _narratorIdentityLinkRepository.All().ToList();
+            var bookFileIds = pagingSpec.Records.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
+            var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
+
+            return new PagingResource<NarratorEvidenceResource>
+            {
+                Page = pagingSpec.Page,
+                PageSize = pagingSpec.PageSize,
+                SortKey = pagingSpec.SortKey,
+                SortDirection = pagingSpec.SortDirection,
+                TotalRecords = pagingSpec.TotalRecords,
+                Records = NarratorEvidenceResourceMapper.ToResource(pagingSpec.Records, bookFiles, aliases, term?.Trim(), source?.Trim())
+            };
+        }
+
         [HttpGet("{normalizedName}")]
         public ActionResult<NarratorEvidenceDetailResource> GetNarratorEvidenceDetail(string normalizedName, [FromQuery] string source = null)
         {
             var normalized = ContributorEvidence.NormalizeName(normalizedName);
-            var evidence = _contributorEvidenceRepository.All().ToList();
             var aliases = _narratorIdentityLinkRepository.All().ToList();
+            var aliasLinks = _narratorIdentityLinkRepository.GetByNormalizedName(normalized);
+            var names = aliasLinks.SelectMany(x => new[] { x.CanonicalNormalizedName, x.AliasNormalizedName }).Append(normalized).Distinct().ToList();
+            var evidence = _contributorEvidenceRepository.GetNarratorEvidenceByNames(names, source?.Trim());
             var bookFileIds = evidence.Where(x => x.BookFileId.HasValue).Select(x => x.BookFileId.Value).Distinct().ToList();
             var bookFiles = bookFileIds.Any() ? _mediaFileService.Get(bookFileIds) : new List<BookFile>();
             var resource = NarratorEvidenceResourceMapper.ToDetailResource(evidence, bookFiles, aliases, normalized, source?.Trim());

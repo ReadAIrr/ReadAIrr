@@ -10,6 +10,8 @@ namespace NzbDrone.Core.MediaFiles
     {
         List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
         List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
+        PagingSpec<ContributorEvidence> GetNarratorEvidence(PagingSpec<ContributorEvidence> pagingSpec, string term, string source);
+        List<ContributorEvidence> GetNarratorEvidenceByNames(IEnumerable<string> normalizedNames, string source = null);
         List<ContributorEvidence> GetRecent(int take);
         void DeleteByBookFileIdsAndSources(IEnumerable<int> bookFileIds, IEnumerable<string> sources);
         void DeleteByBookFileIdSourceAndRole(int bookFileId, string source, string role);
@@ -50,6 +52,44 @@ namespace NzbDrone.Core.MediaFiles
             return Query(x => x.EditionId.HasValue && ids.Contains(x.EditionId.Value))
                 .OrderBy(x => x.Role)
                 .ThenBy(x => x.DisplayName)
+                .ToList();
+        }
+
+        public PagingSpec<ContributorEvidence> GetNarratorEvidence(PagingSpec<ContributorEvidence> pagingSpec, string term, string source)
+        {
+            pagingSpec.FilterExpressions.Add(x => x.Role == "narrator" && x.DisplayName != null && x.DisplayName != string.Empty);
+
+            if (source.IsNotNullOrWhiteSpace())
+            {
+                pagingSpec.FilterExpressions.Add(x => x.Source == source);
+            }
+
+            if (term.IsNotNullOrWhiteSpace())
+            {
+                pagingSpec.FilterExpressions.Add(x =>
+                    x.DisplayName.Contains(term) ||
+                    x.NormalizedName.Contains(term) ||
+                    x.Source.Contains(term));
+            }
+
+            return GetPaged(pagingSpec);
+        }
+
+        public List<ContributorEvidence> GetNarratorEvidenceByNames(IEnumerable<string> normalizedNames, string source = null)
+        {
+            var names = normalizedNames.Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
+            var cleanSource = source.IsNotNullOrWhiteSpace() ? source : null;
+
+            if (!names.Any())
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            return Query(x => x.Role == "narrator" &&
+                              x.NormalizedName != null &&
+                              names.Contains(x.NormalizedName) &&
+                              (cleanSource == null || x.Source == cleanSource))
+                .OrderByDescending(x => x.Updated)
                 .ToList();
         }
 

@@ -18,6 +18,7 @@ import styles from './NarratorEvidenceIndex.css';
 const SOURCE_FILTERS = [
   { key: '', label: 'All evidence' },
   { key: 'manual', label: 'Manual' },
+  { key: 'providerMetadata', label: 'Provider' },
   { key: 'aiReview', label: 'AI Review' },
   { key: 'sttTranscript', label: 'STT transcript' }
 ];
@@ -40,6 +41,8 @@ function getSourceLabel(source) {
   switch (source) {
     case 'manual':
       return 'Manual';
+    case 'providerMetadata':
+      return 'Provider';
     case 'aiReview':
       return 'AI Review';
     case 'sttTranscript':
@@ -60,6 +63,29 @@ function SourceCounts({ sourceCounts }) {
               className={styles.sourceCount}
             >
               {getSourceLabel(item.source)}: {item.count}
+            </span>
+          );
+        })
+      }
+    </div>
+  );
+}
+
+function BucketCounts({ bucketCounts }) {
+  if (!bucketCounts?.length) {
+    return null;
+  }
+
+  return (
+    <div className={styles.narratorStats}>
+      {
+        bucketCounts.filter((item) => item.count > 0).map((item) => {
+          return (
+            <span
+              key={item.bucket}
+              className={styles.narratorStat}
+            >
+              {item.label}: {item.count}
             </span>
           );
         })
@@ -101,6 +127,10 @@ NarratorStats.propTypes = {
 
 SourceCounts.propTypes = {
   sourceCounts: PropTypes.arrayOf(PropTypes.object).isRequired
+};
+
+BucketCounts.propTypes = {
+  bucketCounts: PropTypes.arrayOf(PropTypes.object)
 };
 
 function EvidenceExamples({ examples }) {
@@ -216,6 +246,7 @@ function NarratorDetailPanel({
       </div>
 
       <NarratorStats item={detail} />
+      <BucketCounts bucketCounts={detail.bucketCounts} />
 
       <div className={styles.aliasPanel}>
         <div className={styles.detailTitle}>
@@ -389,6 +420,9 @@ class NarratorEvidenceIndex extends Component {
       isFetching: true,
       error: null,
       items: [],
+      page: 1,
+      pageSize: 50,
+      totalRecords: 0,
       narratorOptions: [],
       searchTerm: '',
       source: '',
@@ -425,10 +459,11 @@ class NarratorEvidenceIndex extends Component {
     }
   }
 
-  fetchNarrators = () => {
+  fetchNarrators = (page = 1) => {
     const {
       searchTerm,
-      source
+      source,
+      pageSize
     } = this.state;
 
     if (this._abortRequest) {
@@ -441,8 +476,10 @@ class NarratorEvidenceIndex extends Component {
     });
 
     const { request, abortRequest } = createAjaxRequest({
-      url: '/narrator',
+      url: '/narrator/paged',
       data: {
+        page,
+        pageSize,
         term: searchTerm,
         source
       }
@@ -450,11 +487,16 @@ class NarratorEvidenceIndex extends Component {
 
     this._abortRequest = abortRequest;
 
-    request.done((items) => {
+    request.done((response) => {
+      const records = response.records || [];
+
       this.setState({
         isFetching: false,
         error: null,
-        items
+        items: page === 1 ? records : this.state.items.concat(records),
+        page: response.page || page,
+        pageSize: response.pageSize || pageSize,
+        totalRecords: response.totalRecords || records.length
       });
     });
 
@@ -479,16 +521,26 @@ class NarratorEvidenceIndex extends Component {
   };
 
   onSearchTermChange = (searchTerm) => {
-    this.setState({ searchTerm }, this.fetchNarrators);
+    this.setState({
+      searchTerm,
+      page: 1,
+      totalRecords: 0
+    }, () => this.fetchNarrators(1));
   };
 
   onSourceFilterPress = (source) => {
     this.setState({
       source,
+      page: 1,
+      totalRecords: 0,
       selectedNarrator: null,
       detail: null,
       detailError: null
-    }, this.fetchNarrators);
+    }, () => this.fetchNarrators(1));
+  };
+
+  onLoadMorePress = () => {
+    this.fetchNarrators(this.state.page + 1);
   };
 
   onDetailPress = (normalizedName) => {
@@ -718,6 +770,7 @@ class NarratorEvidenceIndex extends Component {
       isFetching,
       error,
       items,
+      totalRecords,
       searchTerm,
       source,
       selectedNarrator,
@@ -822,6 +875,7 @@ class NarratorEvidenceIndex extends Component {
                         </div>
 
                         <NarratorStats item={item} />
+                        <BucketCounts bucketCounts={item.bucketCounts} />
 
                         <EvidenceExamples examples={item.examples || []} />
 
@@ -862,6 +916,15 @@ class NarratorEvidenceIndex extends Component {
                     );
                   })
                 }
+              </div>
+          }
+
+          {
+            !isFetching && !error && items.length < totalRecords &&
+              <div className={styles.loadMore}>
+                <Button onPress={this.onLoadMorePress}>
+                  Load more narrators ({items.length} of {totalRecords})
+                </Button>
               </div>
           }
         </PageContentBody>

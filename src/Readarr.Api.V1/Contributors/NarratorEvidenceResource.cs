@@ -23,6 +23,7 @@ namespace Readarr.Api.V1.Contributors
         public int AliasCount { get; set; }
         public List<NarratorIdentityLinkResource> Aliases { get; set; }
         public List<NarratorEvidenceSourceCountResource> SourceCounts { get; set; }
+        public List<NarratorEvidenceBucketCountResource> BucketCounts { get; set; }
         public DateTime LatestUpdated { get; set; }
         public List<NarratorEvidenceExampleResource> Examples { get; set; }
     }
@@ -30,6 +31,13 @@ namespace Readarr.Api.V1.Contributors
     public class NarratorEvidenceSourceCountResource
     {
         public string Source { get; set; }
+        public int Count { get; set; }
+    }
+
+    public class NarratorEvidenceBucketCountResource
+    {
+        public string Bucket { get; set; }
+        public string Label { get; set; }
         public int Count { get; set; }
     }
 
@@ -142,6 +150,7 @@ namespace Readarr.Api.V1.Contributors
                                                   Count = x.Count()
                                               })
                                               .ToList(),
+                        BucketCounts = GetBucketCounts(ordered, fileById, groupAliases),
                         Examples = ordered.Take(5)
                                           .Select(x => ToExampleResource(x, fileById))
                                           .ToList()
@@ -197,6 +206,7 @@ namespace Readarr.Api.V1.Contributors
                 Aliases = summary.Aliases,
                 LatestUpdated = summary.LatestUpdated,
                 SourceCounts = summary.SourceCounts,
+                BucketCounts = summary.BucketCounts,
                 Examples = summary.Examples,
                 Works = narratorEvidence.Select(x => ToExampleResource(x, fileById)).ToList()
             };
@@ -246,6 +256,32 @@ namespace Readarr.Api.V1.Contributors
                 Source = evidence.Source,
                 Confidence = evidence.Confidence,
                 Updated = evidence.Updated
+            };
+        }
+
+        private static List<NarratorEvidenceBucketCountResource> GetBucketCounts(List<ContributorEvidence> evidence, Dictionary<int, BookFile> fileById, List<NarratorIdentityLink> aliases)
+        {
+            var matchedBookIds = evidence.Select(x => ToExampleResource(x, fileById).BookId).Where(x => x.HasValue).Distinct().Count();
+            var importedFileIds = evidence.Where(x =>
+            {
+                fileById.TryGetValue(x.BookFileId ?? 0, out var file);
+                return file != null && file.EditionId > 0;
+            }).Select(x => x.BookFileId.Value).Distinct().Count();
+            var unmappedFileIds = evidence.Where(x =>
+            {
+                fileById.TryGetValue(x.BookFileId ?? 0, out var file);
+                return x.BookFileId.HasValue && (file == null || file.EditionId <= 0);
+            }).Select(x => x.BookFileId.Value).Distinct().Count();
+
+            return new List<NarratorEvidenceBucketCountResource>
+            {
+                new NarratorEvidenceBucketCountResource { Bucket = "matchedLibraryBooks", Label = "Matched library books", Count = matchedBookIds },
+                new NarratorEvidenceBucketCountResource { Bucket = "importedFiles", Label = "Imported files", Count = importedFileIds },
+                new NarratorEvidenceBucketCountResource { Bucket = "unmappedFiles", Label = "Unmapped files", Count = unmappedFileIds },
+                new NarratorEvidenceBucketCountResource { Bucket = "providerEvidence", Label = "Provider evidence", Count = evidence.Count(x => x.Source == "providerMetadata") },
+                new NarratorEvidenceBucketCountResource { Bucket = "manualEvidence", Label = "Manual evidence", Count = evidence.Count(x => x.Source == "manual") },
+                new NarratorEvidenceBucketCountResource { Bucket = "reviewEvidence", Label = "AI/STT review evidence", Count = evidence.Count(x => x.Source == "aiReview" || x.Source == "sttTranscript") },
+                new NarratorEvidenceBucketCountResource { Bucket = "aliases", Label = "Linked aliases", Count = aliases.Count }
             };
         }
 

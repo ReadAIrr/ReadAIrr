@@ -13,6 +13,7 @@ interface CssExports {
   'examples': string;
   'filterButtons': string;
   'identityNote': string;
+  'loadMore': string;
   'narratorHeader': string;
   'narratorList': string;
   'narratorMeta': string;
