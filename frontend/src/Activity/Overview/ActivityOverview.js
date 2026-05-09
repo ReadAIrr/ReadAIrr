@@ -23,7 +23,7 @@ const columns = [
   { name: 'category', label: 'Category', isVisible: true, isSortable: true },
   { name: 'level', label: 'Level', isVisible: true, isSortable: true },
   { name: 'status', label: 'Status', isVisible: true, isSortable: true },
-  { name: 'source', label: 'Source', isVisible: true, isSortable: true },
+  { name: 'source', label: 'Source', isVisible: true, isSortable: false },
   { name: 'title', label: 'Title', isVisible: true, isSortable: true },
   { name: 'message', label: 'Message', isVisible: true, isSortable: false }
 ];
