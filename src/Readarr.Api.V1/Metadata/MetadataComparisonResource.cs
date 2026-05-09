@@ -16,8 +16,36 @@ namespace Readarr.Api.V1.Metadata
         public string ProviderStatus { get; set; }
         public string SummaryStatus { get; set; }
         public string Summary { get; set; }
+        public MetadataConfidenceScoringResource ConfidenceScoring { get; set; }
         public List<MetadataComparisonStatusCountResource> StatusCounts { get; set; }
         public List<MetadataComparisonFieldResource> Fields { get; set; }
+    }
+
+    public class MetadataConfidenceScoringResource
+    {
+        public string Mode { get; set; }
+        public string Summary { get; set; }
+        public bool AutomaticMetadataDecisioningEnabled { get; set; }
+        public bool AiDecisioningEnabled { get; set; }
+        public int FieldConfidenceScore { get; set; }
+        public int ConfirmedFields { get; set; }
+        public int ReviewFields { get; set; }
+        public int LocalOnlyFields { get; set; }
+        public int ProviderOnlyFields { get; set; }
+        public int EvidenceFields { get; set; }
+        public List<MetadataConfidenceSourceResource> Sources { get; set; }
+    }
+
+    public class MetadataConfidenceSourceResource
+    {
+        public string SourceType { get; set; }
+        public string SourceLabel { get; set; }
+        public string Role { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsAvailable { get; set; }
+        public int Weight { get; set; }
+        public string Status { get; set; }
+        public string Explanation { get; set; }
     }
 
     public class MetadataComparisonStatusCountResource
@@ -104,8 +132,103 @@ namespace Readarr.Api.V1.Metadata
                 Summary = reviewFields > 0 ?
                     $"{reviewFields} field{(reviewFields == 1 ? string.Empty : "s")} need review; {confirmedFields} confirmed." :
                     $"{confirmedFields} field{(confirmedFields == 1 ? string.Empty : "s")} confirmed; no disagreements found.",
+                ConfidenceScoring = BuildConfidenceScoring(fields, metadataSource, providerBook != null),
                 StatusCounts = BuildStatusCounts(fields),
                 Fields = fields
+            };
+        }
+
+        private static MetadataConfidenceScoringResource BuildConfidenceScoring(List<MetadataComparisonFieldResource> fields, string metadataSource, bool providerAvailable)
+        {
+            var confirmedFields = fields.Count(x => x.Status == "confirmed");
+            var reviewFields = fields.Count(x => IsReviewStatus(x.Status));
+            var localOnlyFields = fields.Count(x => x.Status == "local-only");
+            var providerOnlyFields = fields.Count(x => x.Status == "provider-only");
+            var evidenceFields = fields.Count(x => x.EvidenceValue.IsNotNullOrWhiteSpace());
+            var comparableFields = fields.Count(x => x.Field != "providerAvailability");
+            var fieldConfidenceScore = comparableFields > 0 ? (int)Math.Round(confirmedFields * 100.0 / comparableFields) : 0;
+
+            return new MetadataConfidenceScoringResource
+            {
+                Mode = "passiveSingleProvider",
+                Summary = providerAvailable ?
+                    $"Passive confidence score is {fieldConfidenceScore}% based on {confirmedFields} confirmed field{(confirmedFields == 1 ? string.Empty : "s")} out of {comparableFields} comparable field{(comparableFields == 1 ? string.Empty : "s")}. Automatic metadata and AI decisioning are disabled." :
+                    "Passive confidence score is limited because provider metadata is unavailable. Automatic metadata and AI decisioning are disabled.",
+                AutomaticMetadataDecisioningEnabled = false,
+                AiDecisioningEnabled = false,
+                FieldConfidenceScore = fieldConfidenceScore,
+                ConfirmedFields = confirmedFields,
+                ReviewFields = reviewFields,
+                LocalOnlyFields = localOnlyFields,
+                ProviderOnlyFields = providerOnlyFields,
+                EvidenceFields = evidenceFields,
+                Sources = BuildConfidenceSources(metadataSource, providerAvailable, evidenceFields)
+            };
+        }
+
+        private static List<MetadataConfidenceSourceResource> BuildConfidenceSources(string metadataSource, bool providerAvailable, int evidenceFields)
+        {
+            return new List<MetadataConfidenceSourceResource>
+            {
+                new MetadataConfidenceSourceResource
+                {
+                    SourceType = "localLibrary",
+                    SourceLabel = "Local library",
+                    Role = "baseline",
+                    IsActive = true,
+                    IsAvailable = true,
+                    Weight = 50,
+                    Status = "available",
+                    Explanation = "Current ReadAIrr book and edition metadata. This is compared passively and is never overwritten by this review."
+                },
+                new MetadataConfidenceSourceResource
+                {
+                    SourceType = "activeProvider",
+                    SourceLabel = metadataSource.IsNotNullOrWhiteSpace() ? metadataSource : "Configured metadata provider",
+                    Role = "activeProvider",
+                    IsActive = true,
+                    IsAvailable = providerAvailable,
+                    Weight = providerAvailable ? 40 : 0,
+                    Status = providerAvailable ? "available" : "unavailable",
+                    Explanation = providerAvailable ?
+                        "Current configured provider metadata used as read-only comparison evidence." :
+                        "Provider metadata was not available, so this comparison relies on local metadata and stored evidence."
+                },
+                new MetadataConfidenceSourceResource
+                {
+                    SourceType = "contributorEvidence",
+                    SourceLabel = "Contributor evidence",
+                    Role = "supportingEvidence",
+                    IsActive = evidenceFields > 0,
+                    IsAvailable = evidenceFields > 0,
+                    Weight = evidenceFields > 0 ? 10 : 0,
+                    Status = evidenceFields > 0 ? "available" : "notAvailable",
+                    Explanation = evidenceFields > 0 ?
+                        "Stored narrator/contributor evidence is included as review-only supporting context." :
+                        "No stored contributor evidence was available for this book's editions."
+                },
+                new MetadataConfidenceSourceResource
+                {
+                    SourceType = "futureReferenceProvider",
+                    SourceLabel = "Future reference provider",
+                    Role = "futureReference",
+                    IsActive = false,
+                    IsAvailable = false,
+                    Weight = 0,
+                    Status = "notEvaluated",
+                    Explanation = "Reserved for future cross-provider scoring. This stub does not query an additional provider."
+                },
+                new MetadataConfidenceSourceResource
+                {
+                    SourceType = "aiReview",
+                    SourceLabel = "Optional AI review",
+                    Role = "futureManualReview",
+                    IsActive = false,
+                    IsAvailable = false,
+                    Weight = 0,
+                    Status = "disabled",
+                    Explanation = "Reserved for future opt-in review suggestions. AI decisioning is disabled and cannot auto-apply metadata."
+                }
             };
         }
 

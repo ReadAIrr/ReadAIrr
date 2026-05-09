@@ -44,6 +44,16 @@ function getFieldStatusLabel(status) {
       return 'Low confidence';
     case 'needs-review':
       return 'Needs review';
+    case 'available':
+      return 'Available';
+    case 'unavailable':
+      return 'Unavailable';
+    case 'notAvailable':
+      return 'Not available';
+    case 'notEvaluated':
+      return 'Not evaluated';
+    case 'disabled':
+      return 'Disabled';
     default:
       return 'Missing';
   }
@@ -76,6 +86,8 @@ function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
 
   const groups = getGroupedMetadataFields(comparison.fields || []);
   const statusCounts = comparison.statusCounts || [];
+  const confidenceScoring = comparison.confidenceScoring || {};
+  const confidenceSources = confidenceScoring.sources || [];
 
   return (
     <Modal
@@ -116,6 +128,43 @@ function MetadataComparisonDrillInModal({ comparison, isOpen, onModalClose }) {
 
           <div className={styles.metadataComparisonNotice}>
             This is a read-only curation view. It does not update metadata, switch editions, add authors or books, import files, move files, rename, retag, monitor, search, download, change provider settings, or call AI decisioning.
+          </div>
+
+          <div className={styles.metadataConfidenceScoring}>
+            <div className={styles.metadataDrillInSectionTitle}>
+              Source confidence posture
+            </div>
+
+            <div className={styles.metadataConfidenceSummary}>
+              <b>{confidenceScoring.fieldConfidenceScore || 0}% passive field confidence</b>
+              <span>{confidenceScoring.summary}</span>
+            </div>
+
+            <div className={styles.metadataConfidenceSourceGrid}>
+              {
+                confidenceSources.map((source) => {
+                  return (
+                    <div
+                      key={`${source.sourceType}-${source.role}`}
+                      className={styles.metadataConfidenceSource}
+                    >
+                      <div className={styles.metadataComparisonField}>
+                        <span className={styles.metadataComparisonLabel}>{source.sourceLabel}</span>
+                        <span className={styles.metadataComparisonStatus}>{getFieldStatusLabel(source.status)}</span>
+                      </div>
+
+                      <div className={styles.metadataConfidenceSourceMeta}>
+                        {source.role} - {source.weight}% review weight
+                      </div>
+
+                      <div className={styles.metadataComparisonExplanation}>
+                        {source.explanation}
+                      </div>
+                    </div>
+                  );
+                })
+              }
+            </div>
           </div>
 
           {

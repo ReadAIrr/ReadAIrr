@@ -142,6 +142,47 @@
   margin-top: 18px;
 }
 
+.metadataConfidenceScoring {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+}
+
+.metadataConfidenceSummary {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--helpTextColor);
+
+  b {
+    color: var(--textColor);
+  }
+}
+
+.metadataConfidenceSourceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.metadataConfidenceSource {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--white);
+}
+
+.metadataConfidenceSourceMeta {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
 .metadataDrillInSectionTitle {
   margin-bottom: 8px;
   font-weight: 600;
@@ -249,6 +290,7 @@
   }
 
   .metadataDrillInSummary,
+  .metadataConfidenceSummary,
   .metadataDrillInValues {
     grid-template-columns: 1fr;
   }

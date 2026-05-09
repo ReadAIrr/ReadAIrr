@@ -43,6 +43,13 @@ namespace NzbDrone.Api.Test.Metadata
 
             result.ProviderAvailable.Should().BeTrue();
             result.SummaryStatus.Should().Be("needs-review");
+            result.ConfidenceScoring.Mode.Should().Be("passiveSingleProvider");
+            result.ConfidenceScoring.AutomaticMetadataDecisioningEnabled.Should().BeFalse();
+            result.ConfidenceScoring.AiDecisioningEnabled.Should().BeFalse();
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "localLibrary" && x.Role == "baseline" && x.IsAvailable);
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "activeProvider" && x.Role == "activeProvider" && x.IsAvailable);
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "futureReferenceProvider" && x.Status == "notEvaluated");
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "aiReview" && x.Status == "disabled");
             result.StatusCounts.Should().Contain(x => x.Status == "confirmed" && x.Count > 0);
             result.StatusCounts.Should().Contain(x => x.Status == "conflicting" && x.Count > 0);
             result.Fields.Should().Contain(x => x.Field == "author" && x.Status == "confirmed");
@@ -71,6 +78,11 @@ namespace NzbDrone.Api.Test.Metadata
 
             result.ProviderAvailable.Should().BeFalse();
             result.SummaryStatus.Should().Be("needs-review");
+            result.ConfidenceScoring.Summary.Should().Contain("provider metadata is unavailable");
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "activeProvider" &&
+                                                                   !x.IsAvailable &&
+                                                                   x.Weight == 0 &&
+                                                                   x.Status == "unavailable");
             result.StatusCounts.Should().Contain(x => x.Status == "needs-review" && x.Count > 0);
             result.Fields.Should().Contain(x => x.Field == "providerAvailability" &&
                                                 x.Status == "needs-review" &&
@@ -102,6 +114,10 @@ namespace NzbDrone.Api.Test.Metadata
                                                 x.Section == "contributors" &&
                                                 x.Explanation.Contains("review-only") &&
                                                 x.ActionHint.Contains("Review narrator evidence"));
+            result.ConfidenceScoring.EvidenceFields.Should().BeGreaterThan(0);
+            result.ConfidenceScoring.Sources.Should().Contain(x => x.SourceType == "contributorEvidence" &&
+                                                                   x.IsAvailable &&
+                                                                   x.Weight == 10);
         }
 
         private static Book Book(string foreignBookId, string title, string authorName)

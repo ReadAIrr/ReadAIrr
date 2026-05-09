@@ -21,6 +21,11 @@ interface CssExports {
   'metadataComparisonSummary': string;
   'metadataComparisonTitle': string;
   'metadataComparisonValues': string;
+  'metadataConfidenceScoring': string;
+  'metadataConfidenceSource': string;
+  'metadataConfidenceSourceGrid': string;
+  'metadataConfidenceSourceMeta': string;
+  'metadataConfidenceSummary': string;
   'metadataDrillInField': string;
   'metadataDrillInHint': string;
   'metadataDrillInSection': string;
