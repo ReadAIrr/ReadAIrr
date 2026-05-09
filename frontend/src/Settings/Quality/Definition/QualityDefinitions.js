@@ -37,7 +37,7 @@ class QualityDefinitions extends Component {
             {
               advancedSettings ?
                 <div className={styles.kilobitsPerSecond}>
-                  Kilobits Per Second / Preference
+                  Kilobits Per Second / Size / Bitrate Preference
                 </div> :
                 null
             }

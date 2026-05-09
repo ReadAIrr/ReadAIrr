@@ -126,6 +126,7 @@ namespace NzbDrone.Core.Qualities
                 existing.EnforceSizeLimits = definition.EnforceSizeLimits;
                 existing.TargetSize = definition.TargetSize;
                 existing.SizePreference = definition.SizePreference;
+                existing.BitratePreference = definition.BitratePreference;
                 existing.Title = message.ResetTitles ? definition.Title : existing.Title;
 
                 updateList.Add(existing);

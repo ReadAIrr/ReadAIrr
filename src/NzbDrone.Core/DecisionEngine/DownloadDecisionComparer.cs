@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
@@ -11,6 +12,7 @@ namespace NzbDrone.Core.DecisionEngine
 {
     public class DownloadDecisionComparer : IComparer<DownloadDecision>
     {
+        private static readonly Regex AudioBitrateRegex = new Regex(@"(?<bitrate>\d{2,4})\s*(?:k(?:bps|bit|b/s)?|kbps|cbr|abr|vbr)(?:[^\w]|$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly IConfigService _configService;
         private readonly IDelayProfileService _delayProfileService;
         private readonly IQualityDefinitionService _qualityDefinitionService;
@@ -31,6 +33,7 @@ namespace NzbDrone.Core.DecisionEngine
             {
                 CompareQuality,
                 CompareCustomFormatScore,
+                CompareQualityBitratePreference,
                 CompareQualitySizePreference,
                 CompareProtocol,
                 CompareIndexerPriority,
@@ -119,6 +122,63 @@ namespace NzbDrone.Core.DecisionEngine
             var targetSize = qualityDefinition.TargetSize.Value.Kilobits();
 
             return CompareByReverse(x.RemoteBook, y.RemoteBook, remoteBook => Math.Abs(remoteBook.Release.Size - targetSize));
+        }
+
+        private int CompareQualityBitratePreference(DownloadDecision x, DownloadDecision y)
+        {
+            if (x.RemoteBook.ParsedBookInfo.Quality.Quality != y.RemoteBook.ParsedBookInfo.Quality.Quality)
+            {
+                return 0;
+            }
+
+            var qualityDefinition = _qualityDefinitionService.Get(x.RemoteBook.ParsedBookInfo.Quality.Quality);
+
+            if (qualityDefinition == null ||
+                qualityDefinition.BitratePreference == QualityBitratePreference.NoPreference)
+            {
+                return 0;
+            }
+
+            var leftBitrate = GetAudioBitrate(x.RemoteBook);
+            var rightBitrate = GetAudioBitrate(y.RemoteBook);
+
+            if (!leftBitrate.HasValue || !rightBitrate.HasValue || leftBitrate.Value == rightBitrate.Value)
+            {
+                return 0;
+            }
+
+            if (qualityDefinition.BitratePreference == QualityBitratePreference.PreferHigher)
+            {
+                return leftBitrate.Value.CompareTo(rightBitrate.Value);
+            }
+
+            if (qualityDefinition.BitratePreference == QualityBitratePreference.PreferLower)
+            {
+                return rightBitrate.Value.CompareTo(leftBitrate.Value);
+            }
+
+            return 0;
+        }
+
+        private static int? GetAudioBitrate(RemoteBook remoteBook)
+        {
+            var text = string.Join(" ", new[]
+            {
+                remoteBook.Release?.Title,
+                remoteBook.Release?.Codec,
+                remoteBook.Release?.Container,
+                remoteBook.ParsedBookInfo?.ReleaseTitle,
+                remoteBook.ParsedBookInfo?.BookTitle
+            }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+            var match = AudioBitrateRegex.Match(text);
+
+            if (!match.Success || !int.TryParse(match.Groups["bitrate"].Value, out var bitrate) || bitrate <= 0)
+            {
+                return null;
+            }
+
+            return bitrate;
         }
 
         private int CompareProtocol(DownloadDecision x, DownloadDecision y)

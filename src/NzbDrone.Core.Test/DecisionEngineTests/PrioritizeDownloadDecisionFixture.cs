@@ -34,16 +34,18 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                             .Build();
         }
 
-        private RemoteBook GivenRemoteBook(List<Book> books, QualityModel quality, int age = 0, long size = 0, DownloadProtocol downloadProtocol = DownloadProtocol.Usenet, int indexerPriority = 25)
+        private RemoteBook GivenRemoteBook(List<Book> books, QualityModel quality, int age = 0, long size = 0, DownloadProtocol downloadProtocol = DownloadProtocol.Usenet, int indexerPriority = 25, string releaseTitle = null)
         {
             var remoteBook = new RemoteBook();
             remoteBook.ParsedBookInfo = new ParsedBookInfo();
             remoteBook.ParsedBookInfo.Quality = quality;
+            remoteBook.ParsedBookInfo.ReleaseTitle = releaseTitle;
 
             remoteBook.Books = new List<Book>();
             remoteBook.Books.AddRange(books);
 
             remoteBook.Release = new ReleaseInfo();
+            remoteBook.Release.Title = releaseTitle;
             remoteBook.Release.PublishDate = DateTime.Now.AddDays(-age);
             remoteBook.Release.Size = size;
             remoteBook.Release.DownloadProtocol = downloadProtocol;
@@ -66,6 +68,18 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                   .Setup(s => s.Get(quality))
                   .Returns(new QualityDefinition(quality)
                   {
+                      SizePreference = sizePreference,
+                      TargetSize = targetSize
+                  });
+        }
+
+        private void GivenQualityBitratePreference(Quality quality, QualityBitratePreference bitratePreference, QualitySizePreference sizePreference = QualitySizePreference.NoPreference, double? targetSize = null)
+        {
+            Mocker.GetMock<IQualityDefinitionService>()
+                  .Setup(s => s.Get(quality))
+                  .Returns(new QualityDefinition(quality)
+                  {
+                      BitratePreference = bitratePreference,
                       SizePreference = sizePreference,
                       TargetSize = targetSize
                   });
@@ -484,6 +498,86 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
 
             var qualifiedReports = Subject.PrioritizeDecisions(decisions);
             qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_keep_default_bitrate_preference_as_noop()
+        {
+            GivenQualityBitratePreference(Quality.MP3, QualityBitratePreference.NoPreference);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 64kbps");
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 320kbps");
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_prefer_higher_bitrate_when_configured()
+        {
+            GivenQualityBitratePreference(Quality.MP3, QualityBitratePreference.PreferHigher);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 64kbps");
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 320kbps");
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook2);
+        }
+
+        [Test]
+        public void should_prefer_lower_bitrate_when_configured()
+        {
+            GivenQualityBitratePreference(Quality.MP3, QualityBitratePreference.PreferLower);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 64kbps");
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), releaseTitle: "Author Book MP3 320kbps");
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_fall_back_to_size_preference_when_bitrate_is_missing()
+        {
+            GivenQualityBitratePreference(Quality.MP3, QualityBitratePreference.PreferHigher, QualitySizePreference.PreferSmaller);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 100.Kilobits(), releaseTitle: "Author Book MP3");
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 200.Kilobits(), releaseTitle: "Author Book MP3");
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook1);
+        }
+
+        [Test]
+        public void should_prefer_bitrate_before_size_preference_when_both_are_configured()
+        {
+            GivenQualityBitratePreference(Quality.MP3, QualityBitratePreference.PreferHigher, QualitySizePreference.PreferSmaller);
+
+            var remoteBook1 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 100.Kilobits(), releaseTitle: "Author Book MP3 64kbps");
+            var remoteBook2 = GivenRemoteBook(new List<Book> { GivenBook(1) }, new QualityModel(Quality.MP3), size: 200.Kilobits(), releaseTitle: "Author Book MP3 320kbps");
+
+            var decisions = new List<DownloadDecision>();
+            decisions.Add(new DownloadDecision(remoteBook1));
+            decisions.Add(new DownloadDecision(remoteBook2));
+
+            var qualifiedReports = Subject.PrioritizeDecisions(decisions);
+            qualifiedReports.First().RemoteBook.Should().Be(remoteBook2);
         }
 
         [Test]

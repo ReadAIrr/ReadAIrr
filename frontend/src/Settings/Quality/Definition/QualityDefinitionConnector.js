@@ -47,6 +47,10 @@ class QualityDefinitionConnector extends Component {
     this.props.setQualityDefinitionValue({ id: this.props.id, name: 'sizePreference', value });
   };
 
+  onBitratePreferenceChange = (value) => {
+    this.props.setQualityDefinitionValue({ id: this.props.id, name: 'bitratePreference', value });
+  };
+
   onEnforceSizeLimitsChange = (value) => {
     this.props.setQualityDefinitionValue({ id: this.props.id, name: 'enforceSizeLimits', value });
   };
@@ -62,6 +66,7 @@ class QualityDefinitionConnector extends Component {
         onSizeChange={this.onSizeChange}
         onTargetSizeChange={this.onTargetSizeChange}
         onSizePreferenceChange={this.onSizePreferenceChange}
+        onBitratePreferenceChange={this.onBitratePreferenceChange}
         onEnforceSizeLimitsChange={this.onEnforceSizeLimitsChange}
       />
     );
@@ -75,6 +80,7 @@ QualityDefinitionConnector.propTypes = {
   enforceSizeLimits: PropTypes.bool.isRequired,
   targetSize: PropTypes.number,
   sizePreference: PropTypes.number.isRequired,
+  bitratePreference: PropTypes.number.isRequired,
   setQualityDefinitionValue: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };

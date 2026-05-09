@@ -18,6 +18,7 @@ namespace Readarr.Api.V1.Qualities
         public bool EnforceSizeLimits { get; set; }
         public double? TargetSize { get; set; }
         public QualitySizePreference SizePreference { get; set; }
+        public QualityBitratePreference BitratePreference { get; set; }
     }
 
     public static class QualityDefinitionResourceMapper
@@ -39,7 +40,8 @@ namespace Readarr.Api.V1.Qualities
                 MaxSize = model.MaxSize,
                 EnforceSizeLimits = model.EnforceSizeLimits,
                 TargetSize = model.TargetSize,
-                SizePreference = model.SizePreference
+                SizePreference = model.SizePreference,
+                BitratePreference = model.BitratePreference
             };
         }
 
@@ -60,7 +62,8 @@ namespace Readarr.Api.V1.Qualities
                 MaxSize = resource.MaxSize,
                 EnforceSizeLimits = resource.EnforceSizeLimits,
                 TargetSize = resource.TargetSize,
-                SizePreference = resource.SizePreference
+                SizePreference = resource.SizePreference,
+                BitratePreference = resource.BitratePreference
             };
         }
 

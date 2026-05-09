@@ -17,6 +17,7 @@ namespace NzbDrone.Core.Qualities
         public bool EnforceSizeLimits { get; set; }
         public double? TargetSize { get; set; }
         public QualitySizePreference SizePreference { get; set; }
+        public QualityBitratePreference BitratePreference { get; set; }
 
         public QualityDefinition()
         {

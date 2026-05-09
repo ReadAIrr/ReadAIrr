@@ -25,6 +25,12 @@ const sizePreferenceOptions = [
   { key: 3, value: 'Prefer closest to target' }
 ];
 
+const bitratePreferenceOptions = [
+  { key: 0, value: 'Bitrate neutral' },
+  { key: 1, value: 'Prefer higher bitrate' },
+  { key: 2, value: 'Prefer lower bitrate' }
+];
+
 const slider = {
   min: MIN,
   max: roundNumber(Math.pow(MAX, 1 / 1.1)),
@@ -124,6 +130,10 @@ class QualityDefinition extends Component {
     this.props.onSizePreferenceChange(value);
   };
 
+  onBitratePreferenceChange = ({ value }) => {
+    this.props.onBitratePreferenceChange(value);
+  };
+
   onEnforceSizeLimitsChange = ({ value }) => {
     this.props.onEnforceSizeLimitsChange(value);
   };
@@ -141,6 +151,7 @@ class QualityDefinition extends Component {
       enforceSizeLimits,
       targetSize,
       sizePreference,
+      bitratePreference,
       advancedSettings,
       onTitleChange
     } = this.props;
@@ -279,6 +290,17 @@ class QualityDefinition extends Component {
                 />
               </div>
 
+              <div>
+                <SelectInput
+                  className={styles.preferenceSelect}
+                  name={`${id}.bitratePreference`}
+                  helpText="When both releases expose bitrate, this is applied before size preference. Missing bitrate falls back to size and quality ordering."
+                  value={bitratePreference}
+                  values={bitratePreferenceOptions}
+                  onChange={this.onBitratePreferenceChange}
+                />
+              </div>
+
               <div className={styles.enforceSizeLimits}>
                 <CheckInput
                   name={`${id}.enforceSizeLimits`}
@@ -304,11 +326,13 @@ QualityDefinition.propTypes = {
   enforceSizeLimits: PropTypes.bool.isRequired,
   targetSize: PropTypes.number,
   sizePreference: PropTypes.number.isRequired,
+  bitratePreference: PropTypes.number.isRequired,
   advancedSettings: PropTypes.bool.isRequired,
   onTitleChange: PropTypes.func.isRequired,
   onSizeChange: PropTypes.func.isRequired,
   onTargetSizeChange: PropTypes.func.isRequired,
   onSizePreferenceChange: PropTypes.func.isRequired,
+  onBitratePreferenceChange: PropTypes.func.isRequired,
   onEnforceSizeLimitsChange: PropTypes.func.isRequired
 };
 
