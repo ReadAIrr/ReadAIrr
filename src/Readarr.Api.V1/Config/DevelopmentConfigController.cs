@@ -116,7 +116,7 @@ namespace Prowlarr.Api.V1.Config
 
             if (metadataSource.IsNullOrWhiteSpace())
             {
-                metadataSource = MetadataSourceConfig.LocalRReadingGlasses;
+                metadataSource = MetadataSourceConfig.GoodreadsHosted;
             }
 
             if (!MetadataSourceConfig.IsOriginalReadarr(metadataSource) && !metadataSource.IsValidUrl())

@@ -20,29 +20,9 @@ class MoreInfo extends Component {
             <Link to="https://readairr.com/">readairr.com</Link>
           </DescriptionListItemDescription>
 
-          <DescriptionListItemTitle>Upstream Wiki</DescriptionListItemTitle>
+          <DescriptionListItemTitle>Documentation</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://readairr.com/docs/">Wiki</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Upstream Reddit</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://github.com/ReadAIrr/App">ReadAIrr</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Upstream Discord</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://readairr.com/discord">ReadAIrr on Discord</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Source</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://github.com/ReadAIrr/App/">github.com/ReadAIrr/App</Link>
-          </DescriptionListItemDescription>
-
-          <DescriptionListItemTitle>Feature Requests</DescriptionListItemTitle>
-          <DescriptionListItemDescription>
-            <Link to="https://github.com/ReadAIrr/App/issues">github.com/ReadAIrr/App/issues</Link>
+            <Link to="https://readairr.com/docs/">ReadAIrr Documentation</Link>
           </DescriptionListItemDescription>
 
         </DescriptionList>

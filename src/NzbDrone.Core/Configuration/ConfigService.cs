@@ -265,7 +265,7 @@ namespace NzbDrone.Core.Configuration
 
         public string MetadataSource
         {
-            get { return GetValue("MetadataSource", MetadataSourceConfig.LocalRReadingGlasses); }
+            get { return GetValue("MetadataSource", MetadataSourceConfig.GoodreadsHosted); }
 
             set { SetValue("MetadataSource", value); }
         }

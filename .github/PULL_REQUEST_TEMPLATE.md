@@ -9,7 +9,7 @@ A few sentences describing the overall goals of the pull request's commits.
 #### Todos
 - [ ] Tests
 - [ ] Translation Keys (./src/NzbDrone.Core/Localization/Core/en.json)
-- [ ] [Wiki Updates](https://wiki.servarr.com)
+- [ ] Documentation Updates
 
 #### Issues Fixed or Closed by this PR
 

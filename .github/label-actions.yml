@@ -4,8 +4,8 @@
   comment: >
     :wave: @{issue-author}, we use the issue tracker exclusively
     for bug reports and feature requests. However, this issue appears
-    to be a support request. Please use the upstream [Readarr Discord](https://readarr.com/discord)
-    for general setup support.
+    to be a support request. Please check the [ReadAIrr documentation](https://readairr.com/docs/)
+    for setup and troubleshooting guidance.
   close: true
   close-reason: 'not planned'
 
@@ -14,4 +14,4 @@
     :wave: @{issue-author}, In order to help you further we'll need to see logs. 
     You'll need to enable trace logging and replicate the problem that you encountered. 
     Guidance on how to enable trace logging can be found in 
-    the upstream [troubleshooting guide](https://wiki.servarr.com/readarr/troubleshooting#logging-and-log-files).
+    the [ReadAIrr documentation](https://readairr.com/docs/).

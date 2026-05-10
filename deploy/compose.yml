@@ -8,8 +8,6 @@ services:
     depends_on:
       readarr-db:
         condition: service_healthy
-      rreading-glasses:
-        condition: service_started
     user: "${READARR_UID:-1000}:${READARR_GID:-1000}"
     environment:
       HOME: /config
@@ -68,44 +66,5 @@ services:
         target: /docker-entrypoint-initdb.d/10-readarr-databases.sh
         read_only: true
 
-  rreading-glasses:
-    image: ${RREADING_GLASSES_IMAGE:?Set RREADING_GLASSES_IMAGE in your env file}
-    hostname: rreading-glasses
-    restart: unless-stopped
-    depends_on:
-      rreading-glasses-db:
-        condition: service_healthy
-    entrypoint:
-      - /main
-      - serve
-    command:
-      - --upstream=${RREADING_GLASSES_UPSTREAM:-www.goodreads.com}
-      - --verbose
-    mem_limit: ${RREADING_GLASSES_MEMORY_LIMIT:-128m}
-    environment:
-      POSTGRES_HOST: rreading-glasses-db
-      POSTGRES_DATABASE: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
-      POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
-      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:?Set RREADING_GLASSES_POSTGRES_PASSWORD in your env file}
-
-  rreading-glasses-db:
-    image: ${RREADING_GLASSES_POSTGRES_IMAGE:?Set RREADING_GLASSES_POSTGRES_IMAGE in your env file}
-    hostname: rreading-glasses-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${RREADING_GLASSES_POSTGRES_USER:-rreading-glasses}
-      POSTGRES_PASSWORD: ${RREADING_GLASSES_POSTGRES_PASSWORD:?Set RREADING_GLASSES_POSTGRES_PASSWORD in your env file}
-      POSTGRES_DB: ${RREADING_GLASSES_POSTGRES_DB:-rreading-glasses}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - type: volume
-        source: rreading_glasses_data
-        target: /var/lib/postgresql/data
-
 volumes:
   readarr_data:
-  rreading_glasses_data:

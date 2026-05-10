@@ -32,7 +32,7 @@ namespace NzbDrone.Core.MetadataSource
         {
             if (metadataSource.IsNullOrWhiteSpace())
             {
-                metadataSource = MetadataSourceConfig.LocalRReadingGlasses;
+                metadataSource = MetadataSourceConfig.GoodreadsHosted;
             }
 
             if (MetadataSourceConfig.IsOriginalReadarr(metadataSource))

@@ -12,7 +12,7 @@ facing branding and deployment documentation should use ReadAIrr.
 - Manage audiobook and ebook libraries from a web UI.
 - Monitor authors, import existing libraries, and work with supported download
   clients.
-- Use configurable metadata sources, including self-hosted rreading-glasses.
+- Use hosted Goodreads/Hardcover metadata sources or a custom rreading-glasses URL.
 - Review unmatched files with metadata, AI review, and speech-to-text evidence.
 - Track and resolve missing narrator evidence.
 - Run with the default SQLite database or optional PostgreSQL.

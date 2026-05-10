@@ -409,7 +409,7 @@ class About extends Component {
                     />
 
                     <DescriptionListItem
-                      title="Sidecar management"
+                      title="Metadata service management"
                       data={
                         <div>
                           <Label kind={metadataServiceStatus.sidecarManagedByReadAIrr ? kinds.INFO : kinds.DEFAULT}>
@@ -422,7 +422,7 @@ class About extends Component {
                     />
 
                     <DescriptionListItem
-                      title="Sidecar version"
+                      title="Metadata service version"
                       data={
                         metadataServiceStatus.sidecarCurrentVersion ?
                           `${metadataServiceStatus.sidecarCurrentVersion}${metadataServiceStatus.sidecarLatestVersion ? ` / latest ${metadataServiceStatus.sidecarLatestVersion}` : ''}` :
@@ -431,7 +431,7 @@ class About extends Component {
                     />
 
                     <DescriptionListItem
-                      title="Sidecar update"
+                      title="Metadata service update"
                       data={
                         <div>
                           <div>{metadataServiceStatus.sidecarUpdateCheckMessage}</div>

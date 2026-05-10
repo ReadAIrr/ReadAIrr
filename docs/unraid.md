@@ -49,6 +49,12 @@ are configured inside ReadAIrr under `Settings > Development`. They are stored
 in ReadAIrr app data rather than in the Docker template so API keys are not
 exposed in the Unraid template XML.
 
+New installs default to the hosted Goodreads-compatible metadata service. The
+Development page also offers the hosted Hardcover-compatible service and a
+custom rreading-glasses URL. Use a custom URL only when you operate
+rreading-glasses yourself, for example `http://rreading-glasses:8788` on a
+Docker network reachable from the ReadAIrr container.
+
 ## Manual Test Containers
 
 If you create or recreate a ReadAIrr container with `docker run` instead of the

@@ -42,7 +42,7 @@ namespace Readarr.Api.V1.Metadata
             var book = _bookService.GetBook(bookId);
             var editions = _editionService.GetEditionsByBook(bookId);
             var localEdition = editions.SingleOrDefault(x => x.Monitored) ?? editions.FirstOrDefault();
-            var metadataSource = _configService.MetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.LocalRReadingGlasses : _configService.MetadataSource;
+            var metadataSource = _configService.MetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.GoodreadsHosted : _configService.MetadataSource;
 
             book.Editions = editions;
             book.SeriesLinks = _seriesBookLinkService.GetLinksByBook(new[] { bookId }.ToList());

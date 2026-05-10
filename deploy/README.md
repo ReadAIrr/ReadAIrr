@@ -5,9 +5,8 @@ ReadAIrr image on a Docker host.
 
 ## Files
 
-- `compose.yml` runs ReadAIrr, a same-VM Postgres database for ReadAIrr, plus an
-  automatic self-hosted `rreading-glasses` metadata service and its Postgres
-  database.
+- `compose.yml` runs ReadAIrr plus a same-VM Postgres database for ReadAIrr.
+  Metadata defaults to the hosted Goodreads-compatible service.
 - `readarr.env.example` documents the required variables.
 - `install-host.sh` prepares the Docker host, adds the NFS media mount when
   configured, and starts the compose project.
@@ -19,10 +18,8 @@ ReadAIrr image on a Docker host.
 2. Fill in the image, config path, port, UID/GID, and optional NFS settings.
    The development image published by this fork is currently
    `ghcr.io/readairr/app:dev`.
-   Override the `RREADING_GLASSES_*` variables if you want to change the local
-   metadata sidecar settings. Set `READARR_POSTGRES_PASSWORD` and
-   `RREADING_GLASSES_POSTGRES_PASSWORD` from the host secret store or Azure Key
-   Vault before starting the stack.
+   Set `READARR_POSTGRES_PASSWORD` from the host secret store or Azure Key Vault
+   before starting the stack.
 3. Run:
 
    ```sh
@@ -68,23 +65,26 @@ deploy/qa-lab-deploy.sh --skip-build
 ```
 
 The helper streams the local image over SSH, updates `READARR_IMAGE` in the
-remote env file, recreates only the `readarr` service, leaves the
-`rreading-glasses` sidecars running, and checks `http://127.0.0.1:8789/ping`
-from inside the VM. It also resets the app's internal config port to `8787`
-before restart, which keeps the Docker host mapping `8789 -> 8787` intact.
+remote env file, recreates only the `readarr` service, and checks
+`http://127.0.0.1:8789/ping` from inside the VM. It also resets the app's
+internal config port to `8787` before restart, which keeps the Docker host
+mapping `8789 -> 8787` intact.
 
-## Sidecar Image Pinning
+## Metadata Source
 
-The example env pins the `rreading-glasses` and Postgres sidecar images by
-digest. That keeps homelab redeploys repeatable even if upstream tags move.
-When intentionally refreshing those sidecars, inspect the new image digests and
-update `RREADING_GLASSES_IMAGE` or `RREADING_GLASSES_POSTGRES_IMAGE` in the host
-env file at the same time you update `readarr.env.example`.
+ReadAIrr defaults to the hosted Goodreads-compatible metadata service at
+`https://api.bookinfo.pro`. `Settings > Development` also offers the hosted
+Hardcover-compatible service and a custom rreading-glasses URL. Use a custom URL
+only when you operate rreading-glasses yourself, for example
+`http://rreading-glasses:8788` on a Docker network shared with the ReadAIrr
+container.
 
-The ReadAIrr and rreading-glasses Postgres passwords are required by
-`compose.yml` and should come from a host-local secret source. The placeholders
-in `readarr.env.example` are only there so compose configuration validation can
-run without real secrets.
+The compose stack no longer creates or updates rreading-glasses containers.
+Custom metadata services are managed outside ReadAIrr.
+
+The ReadAIrr Postgres password is required by `compose.yml` and should come from
+a host-local secret source. The placeholder in `readarr.env.example` is only
+there so compose configuration validation can run without a real secret.
 
 ## Eggman QA Layout
 
@@ -101,7 +101,6 @@ convention:
 - Audiobook media is available as `/mnt/user/audiobooks`, `/media/audiobooks`,
   and `/audiobooks` for compatibility with different ReadAIrr root-folder
   choices.
-- Selecting `Automatic self-hosted rreading-glasses` in
-  `Settings > Development` points ReadAIrr at `http://rreading-glasses:8788`,
-  the compose-network address for the local sidecar. The sidecar is not exposed
-  on the Docker host because ReadAIrr only needs internal network access to it.
+- Metadata defaults to the hosted Goodreads-compatible service. If Eggman later
+  runs a custom rreading-glasses container, select `Custom rreading-glasses URL`
+  in `Settings > Development` and enter the internal Docker/network URL.

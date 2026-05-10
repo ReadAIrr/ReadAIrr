@@ -36,16 +36,13 @@ const matchingPresetOptions = [
 
 const GOODREADS_METADATA_SOURCE = 'https://api.bookinfo.pro';
 const HARDCOVER_METADATA_SOURCE = 'https://hardcover.bookinfo.pro';
-const LOCAL_METADATA_SOURCE = 'http://rreading-glasses:8788';
-const ORIGINAL_METADATA_SOURCE = 'readarr://metadata/original';
+const CUSTOM_METADATA_SOURCE_EXAMPLE = 'http://rreading-glasses:8788';
 const CUSTOM_METADATA_SOURCE = 'custom';
 
 const metadataSourceOptions = [
-  { key: LOCAL_METADATA_SOURCE, value: 'Automatic self-hosted rreading-glasses', hint: LOCAL_METADATA_SOURCE },
-  { key: GOODREADS_METADATA_SOURCE, value: 'rreading-glasses (Goodreads hosted)', hint: GOODREADS_METADATA_SOURCE },
-  { key: HARDCOVER_METADATA_SOURCE, value: 'rreading-glasses (Hardcover hosted)', hint: HARDCOVER_METADATA_SOURCE },
-  { key: ORIGINAL_METADATA_SOURCE, value: 'Original Readarr metadata', hint: 'Legacy compatibility source' },
-  { key: CUSTOM_METADATA_SOURCE, value: 'Custom/self-hosted URL' }
+  { key: GOODREADS_METADATA_SOURCE, value: 'Goodreads hosted', hint: GOODREADS_METADATA_SOURCE },
+  { key: HARDCOVER_METADATA_SOURCE, value: 'Hardcover hosted', hint: HARDCOVER_METADATA_SOURCE },
+  { key: CUSTOM_METADATA_SOURCE, value: 'Custom rreading-glasses URL', hint: CUSTOM_METADATA_SOURCE_EXAMPLE }
 ];
 
 function getMetadataSourceOption(metadataSource, metadataSourceMode) {
@@ -53,7 +50,7 @@ function getMetadataSourceOption(metadataSource, metadataSourceMode) {
     return CUSTOM_METADATA_SOURCE;
   }
 
-  const metadataSourceValue = metadataSource || LOCAL_METADATA_SOURCE;
+  const metadataSourceValue = metadataSource || GOODREADS_METADATA_SOURCE;
   const metadataSourceOption = metadataSourceOptions.find((option) => option.key === metadataSourceValue);
 
   return metadataSourceOption ? metadataSourceValue : CUSTOM_METADATA_SOURCE;
@@ -97,6 +94,15 @@ class DevelopmentSettings extends Component {
   onMetadataSourceOptionChange = ({ value }) => {
     if (value === CUSTOM_METADATA_SOURCE) {
       this.setState({ metadataSourceMode: CUSTOM_METADATA_SOURCE });
+
+      const currentMetadataSource = this.props.settings.metadataSource?.value;
+
+      if (!currentMetadataSource || currentMetadataSource === GOODREADS_METADATA_SOURCE || currentMetadataSource === HARDCOVER_METADATA_SOURCE) {
+        this.props.onInputChange({
+          name: 'metadataSource',
+          value: CUSTOM_METADATA_SOURCE_EXAMPLE
+        });
+      }
 
       return;
     }
@@ -152,7 +158,7 @@ class DevelopmentSettings extends Component {
     } = this.props;
 
     const metadataSourceSetting = settings.metadataSource || {};
-    const metadataSource = metadataSourceSetting.value || LOCAL_METADATA_SOURCE;
+    const metadataSource = metadataSourceSetting.value || GOODREADS_METADATA_SOURCE;
     const metadataSourceOption = getMetadataSourceOption(metadataSource, this.state.metadataSourceMode);
     const isCustomMetadataSource = metadataSourceOption === CUSTOM_METADATA_SOURCE;
     const matchingThreshold = getMatchingThreshold(settings);
@@ -197,7 +203,6 @@ class DevelopmentSettings extends Component {
                       values={metadataSourceOptions}
                       helpText={translate('MetadataSourceHelpText')}
                       helpTextWarning={translate('MetadataSourceHelpTextWarning')}
-                      helpLink="https://github.com/blampe/rreading-glasses#usage"
                       onChange={this.onMetadataSourceOptionChange}
                     />
                   </FormGroup>

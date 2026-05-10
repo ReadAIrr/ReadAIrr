@@ -34,12 +34,12 @@ namespace NzbDrone.Api.Test.Config
         }
 
         [Test]
-        public void test_should_default_blank_metadata_source_to_local_rreading_glasses()
+        public void test_should_default_blank_metadata_source_to_hosted_goodreads()
         {
-            _metadataSourceHealthService.Setup(x => x.Test(MetadataSourceConfig.LocalRReadingGlasses))
+            _metadataSourceHealthService.Setup(x => x.Test(MetadataSourceConfig.GoodreadsHosted))
                 .Returns(new MetadataSourceHealthResult
                 {
-                    MetadataSource = MetadataSourceConfig.LocalRReadingGlasses,
+                    MetadataSource = MetadataSourceConfig.GoodreadsHosted,
                     IsHealthy = true,
                     Message = "Metadata source is reachable",
                     Detail = "Author lookup completed in 24 ms",
@@ -49,10 +49,10 @@ namespace NzbDrone.Api.Test.Config
 
             var result = _subject.TestDevelopmentConfig(new DevelopmentConfigTestResource());
 
-            result.MetadataSource.Should().Be(MetadataSourceConfig.LocalRReadingGlasses);
+            result.MetadataSource.Should().Be(MetadataSourceConfig.GoodreadsHosted);
             result.IsHealthy.Should().BeTrue();
             result.StatusCode.Should().Be(200);
-            _metadataSourceHealthService.Verify(x => x.Test(MetadataSourceConfig.LocalRReadingGlasses), Times.Once);
+            _metadataSourceHealthService.Verify(x => x.Test(MetadataSourceConfig.GoodreadsHosted), Times.Once);
         }
 
         [Test]

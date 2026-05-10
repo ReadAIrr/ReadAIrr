@@ -368,7 +368,7 @@ namespace Readarr.Api.V1.System
                                                                Version currentVersion,
                                                                DateTime? statusCheckedAt = null)
         {
-            var metadataSource = configuredMetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.LocalRReadingGlasses : configuredMetadataSource;
+            var metadataSource = configuredMetadataSource.IsNullOrWhiteSpace() ? MetadataSourceConfig.GoodreadsHosted : configuredMetadataSource;
             var redactedMetadataSource = RedactUrl(metadataSource);
             var sourceType = GetSourceType(metadataSource);
             var warnings = new List<string>();
@@ -448,17 +448,17 @@ namespace Readarr.Api.V1.System
                 case "localRReadingGlasses":
                     return new SidecarStatus
                     {
-                        ManagementMode = "readarrDeploymentSidecar",
-                        ManagementLabel = "ReadAIrr deployment sidecar",
-                        ManagedByReadAIrr = true,
+                        ManagementMode = "externalCustom",
+                        ManagementLabel = "Custom rreading-glasses service",
+                        ManagedByReadAIrr = false,
                         UpdateSupported = false,
-                        UpdateAction = "manualDockerImageUpdate",
+                        UpdateAction = "managedExternally",
                         CurrentVersion = currentVersion,
                         LatestVersion = null,
                         UpdateAvailable = null,
                         VersionMessage = versionDetail.IsNotNullOrWhiteSpace() ? versionDetail : "The configured rreading-glasses endpoint does not expose version metadata to ReadAIrr yet.",
-                        UpdateCheckMessage = "ReadAIrr can refresh sidecar reachability and version metadata here, but does not mutate or restart the sidecar.",
-                        UpdateGuidance = "For Docker deployments, update rreading-glasses by pulling the newer sidecar image and restarting the compose/deployment outside ReadAIrr."
+                        UpdateCheckMessage = "ReadAIrr can refresh reachability and version metadata here, but does not mutate or restart custom rreading-glasses services.",
+                        UpdateGuidance = "Update custom rreading-glasses services using their own deployment process; ReadAIrr only checks reachability."
                     };
                 case "hostedGoodreads":
                 case "hostedHardcover":
@@ -487,9 +487,9 @@ namespace Readarr.Api.V1.System
                         CurrentVersion = null,
                         LatestVersion = null,
                         UpdateAvailable = null,
-                        VersionMessage = "Original Readarr metadata compatibility is not a rreading-glasses sidecar.",
-                        UpdateCheckMessage = "No sidecar update check applies while using original Readarr compatibility metadata.",
-                        UpdateGuidance = "Switch to a ReadAIrr-compatible rreading-glasses endpoint before using sidecar update guidance."
+                        VersionMessage = "Original Readarr metadata compatibility is not a rreading-glasses service.",
+                        UpdateCheckMessage = "No metadata service update check applies while using original Readarr compatibility metadata.",
+                        UpdateGuidance = "Switch to a hosted metadata source or custom rreading-glasses endpoint before using metadata service update guidance."
                     };
                 default:
                     return new SidecarStatus
@@ -607,7 +607,7 @@ namespace Readarr.Api.V1.System
             switch (sourceType)
             {
                 case "localRReadingGlasses":
-                    return "Automatic self-hosted rreading-glasses";
+                    return "Custom rreading-glasses";
                 case "hostedGoodreads":
                     return "rreading-glasses Goodreads hosted";
                 case "hostedHardcover":

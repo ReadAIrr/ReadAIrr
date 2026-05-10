@@ -16,11 +16,11 @@ namespace NzbDrone.Core.Test.MetadataSource
         {
             Mocker.GetMock<IConfigService>()
                 .Setup(s => s.MetadataSource)
-                .Returns(MetadataSourceConfig.LocalRReadingGlasses);
+                .Returns(MetadataSourceConfig.GoodreadsHosted);
 
             Mocker.GetMock<IReadarrCloudRequestBuilder>()
                 .Setup(s => s.Metadata)
-                .Returns(new HttpRequestBuilder("https://api.bookinfo.club/v1/{route}").CreateFactory());
+                .Returns(new HttpRequestBuilder("https://api.bookinfo.pro/v1/{route}").CreateFactory());
         }
 
         private void WithCustomProvider()
@@ -55,21 +55,21 @@ namespace NzbDrone.Core.Test.MetadataSource
         }
 
         [TestCase]
-        public void should_use_local_rreading_glasses_by_default()
+        public void should_use_hosted_goodreads_by_default()
         {
             var details = Subject.GetRequestBuilder().Create();
 
-            details.BaseUrl.ToString().Should().Contain("rreading-glasses:8788");
+            details.BaseUrl.ToString().Should().Contain("api.bookinfo.pro");
         }
 
         [TestCase]
-        public void should_use_local_rreading_glasses_if_config_blank()
+        public void should_use_hosted_goodreads_if_config_blank()
         {
             WithBlankProvider();
 
             var details = Subject.GetRequestBuilder().Create();
 
-            details.BaseUrl.ToString().Should().Contain("rreading-glasses:8788");
+            details.BaseUrl.ToString().Should().Contain("api.bookinfo.pro");
         }
 
         [TestCase]
@@ -79,7 +79,7 @@ namespace NzbDrone.Core.Test.MetadataSource
 
             var details = Subject.GetRequestBuilder().Create();
 
-            details.BaseUrl.ToString().Should().Contain("bookinfo.club/v1");
+            details.BaseUrl.ToString().Should().Contain("api.bookinfo.pro/v1");
         }
     }
 }
