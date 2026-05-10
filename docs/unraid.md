@@ -48,3 +48,31 @@ Metadata source, matching confidence, OpenRouter, and speech-to-text settings
 are configured inside ReadAIrr under `Settings > Development`. They are stored
 in ReadAIrr app data rather than in the Docker template so API keys are not
 exposed in the Unraid template XML.
+
+## Manual Test Containers
+
+If you create or recreate a ReadAIrr container with `docker run` instead of the
+Unraid Docker UI, add Unraid's Docker Manager labels yourself. Without these
+labels the container can run correctly but the Docker tab may not show the
+WebUI shortcut.
+
+```sh
+docker run -d \
+  --name readairr-test \
+  --network eth0 \
+  --ip 192.168.0.228 \
+  --restart unless-stopped \
+  --label net.unraid.docker.managed=dockerman \
+  --label 'net.unraid.docker.webui=http://[IP]:[PORT:8787]' \
+  --label net.unraid.docker.icon=https://raw.githubusercontent.com/ReadAIrr/App/prod/Logo/512.png \
+  --user 99:100 \
+  -v /mnt/user/appdata/readairr-test:/config \
+  -v /mnt/user/downloads:/downloads \
+  -v /mnt/user/audiobooks:/audiobooks \
+  -e Readarr__Server__BindAddress='*' \
+  -e Readarr__Server__Port=8787 \
+  -e Readarr__Update__Mechanism=Docker \
+  -e Readarr__Update__Automatically=false \
+  -e Readarr__Update__Branch=dev \
+  ghcr.io/readairr/app:dev
+```
