@@ -35,8 +35,7 @@ namespace NzbDrone.Core.Configuration
 
             PackageUpdateMechanism = UpdateMechanism.BuiltIn;
 
-            // ToDo Change to master as valid once released
-            DefaultBranch = "develop";
+            DefaultBranch = "dev";
 
             if (Path.GetFileName(bin) == "bin" && diskProvider.FileExists(packageInfoPath))
             {
@@ -70,7 +69,20 @@ namespace NzbDrone.Core.Configuration
                 }
             }
 
+            if (IsDocker())
+            {
+                PackageUpdateMechanism = UpdateMechanism.Docker;
+                PackageUpdateMechanismMessage ??= "Docker deployments are updated by pulling a new image on the selected release track.";
+            }
+
             DefaultUpdateMechanism = PackageUpdateMechanism;
+        }
+
+        private static bool IsDocker()
+        {
+            return OsInfo.IsLinux &&
+                   (File.Exists("/.dockerenv") ||
+                    (File.Exists("/proc/1/cgroup") && File.ReadAllText("/proc/1/cgroup").Contains("/docker/")));
         }
 
         private static string ReadValue(string fileData, string key, string defaultValue = null)

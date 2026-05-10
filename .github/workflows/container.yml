@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - dev
+      - val
       - prod
     tags:
       - "v*"
   pull_request:
     branches:
       - dev
+      - val
       - prod
   workflow_dispatch:
 
@@ -19,6 +21,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
+  READAIRR_VERSION_BASE: 1.0.0
 
 jobs:
   build:
@@ -54,8 +57,11 @@ jobs:
           images: ${{ steps.image.outputs.name }}
           tags: |
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=val,enable=${{ github.ref == 'refs/heads/val' }}
             type=raw,value=prod,enable=${{ github.ref == 'refs/heads/prod' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/prod' }}
+            type=raw,value=1,enable=${{ github.ref == 'refs/heads/prod' }}
+            type=raw,value=1.0,enable=${{ github.ref == 'refs/heads/prod' }}
             type=ref,event=tag
             type=sha,prefix={{branch}}-
           labels: |
@@ -75,6 +81,6 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             BUILD_SOURCEBRANCHNAME=${{ github.ref_name }}
-            READARR_VERSION=0.4.19.${{ github.run_number }}
+            READARR_VERSION=${{ env.READAIRR_VERSION_BASE }}.${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

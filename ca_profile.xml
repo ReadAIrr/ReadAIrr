@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>ReadAIrr Community Applications templates for installing the ReadAIrr audiobook and ebook library manager on Unraid. Templates include the main app plus Docker-managed update tracks and optional PostgreSQL connection settings.</Profile>
+  <Icon>https://raw.githubusercontent.com/ReadAIrr/App/prod/Logo/512.png</Icon>
+  <WebPage>https://github.com/ReadAIrr/App</WebPage>
+  <Forum>https://github.com/ReadAIrr/App/issues</Forum>
+</CommunityApplications>

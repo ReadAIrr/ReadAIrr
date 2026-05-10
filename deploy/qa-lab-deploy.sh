@@ -11,7 +11,7 @@ GitHub Actions or GHCR.
 Options:
   --skip-build          Deploy an already-built local image tag.
   --tag TAG             Local/remote image tag to deploy. Default: readairr:qa-bindings
-  --version VERSION     Numeric Readarr version for Docker build. Default: 0.4.19.19
+  --version VERSION     Numeric ReadAIrr version for Docker build. Default: 1.0.0.0
   --host HOST           SSH host. Default: 192.168.0.61
   --user USER           SSH user. Default: toby
   --ssh-key PATH        SSH identity file. Default: ~/.ssh/id_ed25519
@@ -27,7 +27,7 @@ USAGE
 
 build_image=1
 tag="${READARR_QA_TAG:-readairr:qa-bindings}"
-version="${READARR_VERSION:-0.4.19.19}"
+version="${READARR_VERSION:-1.0.0.0}"
 host="${READAIRR_LAB_HOST:-192.168.0.61}"
 user="${READAIRR_LAB_USER:-toby}"
 ssh_key="${READAIRR_LAB_SSH_KEY:-$HOME/.ssh/id_ed25519}"
@@ -81,7 +81,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! "$version" =~ ^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$ ]]; then
-  echo "READARR_VERSION must be numeric, for example 0.4.19.19" >&2
+  echo "READARR_VERSION must be numeric, for example 1.0.0.0" >&2
   exit 2
 fi
 
@@ -132,7 +132,7 @@ else
   printf '\nREADARR_IMAGE=%s\n' \"\$tag\" >> .env
 fi
 
-docker compose --env-file .env -f compose.yml up -d --no-deps readarr
+docker compose --env-file .env -f compose.yml up -d readarr
 
 for _ in \$(seq 1 20); do
   if curl --fail --silent --output /dev/null http://127.0.0.1:8789/ping; then

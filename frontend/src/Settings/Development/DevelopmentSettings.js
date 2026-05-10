@@ -44,7 +44,7 @@ const metadataSourceOptions = [
   { key: LOCAL_METADATA_SOURCE, value: 'Automatic self-hosted rreading-glasses', hint: LOCAL_METADATA_SOURCE },
   { key: GOODREADS_METADATA_SOURCE, value: 'rreading-glasses (Goodreads hosted)', hint: GOODREADS_METADATA_SOURCE },
   { key: HARDCOVER_METADATA_SOURCE, value: 'rreading-glasses (Hardcover hosted)', hint: HARDCOVER_METADATA_SOURCE },
-  { key: ORIGINAL_METADATA_SOURCE, value: 'Original Readarr metadata', hint: 'Legacy built-in source' },
+  { key: ORIGINAL_METADATA_SOURCE, value: 'Original Readarr metadata', hint: 'Legacy compatibility source' },
   { key: CUSTOM_METADATA_SOURCE, value: 'Custom/self-hosted URL' }
 ];
 

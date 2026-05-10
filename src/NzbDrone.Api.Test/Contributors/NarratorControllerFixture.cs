@@ -5,8 +5,10 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Test.Common;
+using Readarr.Api.V1.BookFiles;
 using Readarr.Api.V1.Contributors;
 using Readarr.Http;
 
@@ -18,6 +20,8 @@ namespace NzbDrone.Api.Test.Contributors
         private Mock<IContributorEvidenceRepository> _contributorEvidenceRepository;
         private Mock<INarratorIdentityLinkRepository> _narratorIdentityLinkRepository;
         private Mock<IMediaFileService> _mediaFileService;
+        private Mock<IUnmappedIdentificationSuggestionService> _unmappedIdentificationSuggestionService;
+        private Mock<IConfigService> _configService;
         private NarratorController _subject;
 
         [SetUp]
@@ -26,11 +30,15 @@ namespace NzbDrone.Api.Test.Contributors
             _contributorEvidenceRepository = new Mock<IContributorEvidenceRepository>();
             _narratorIdentityLinkRepository = new Mock<INarratorIdentityLinkRepository>();
             _mediaFileService = new Mock<IMediaFileService>();
+            _unmappedIdentificationSuggestionService = new Mock<IUnmappedIdentificationSuggestionService>();
+            _configService = new Mock<IConfigService>();
 
             _subject = new NarratorController(
                 _contributorEvidenceRepository.Object,
                 _narratorIdentityLinkRepository.Object,
-                _mediaFileService.Object);
+                _mediaFileService.Object,
+                _unmappedIdentificationSuggestionService.Object,
+                _configService.Object);
         }
 
         [Test]

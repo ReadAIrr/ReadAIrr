@@ -221,6 +221,99 @@ WorkLink.propTypes = {
   item: PropTypes.object.isRequired
 };
 
+function UnmatchedNarratorRow({
+  item,
+  manualNarrator,
+  isScanning,
+  onManualNarratorChange,
+  onScanPress,
+  onConfirmPress
+}) {
+  const bookFileIds = item.bookFileIds || [item.bookFileId];
+  const suggestedNarrator = item.suggestedNarrator || '';
+  const confirmName = manualNarrator || suggestedNarrator;
+
+  return (
+    <div className={styles.narratorRow}>
+      <div className={styles.narratorHeader}>
+        <div>
+          <div className={styles.narratorName}>
+            {item.groupTitle || item.path}
+          </div>
+
+          <div className={styles.narratorMeta}>
+            {item.partCount > 1 ? `${item.partCount} parts` : 'Single file'} · {item.path}
+          </div>
+        </div>
+
+        <div className={styles.identityStatus}>
+          <span className={item.providerSupported ? styles.providerBadge : styles.reviewBadge}>
+            {item.providerSupportLabel || 'No provider check yet'}
+          </span>
+          <span className={styles.confidenceBadge}>
+            Threshold {item.autoAcceptThreshold}%
+          </span>
+        </div>
+      </div>
+
+      {
+        suggestedNarrator &&
+          <div className={styles.identityNote}>
+            STT proposal: {suggestedNarrator}{item.suggestionConfidence == null ? '' : ` · ${item.suggestionConfidence}%`}
+          </div>
+      }
+
+      {
+        item.transcriptExcerpt &&
+          <div className={styles.transcriptBox}>
+            {item.transcriptExcerpt}
+          </div>
+      }
+
+      {
+        item.suggestionExplanation &&
+          <div className={styles.identityNote}>
+            {item.suggestionExplanation}
+          </div>
+      }
+
+      <div className={styles.unmatchedActions}>
+        <input
+          className={styles.manualNarratorInput}
+          value={manualNarrator}
+          placeholder={suggestedNarrator || 'Narrator'}
+          onChange={(event) => onManualNarratorChange(item, event.target.value)}
+        />
+
+        <Button
+          kind={kinds.DEFAULT}
+          isDisabled={isScanning}
+          onPress={() => onScanPress(bookFileIds)}
+        >
+          Scan STT
+        </Button>
+
+        <Button
+          kind={item.canAutoAccept ? kinds.PRIMARY : kinds.DEFAULT}
+          isDisabled={!confirmName || isScanning}
+          onPress={() => onConfirmPress(item, confirmName)}
+        >
+          Accept Narrator
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+UnmatchedNarratorRow.propTypes = {
+  item: PropTypes.object.isRequired,
+  manualNarrator: PropTypes.string.isRequired,
+  isScanning: PropTypes.bool.isRequired,
+  onManualNarratorChange: PropTypes.func.isRequired,
+  onScanPress: PropTypes.func.isRequired,
+  onConfirmPress: PropTypes.func.isRequired
+};
+
 function NarratorDetailPanel({
   detail,
   isFetching,
@@ -461,7 +554,14 @@ class NarratorEvidenceIndex extends Component {
       totalRecords: 0,
       narratorOptions: [],
       searchTerm: getInitialSearchTerm(),
+      view: 'evidence',
       source: '',
+      unmatchedItems: [],
+      unmatchedTotalRecords: 0,
+      isFetchingUnmatched: false,
+      unmatchedError: null,
+      scanningUnmatchedIds: [],
+      manualNarrators: {},
       selectedNarrator: null,
       isFetchingDetail: false,
       detailError: null,
@@ -567,7 +667,13 @@ class NarratorEvidenceIndex extends Component {
       searchTerm,
       page: 1,
       totalRecords: 0
-    }, () => this.fetchNarrators(1));
+    }, () => {
+      if (this.state.view === 'missing') {
+        this.fetchUnmatchedNarrators(1);
+      } else {
+        this.fetchNarrators(1);
+      }
+    });
   };
 
   onSourceFilterPress = (source) => {
@@ -579,6 +685,131 @@ class NarratorEvidenceIndex extends Component {
       detail: null,
       detailError: null
     }, () => this.fetchNarrators(1));
+  };
+
+  fetchUnmatchedNarrators = (page = 1) => {
+    const {
+      searchTerm
+    } = this.state;
+
+    this.setState({
+      isFetchingUnmatched: true,
+      unmatchedError: null
+    });
+
+    const { request } = createAjaxRequest({
+      url: '/narrator/unmatched/paged',
+      data: {
+        page,
+        pageSize: 50,
+        term: searchTerm
+      }
+    });
+
+    request.done((response) => {
+      this.setState({
+        isFetchingUnmatched: false,
+        unmatchedError: null,
+        unmatchedItems: response.records || [],
+        unmatchedTotalRecords: response.totalRecords || 0
+      });
+    });
+
+    request.fail((xhr) => {
+      this.setState({
+        isFetchingUnmatched: false,
+        unmatchedError: xhr.aborted ? null : xhr
+      });
+    });
+  };
+
+  onViewPress = (view) => {
+    this.setState({ view }, () => {
+      if (view === 'missing') {
+        this.fetchUnmatchedNarrators(1);
+      }
+    });
+  };
+
+  onManualNarratorChange = (item, value) => {
+    this.setState({
+      manualNarrators: {
+        ...this.state.manualNarrators,
+        [item.groupKey || item.bookFileId]: value
+      }
+    });
+  };
+
+  updateUnmatchedRows = (rows) => {
+    const updatedRows = rows || [];
+    const updatedByKey = updatedRows.reduce((acc, row) => {
+      acc[row.groupKey || row.bookFileId] = row;
+      return acc;
+    }, {});
+
+    this.setState({
+      unmatchedItems: this.state.unmatchedItems.map((item) => {
+        return updatedByKey[item.groupKey || item.bookFileId] || item;
+      })
+    });
+  };
+
+  onScanUnmatchedPress = (bookFileIds) => {
+    const ids = (bookFileIds || []).filter((id) => id > 0);
+
+    if (!ids.length) {
+      return;
+    }
+
+    this.setState({
+      scanningUnmatchedIds: ids
+    });
+
+    const { request } = createAjaxRequest({
+      url: '/narrator/unmatched/scan',
+      method: 'POST',
+      dataType: 'json',
+      data: JSON.stringify({
+        bookFileIds: ids,
+        autoAccept: true
+      })
+    });
+
+    request.done((rows) => {
+      this.setState({ scanningUnmatchedIds: [] });
+      this.updateUnmatchedRows(rows);
+      this.fetchNarrators(1);
+    });
+
+    request.fail(() => {
+      this.setState({ scanningUnmatchedIds: [] });
+    });
+  };
+
+  onBulkScanUnmatchedPress = () => {
+    const ids = this.state.unmatchedItems.flatMap((item) => item.bookFileIds || [item.bookFileId]);
+    this.onScanUnmatchedPress(ids);
+  };
+
+  onConfirmUnmatchedPress = (item, displayName) => {
+    const bookFileIds = item.bookFileIds || [item.bookFileId];
+
+    const { request } = createAjaxRequest({
+      url: '/narrator/unmatched/confirm',
+      method: 'PUT',
+      dataType: 'json',
+      data: JSON.stringify({
+        bookFileIds,
+        displayName,
+        confidence: item.suggestionConfidence,
+        rawValue: `confirmedFrom=narratorMissingWorkflow;narrator=${displayName}`
+      })
+    });
+
+    request.done(() => {
+      this.fetchUnmatchedNarrators(1);
+      this.fetchNarrators(1);
+    });
   };
 
   onLoadMorePress = () => {
@@ -814,7 +1045,14 @@ class NarratorEvidenceIndex extends Component {
       items,
       totalRecords,
       searchTerm,
+      view,
       source,
+      unmatchedItems,
+      unmatchedTotalRecords,
+      isFetchingUnmatched,
+      unmatchedError,
+      scanningUnmatchedIds,
+      manualNarrators,
       selectedNarrator,
       isFetchingDetail,
       detailError,
@@ -854,42 +1092,74 @@ class NarratorEvidenceIndex extends Component {
           </Alert>
 
           <div className={styles.filterButtons}>
-            {
-              SOURCE_FILTERS.map((filter) => {
-                return (
-                  <Button
-                    key={filter.key}
-                    kind={source === filter.key ? kinds.PRIMARY : kinds.DEFAULT}
-                    onPress={() => this.onSourceFilterPress(filter.key)}
-                  >
-                    {filter.label}
-                  </Button>
-                );
-              })
-            }
+            <Button
+              kind={view === 'evidence' ? kinds.PRIMARY : kinds.DEFAULT}
+              onPress={() => this.onViewPress('evidence')}
+            >
+              Evidence
+            </Button>
+
+            <Button
+              kind={view === 'missing' ? kinds.PRIMARY : kinds.DEFAULT}
+              onPress={() => this.onViewPress('missing')}
+            >
+              Missing Narrator
+            </Button>
           </div>
 
           {
-            isFetching &&
+            view === 'evidence' &&
+              <div className={styles.filterButtons}>
+                {
+                  SOURCE_FILTERS.map((filter) => {
+                    return (
+                      <Button
+                        key={filter.key}
+                        kind={source === filter.key ? kinds.PRIMARY : kinds.DEFAULT}
+                        onPress={() => this.onSourceFilterPress(filter.key)}
+                      >
+                        {filter.label}
+                      </Button>
+                    );
+                  })
+                }
+              </div>
+          }
+
+          {
+            view === 'missing' &&
+              <div className={styles.rowActions}>
+                <Button
+                  kind={kinds.PRIMARY}
+                  isDisabled={!unmatchedItems.length || !!scanningUnmatchedIds.length}
+                  onPress={this.onBulkScanUnmatchedPress}
+                >
+                  Scan Visible Missing
+                </Button>
+              </div>
+          }
+
+          {
+            view === 'evidence' && isFetching &&
               <LoadingIndicator />
           }
 
           {
-            !isFetching && error &&
+            view === 'evidence' && !isFetching && error &&
               <Alert kind={kinds.DANGER}>
                 Unable to load narrator evidence.
               </Alert>
           }
 
           {
-            !isFetching && !error && !items.length &&
+            view === 'evidence' && !isFetching && !error && !items.length &&
               <div className={styles.emptyMessage}>
                 No narrator evidence matches the current search or source filter.
               </div>
           }
 
           {
-            !isFetching && !error && !!items.length &&
+            view === 'evidence' && !isFetching && !error && !!items.length &&
               <div className={styles.narratorList}>
                 {
                   items.map((item) => {
@@ -971,11 +1241,62 @@ class NarratorEvidenceIndex extends Component {
           }
 
           {
-            !isFetching && !error && items.length < totalRecords &&
+            view === 'evidence' && !isFetching && !error && items.length < totalRecords &&
               <div className={styles.loadMore}>
                 <Button onPress={this.onLoadMorePress}>
                   Load more narrators ({items.length} of {totalRecords})
                 </Button>
+              </div>
+          }
+
+          {
+            view === 'missing' && isFetchingUnmatched &&
+              <LoadingIndicator />
+          }
+
+          {
+            view === 'missing' && !isFetchingUnmatched && unmatchedError &&
+              <Alert kind={kinds.DANGER}>
+                Unable to load missing narrator files.
+              </Alert>
+          }
+
+          {
+            view === 'missing' && !isFetchingUnmatched && !unmatchedError && !unmatchedItems.length &&
+              <div className={styles.emptyMessage}>
+                No missing narrator files match the current search.
+              </div>
+          }
+
+          {
+            view === 'missing' && !isFetchingUnmatched && !unmatchedError && !!unmatchedItems.length &&
+              <div className={styles.narratorList}>
+                {
+                  unmatchedItems.map((item) => {
+                    const itemIds = item.bookFileIds || [item.bookFileId];
+                    const isScanning = itemIds.some((id) => scanningUnmatchedIds.includes(id));
+                    const key = item.groupKey || item.bookFileId;
+
+                    return (
+                      <UnmatchedNarratorRow
+                        key={key}
+                        item={item}
+                        manualNarrator={manualNarrators[key] || ''}
+                        isScanning={isScanning}
+                        onManualNarratorChange={this.onManualNarratorChange}
+                        onScanPress={this.onScanUnmatchedPress}
+                        onConfirmPress={this.onConfirmUnmatchedPress}
+                      />
+                    );
+                  })
+                }
+              </div>
+          }
+
+          {
+            view === 'missing' && !isFetchingUnmatched && !unmatchedError && !!unmatchedItems.length &&
+              <div className={styles.loadMore}>
+                {unmatchedItems.length} of {unmatchedTotalRecords} missing narrator group{unmatchedTotalRecords === 1 ? '' : 's'}
               </div>
           }
         </PageContentBody>

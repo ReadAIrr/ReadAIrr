@@ -108,7 +108,7 @@ class CalendarLinkModalContent extends Component {
     return (
       <ModalContent onModalClose={onModalClose}>
         <ModalHeader>
-          Readarr Calendar Feed
+          ReadAIrr Calendar Feed
         </ModalHeader>
 
         <ModalBody>

@@ -6,6 +6,8 @@ services:
     container_name: ${READARR_CONTAINER_NAME:-readarr}
     restart: unless-stopped
     depends_on:
+      readarr-db:
+        condition: service_healthy
       rreading-glasses:
         condition: service_started
     user: "${READARR_UID:-1000}:${READARR_GID:-1000}"
@@ -13,6 +15,16 @@ services:
       HOME: /config
       TZ: ${TZ:-UTC}
       UMASK: ${UMASK:-022}
+      Readarr__Postgres__Host: readarr-db
+      Readarr__Postgres__Port: 5432
+      Readarr__Postgres__User: ${READARR_POSTGRES_USER:-readarr}
+      Readarr__Postgres__Password: ${READARR_POSTGRES_PASSWORD:?Set READARR_POSTGRES_PASSWORD in your env file}
+      Readarr__Postgres__MainDb: ${READARR_POSTGRES_MAIN_DB:-readarr-main}
+      Readarr__Postgres__LogDb: ${READARR_POSTGRES_LOG_DB:-readarr-log}
+      Readarr__Postgres__CacheDb: ${READARR_POSTGRES_CACHE_DB:-readarr-cache}
+      Readarr__Update__Automatically: ${READARR_UPDATE_AUTOMATICALLY:-false}
+      Readarr__Update__Branch: ${READARR_UPDATE_BRANCH:-dev}
+      Readarr__Update__Mechanism: ${READARR_UPDATE_MECHANISM:-Docker}
     ports:
       - "${READARR_BIND_ADDRESS:-0.0.0.0}:${READARR_PORT:-8787}:8787"
     volumes:
@@ -31,6 +43,30 @@ services:
       - type: bind
         source: ${READARR_MEDIA_DIR:?Set READARR_MEDIA_DIR in your env file}
         target: /audiobooks
+
+  readarr-db:
+    image: ${READARR_POSTGRES_IMAGE:?Set READARR_POSTGRES_IMAGE in your env file}
+    hostname: readarr-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${READARR_POSTGRES_USER:-readarr}
+      POSTGRES_PASSWORD: ${READARR_POSTGRES_PASSWORD:?Set READARR_POSTGRES_PASSWORD in your env file}
+      POSTGRES_DB: ${READARR_POSTGRES_MAIN_DB:-readarr-main}
+      READARR_POSTGRES_LOG_DB: ${READARR_POSTGRES_LOG_DB:-readarr-log}
+      READARR_POSTGRES_CACHE_DB: ${READARR_POSTGRES_CACHE_DB:-readarr-cache}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - type: volume
+        source: readarr_data
+        target: /var/lib/postgresql/data
+      - type: bind
+        source: ./postgres-init-readarr.sh
+        target: /docker-entrypoint-initdb.d/10-readarr-databases.sh
+        read_only: true
 
   rreading-glasses:
     image: ${RREADING_GLASSES_IMAGE:?Set RREADING_GLASSES_IMAGE in your env file}
@@ -71,4 +107,5 @@ services:
         target: /var/lib/postgresql/data
 
 volumes:
+  readarr_data:
   rreading_glasses_data:

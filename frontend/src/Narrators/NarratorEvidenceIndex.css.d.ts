@@ -16,6 +16,7 @@ interface CssExports {
   'identityNote': string;
   'identityStatus': string;
   'loadMore': string;
+  'manualNarratorInput': string;
   'narratorHeader': string;
   'narratorList': string;
   'narratorMeta': string;
@@ -28,6 +29,8 @@ interface CssExports {
   'rowActions': string;
   'sourceCount': string;
   'sourceCounts': string;
+  'transcriptBox': string;
+  'unmatchedActions': string;
   'workList': string;
   'workMeta': string;
   'workPath': string;

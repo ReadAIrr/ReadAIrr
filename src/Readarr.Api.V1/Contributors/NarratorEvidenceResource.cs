@@ -89,6 +89,48 @@ namespace Readarr.Api.V1.Contributors
         public string DisplayPreference { get; set; }
     }
 
+    public class NarratorUnmatchedResource
+    {
+        public int BookFileId { get; set; }
+        public List<int> BookFileIds { get; set; }
+        public int PartCount { get; set; }
+        public string GroupKey { get; set; }
+        public string GroupTitle { get; set; }
+        public string Path { get; set; }
+        public List<string> Paths { get; set; }
+        public long Size { get; set; }
+        public DateTime Modified { get; set; }
+        public bool Reviewed { get; set; }
+        public string SuggestedNarrator { get; set; }
+        public int? SuggestionConfidence { get; set; }
+        public string SuggestionStatus { get; set; }
+        public string SuggestionStage { get; set; }
+        public string SuggestionExplanation { get; set; }
+        public string TranscriptExcerpt { get; set; }
+        public bool ProviderSupported { get; set; }
+        public string ProviderSupportLabel { get; set; }
+        public int ProviderEvidenceCount { get; set; }
+        public int AutoAcceptThreshold { get; set; }
+        public bool CanAutoAccept { get; set; }
+        public bool IsAutoAccepted { get; set; }
+        public List<global::Readarr.Api.V1.BookFiles.ContributorEvidenceResource> ContributorEvidence { get; set; }
+    }
+
+    public class NarratorUnmatchedScanResource
+    {
+        public List<int> BookFileIds { get; set; }
+        public bool AutoAccept { get; set; } = true;
+    }
+
+    public class NarratorUnmatchedConfirmResource
+    {
+        public int BookFileId { get; set; }
+        public List<int> BookFileIds { get; set; }
+        public string DisplayName { get; set; }
+        public int? Confidence { get; set; }
+        public string RawValue { get; set; }
+    }
+
     public static class NarratorEvidenceResourceMapper
     {
         public static List<NarratorEvidenceResource> ToResource(List<ContributorEvidence> evidence, List<BookFile> bookFiles, string term = null, string source = null)

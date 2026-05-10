@@ -1,23 +1,53 @@
-<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
- <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">ReadAIrr</title>
+  <desc id="desc">A circular open-book mark with audio and AI accents for ReadAIrr.</desc>
+  <defs>
+    <linearGradient id="outer" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f6f1e8"/>
+      <stop offset="1" stop-color="#cfc6b8"/>
+    </linearGradient>
+    <linearGradient id="field" x1="192" y1="144" x2="832" y2="872" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#173f46"/>
+      <stop offset="0.58" stop-color="#102d36"/>
+      <stop offset="1" stop-color="#0b1f29"/>
+    </linearGradient>
+    <linearGradient id="page" x1="232" y1="312" x2="792" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#dcd1bf"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="256" y1="260" x2="784" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c84444"/>
+      <stop offset="1" stop-color="#7e1f2f"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#071015" flood-opacity="0.38"/>
+    </filter>
+  </defs>
 
- <g>
-  <title>background</title>
-  <rect x="-1" y="-1" width="1026" height="1026" id="canvas_background" fill="none"/>
-  <g id="canvasGrid" display="none">
-   <rect id="svg_1" width="100%" height="100%" x="0" y="0" stroke-width="0" fill="url(#gridpattern)"/>
+  <circle cx="512" cy="512" r="508" fill="url(#outer)"/>
+  <circle cx="512" cy="512" r="438" fill="#3b3230"/>
+  <circle cx="512" cy="512" r="392" fill="url(#accent)"/>
+  <circle cx="512" cy="512" r="354" fill="url(#field)"/>
+
+  <g filter="url(#shadow)">
+    <path d="M188 338c0-42 25-65 68-59 119 17 207 52 256 102v461c-69-70-171-111-306-125-12-1-18-9-18-24V338Z" fill="url(#page)" stroke="#8d2431" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M836 338c0-42-25-65-68-59-119 17-207 52-256 102v461c69-70 171-111 306-125 12-1 18-9 18-24V338Z" fill="url(#page)" stroke="#8d2431" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M512 382c-51-52-138-87-260-104-39-5-64 19-64 60v72c84 7 186 35 262 84 27 17 62 17 89 0 76-49 178-77 262-84v-72c0-41-25-65-64-60-122 17-209 52-260 104h-25Z" fill="#9d2c38" opacity="0.98"/>
   </g>
- </g>
- <g>
-  <title>Layer 1</title>
-  <ellipse fill="#eeeeee" stroke="#443c3c" stroke-width="1.5" cx="512" cy="512" id="svg_2" rx="510" ry="510"/>
-  <ellipse fill="#443c3c" stroke-width="1.5" cx="512" cy="512" id="svg_11" rx="440" ry="440" stroke="#443c3c"/>
-  <ellipse fill="#8e2222" stroke-width="1.5" cx="512" cy="512" id="svg_12" rx="387" ry="387" stroke="#443c3c"/>
-  <ellipse fill="#eeeeee" stroke="#8e2222" stroke-width="1.5" cx="512" cy="512" id="svg_13" rx="378" ry="378"/>
-  <ellipse fill="#443c3c" stroke="#443c3c" stroke-width="1.5" cx="510.666667" cy="513.333333" id="svg_14" rx="265" ry="265"/>
-  <path stroke="#8e2222" fill="#eeeeee" stroke-width="10" d="m175.710053,681.237221c0,0 -5.075603,-356.007066 -5.710046,-356.665506c0.634444,-53.1059 17.499829,-47.829396 30.453616,-49.40506c198.582985,10.830065 270.910328,71.251644 275.351487,73.499378c13.323459,5.017718 20.936854,31.781547 20.302411,31.123108c0.634444,0.658439 4.441159,420.60147 3.806697,419.943031c3.172272,22.454778 -13.323459,21.001691 -13.957903,20.343251c-124.986737,-98.151681 -297.557264,-122.854211 -298.191708,-123.512651c-12.054554,-0.794647 -12.054554,-15.325552 -12.054554,-15.325552z" id="svg_3"/>
-  <path stroke="#8e2222" fill="#eeeeee" stroke-width="10" d="m845.789157,682.063637c0,0 5.076028,-356.877704 5.710555,-357.537759c-0.634508,-53.235774 -17.501351,-47.946362 -30.456244,-49.525877c-198.600031,10.856551 -270.933583,71.425895 -275.375122,73.679122c-13.324597,5.029987 -20.938649,31.85927 -20.30415,31.199225c-0.634499,0.660045 -4.441539,421.630074 -3.807021,420.970029c-3.172522,22.509688 13.324597,21.053047 13.959106,20.393002c124.997443,-98.391719 297.582778,-123.154662 298.217286,-123.814708c12.05559,-0.796596 12.05559,-15.363034 12.05559,-15.363034z" id="svg_4"/>
-  <path stroke="#8e2222" fill="#8e2222" stroke-width="5" d="m173.13558,738.570552c0,0 -5.15755,-356.007074 -5.80224,-356.665508c0.64469,-53.1059 17.78238,-47.8294 30.94532,-49.405065c201.78931,10.830064 275.28445,71.25165 279.79732,73.499376c13.53858,5.017723 21.2749,31.781547 20.63021,31.123113c0.64469,0.658434 4.51287,420.601482 3.86816,419.943038c3.22349,22.454782 -13.53858,21.001693 -14.18327,20.343258c-127.00477,-98.151686 -302.36163,-122.854214 -303.00631,-123.512658c-12.24919,-0.794646 -12.24919,-15.325554 -12.24919,-15.325554z" id="svg_5"/>
-  <path stroke="#8e2222" fill="#8e2222" stroke-width="5" d="m848.36364,739.063651c0,0 5.15798,-356.877693 5.80276,-357.537747c-0.64476,-53.235766 -17.78391,-47.946356 -30.94796,-49.525871c-201.80636,10.856552 -275.30771,71.425894 -279.82096,73.67912c-13.53972,5.029983 -21.2767,31.859265 -20.63195,31.199221c-0.64475,0.660044 -4.51325,421.630055 -3.86849,420.970011c-3.22374,22.509691 13.53972,21.053041 14.18447,20.392997c127.01549,-98.391708 302.38716,-123.154653 303.03191,-123.814697c12.25022,-0.796596 12.25022,-15.363033 12.25022,-15.363033z" id="svg_6"/>
- </g>
+
+  <path d="M512 382v474" fill="none" stroke="#7e1f2f" stroke-width="20" stroke-linecap="round"/>
+  <path d="M251 438c83 9 158 31 224 66M251 520c83 9 158 31 224 66M773 438c-83 9-158 31-224 66M773 520c-83 9-158 31-224 66" fill="none" stroke="#b9aa98" stroke-width="18" stroke-linecap="round" opacity="0.7"/>
+
+  <g fill="none" stroke="#f4c76b" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M377 667c29-47 67-71 114-71s85 24 114 71" stroke-width="34"/>
+    <path d="M331 616c43-73 103-109 181-109s138 36 181 109" stroke-width="26" opacity="0.82"/>
+    <path d="M289 561c54-92 129-138 223-138s169 46 223 138" stroke-width="20" opacity="0.62"/>
+  </g>
+
+  <g fill="#f8e5a1">
+    <rect x="468" y="626" width="28" height="96" rx="14"/>
+    <rect x="514" y="588" width="28" height="134" rx="14"/>
+    <rect x="560" y="646" width="28" height="76" rx="14"/>
+    <path d="M677 300l23 46 50 7-36 35 9 50-46-24-45 24 8-50-36-35 50-7 23-46Z"/>
+  </g>
 </svg>

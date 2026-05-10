@@ -27,7 +27,7 @@ class MoreInfo extends Component {
 
           <DescriptionListItemTitle>Upstream Reddit</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://www.reddit.com/r/Readarr/">Readarr</Link>
+            <Link to="https://github.com/ReadAIrr/App">ReadAIrr</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>Upstream Discord</DescriptionListItemTitle>

@@ -27,7 +27,7 @@ class Donations extends Component {
             />
           </Link>
         </div>
-        <div className={styles.logoContainer} title="Readarr">
+        <div className={styles.logoContainer} title="ReadAIrr">
           <Link to="https://opencollective.com/readarr">
             <img
               className={styles.logo}

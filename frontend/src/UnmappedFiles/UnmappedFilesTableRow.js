@@ -307,19 +307,19 @@ class UnmappedFilesTableRow extends Component {
   };
 
   onRetryIdentifyPress = () => {
-    this.props.retryUnmappedFile([this.props.id]);
+    this.props.retryUnmappedFile(this.getBookFileIds());
   };
 
   onAiReviewPress = () => {
-    this.props.aiReviewUnmappedFile([this.props.id]);
+    this.props.aiReviewUnmappedFile(this.getBookFileIds());
   };
 
   onDeepIdentifyPress = () => {
-    this.props.deepIdentifyUnmappedFile([this.props.id]);
+    this.props.deepIdentifyUnmappedFile(this.getBookFileIds());
   };
 
   onClearSuggestionsPress = () => {
-    this.props.clearUnmappedSuggestions([this.props.id]);
+    this.props.clearUnmappedSuggestions(this.getBookFileIds());
   };
 
   onSuggestionReviewPress = () => {
@@ -379,7 +379,7 @@ class UnmappedFilesTableRow extends Component {
   };
 
   onMarkReviewedPress = () => {
-    this.props.setUnmappedFileReviewed([this.props.id], !this.props.reviewed);
+    this.props.setUnmappedFileReviewed(this.getBookFileIds(), !this.props.reviewed);
   };
 
   onDeleteFilePress = () => {
@@ -395,12 +395,17 @@ class UnmappedFilesTableRow extends Component {
     this.setState({ isConfirmDeleteModalOpen: false });
   };
 
+  getBookFileIds = () => {
+    return this.props.bookFileIds || [this.props.id];
+  };
+
   //
   // Render
 
   render() {
     const {
       id,
+      partCount,
       path,
       size,
       dateAdded,
@@ -465,6 +470,12 @@ class UnmappedFilesTableRow extends Component {
                   className={styles[name]}
                 >
                   {path}
+                  {
+                    partCount > 1 &&
+                      <div className={styles.progressStatus}>
+                        {partCount} grouped parts
+                      </div>
+                  }
                 </VirtualTableRowCell>
               );
             }
@@ -1119,6 +1130,8 @@ class UnmappedFilesTableRow extends Component {
 
 UnmappedFilesTableRow.propTypes = {
   id: PropTypes.number.isRequired,
+  bookFileIds: PropTypes.arrayOf(PropTypes.number),
+  partCount: PropTypes.number,
   path: PropTypes.string.isRequired,
   size: PropTypes.number.isRequired,
   quality: PropTypes.object,

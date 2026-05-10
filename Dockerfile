@@ -8,13 +8,16 @@ FROM --platform=$BUILDPLATFORM node:${NODE_VERSION} AS node
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 ARG BUILD_SOURCEBRANCHNAME=container
-ARG READARR_VERSION=0.4.19.0
+ARG READARR_VERSION=1.0.0.0
 ARG TARGETARCH
 
 ENV BUILD_SOURCEBRANCHNAME=${BUILD_SOURCEBRANCHNAME} \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     EnableSourceControlManagerQueries=false \
     EnableSourceLink=false \
+    Readarr__Update__Automatically=false \
+    Readarr__Update__Branch=${BUILD_SOURCEBRANCHNAME} \
+    Readarr__Update__Mechanism=Docker \
     READARRVERSION=${READARR_VERSION}
 
 COPY --from=node /usr/local /usr/local

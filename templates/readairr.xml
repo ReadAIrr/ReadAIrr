@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>ReadAIrr</Name>
+  <Repository>ghcr.io/readairr/app:prod</Repository>
+  <Registry>https://ghcr.io/readairr/app</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/ReadAIrr/App/issues</Support>
+  <Project>https://github.com/ReadAIrr/App</Project>
+  <Overview>ReadAIrr is an audiobook and ebook library manager with Readarr-compatible workflows, configurable metadata sources, narrator evidence tools, speech-to-text assisted matching, and optional PostgreSQL backing storage.</Overview>
+  <Description>ReadAIrr manages audiobook and ebook collections, scans existing libraries, imports releases from download clients, and provides narrator-focused matching workflows. The production release track is recommended for most users. To opt into validation or development builds, change the Repository tag to ghcr.io/readairr/app:val or ghcr.io/readairr/app:dev and set the Release Track field to the same value. SQLite is used by default. PostgreSQL is optional and can be enabled by setting the advanced PostgreSQL variables to a reachable database with main, log, and cache databases.</Description>
+  <Category>MediaApp:Books MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:8787]</WebUI>
+  <Icon>https://raw.githubusercontent.com/ReadAIrr/App/prod/Logo/512.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/ReadAIrr/App/prod/templates/readairr.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/ReadAIrr/App/prod/docs/unraid.md</ReadMe>
+  <ExtraParams>--user 99:100</ExtraParams>
+  <Config Name="WebUI" Target="8787" Default="8787" Mode="tcp" Description="ReadAIrr web interface. Only change the host port if 8787 is already used on your Unraid server." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/readairr" Mode="rw" Description="ReadAIrr application data and configuration." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/readairr</Config>
+  <Config Name="Downloads" Target="/downloads" Default="/mnt/user/downloads" Mode="rw" Description="Download client output path as seen by ReadAIrr." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/downloads</Config>
+  <Config Name="Audiobooks" Target="/audiobooks" Default="/mnt/user/audiobooks" Mode="rw" Description="Primary audiobook library path. Use /audiobooks as the root folder inside ReadAIrr." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/audiobooks</Config>
+  <Config Name="Audiobooks Compatibility Path" Target="/media/audiobooks" Default="/mnt/user/audiobooks" Mode="rw" Description="Optional compatibility mount for libraries already configured to use /media/audiobooks." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/audiobooks</Config>
+  <Config Name="Unraid Share Compatibility Path" Target="/mnt/user/audiobooks" Default="/mnt/user/audiobooks" Mode="rw" Description="Optional compatibility mount for imports or root folders that reference the Unraid-style path inside the container." Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/audiobooks</Config>
+  <Config Name="Time Zone" Target="TZ" Default="America/Los_Angeles" Description="Container time zone." Type="Variable" Display="always" Required="true" Mask="false">America/Los_Angeles</Config>
+  <Config Name="Umask" Target="UMASK" Default="022" Description="File creation umask used by ReadAIrr." Type="Variable" Display="advanced" Required="false" Mask="false">022</Config>
+  <Config Name="Release Track" Target="Readarr__Update__Branch" Default="prod" Description="ReadAIrr update track. Valid values are prod, val, and dev. Keep this aligned with the Repository tag selected above." Type="Variable" Display="always" Required="true" Mask="false">prod</Config>
+  <Config Name="Update Mechanism" Target="Readarr__Update__Mechanism" Default="Docker" Description="Docker installs should be updated by Unraid pulling a new image, not the built-in updater." Type="Variable" Display="advanced-hide" Required="true" Mask="false">Docker</Config>
+  <Config Name="Automatic Built-In Updates" Target="Readarr__Update__Automatically" Default="false" Description="Keep false for Docker and Unraid installs." Type="Variable" Display="advanced-hide" Required="true" Mask="false">false</Config>
+  <Config Name="PostgreSQL Host" Target="Readarr__Postgres__Host" Default="" Description="Optional PostgreSQL host. Leave blank to use the default SQLite database." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="PostgreSQL Port" Target="Readarr__Postgres__Port" Default="5432" Description="Optional PostgreSQL port." Type="Variable" Display="advanced" Required="false" Mask="false">5432</Config>
+  <Config Name="PostgreSQL User" Target="Readarr__Postgres__User" Default="readarr" Description="Optional PostgreSQL username." Type="Variable" Display="advanced" Required="false" Mask="false">readarr</Config>
+  <Config Name="PostgreSQL Password" Target="Readarr__Postgres__Password" Default="" Description="Optional PostgreSQL password." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="PostgreSQL Main Database" Target="Readarr__Postgres__MainDb" Default="readarr-main" Description="Optional PostgreSQL main database name." Type="Variable" Display="advanced" Required="false" Mask="false">readarr-main</Config>
+  <Config Name="PostgreSQL Log Database" Target="Readarr__Postgres__LogDb" Default="readarr-log" Description="Optional PostgreSQL log database name." Type="Variable" Display="advanced" Required="false" Mask="false">readarr-log</Config>
+  <Config Name="PostgreSQL Cache Database" Target="Readarr__Postgres__CacheDb" Default="readarr-cache" Description="Optional PostgreSQL cache database name." Type="Variable" Display="advanced" Required="false" Mask="false">readarr-cache</Config>
+</Container>

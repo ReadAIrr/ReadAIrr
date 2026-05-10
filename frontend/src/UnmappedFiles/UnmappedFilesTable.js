@@ -161,6 +161,71 @@ function formatDeepIdentifySummary(summary, isDeepIdentifyAudioRunning) {
   return `Deep Identify Audio: ${parts.join(', ')}. Row status updates persist after refresh.`;
 }
 
+function getDirectory(path) {
+  const index = Math.max((path || '').lastIndexOf('/'), (path || '').lastIndexOf('\\'));
+
+  return index > -1 ? path.substring(0, index) : '';
+}
+
+function getBaseName(path) {
+  const index = Math.max((path || '').lastIndexOf('/'), (path || '').lastIndexOf('\\'));
+
+  return index > -1 ? path.substring(index + 1) : path;
+}
+
+function normalizeTitle(value) {
+  return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function looksNumbered(fileName) {
+  return (/(^|[\s._-])((part|pt|disc|disk|cd|track|chapter|ch)\s*)?\d{1,4}([\s._-]|$)/i).test(fileName || '');
+}
+
+function isLikelyMultipartGroup(directory, items) {
+  const folderTitle = normalizeTitle(getBaseName(directory));
+
+  if (!folderTitle || items.length <= 1) {
+    return false;
+  }
+
+  const numberedCount = items.filter((item) => looksNumbered(getBaseName(item.path))).length;
+  const titleCount = items.filter((item) => normalizeTitle(getBaseName(item.path)).includes(folderTitle)).length;
+
+  return numberedCount >= 2 || titleCount >= Math.min(2, items.length);
+}
+
+function groupMultipartUnmappedItems(items) {
+  const byDirectory = items.reduce((acc, item) => {
+    const directory = getDirectory(item.path);
+
+    acc[directory] = acc[directory] || [];
+    acc[directory].push(item);
+
+    return acc;
+  }, {});
+
+  return Object.keys(byDirectory).sort().flatMap((directory) => {
+    const groupItems = byDirectory[directory].sort((a, b) => a.path.localeCompare(b.path));
+
+    if (!isLikelyMultipartGroup(directory, groupItems)) {
+      return groupItems;
+    }
+
+    const first = groupItems[0];
+
+    return [{
+      ...first,
+      id: first.id,
+      bookFileIds: groupItems.map((item) => item.id),
+      partCount: groupItems.length,
+      path: `${directory} (${groupItems.length} parts)`,
+      size: groupItems.reduce((sum, item) => sum + item.size, 0),
+      reviewed: groupItems.every((item) => item.reviewed),
+      isReprocessing: groupItems.some((item) => item.isReprocessing)
+    }];
+  });
+}
+
 class UnmappedFilesTable extends Component {
 
   //
@@ -235,7 +300,11 @@ class UnmappedFilesTable extends Component {
     if (this.state.allUnselected) {
       return [];
     }
-    return getSelectedIds(this.state.selectedState);
+    const selectedIds = getSelectedIds(this.state.selectedState);
+
+    return this._visibleItems
+      .filter((item) => selectedIds.includes(item.id))
+      .flatMap((item) => item.bookFileIds || [item.id]);
   };
 
   setSelectedState() {
@@ -306,7 +375,7 @@ class UnmappedFilesTable extends Component {
       triageFilter
     } = this.state;
 
-    return this.props.items.filter((item) => {
+    const filtered = this.props.items.filter((item) => {
       const status = item.review?.status;
       const isReviewed = item.reviewed || status === 'reviewed';
 
@@ -324,6 +393,8 @@ class UnmappedFilesTable extends Component {
 
       return status === triageFilter;
     });
+
+    return groupMultipartUnmappedItems(filtered);
   };
 
   getSelectedFolder = () => {

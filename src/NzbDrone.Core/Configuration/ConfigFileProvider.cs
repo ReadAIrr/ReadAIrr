@@ -217,8 +217,8 @@ namespace NzbDrone.Core.Configuration
 
         public bool AnalyticsEnabled => _logOptions.AnalyticsEnabled ?? GetValueBoolean("AnalyticsEnabled", true, persist: false);
 
-        // TODO: Change back to "master" for the first stable release
-        public string Branch => _updateOptions.Branch ?? GetValue("Branch", "develop").ToLowerInvariant();
+        // Keep Docker/Unraid release tracks aligned with published image tags.
+        public string Branch => _updateOptions.Branch ?? GetValue("Branch", "dev").ToLowerInvariant();
 
         public string LogLevel => _logOptions.Level ?? GetValue("LogLevel", "debug").ToLowerInvariant();
         public string ConsoleLogLevel => _logOptions.ConsoleLevel ?? GetValue("ConsoleLogLevel", string.Empty, persist: false);

@@ -198,3 +198,33 @@
 .workPath {
   overflow-wrap: anywhere;
 }
+
+.unmatchedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.manualNarratorInput {
+  min-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--inputBorderColor);
+  border-radius: 4px;
+  background: var(--inputBackgroundColor);
+  color: var(--textColor);
+}
+
+.transcriptBox {
+  margin-top: 10px;
+  max-height: 120px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardAlternateBackgroundColor);
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
