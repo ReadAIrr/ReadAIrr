@@ -4,6 +4,9 @@ These notes track the active `dev` container line. Stable validation and
 production release notes should be cut from this page when a dev build is
 promoted.
 
+Automation should read [release-notes.json](release-notes.json). This Markdown
+page is the human-friendly companion for the active development line.
+
 ## 1.1.0 Dev
 
 Image tag: `ghcr.io/readairr/app:dev`

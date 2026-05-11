@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "product": "ReadAIrr",
+  "assemblyVersionPattern": "<track-base>.<github-run-number>",
+  "tracks": {
+    "dev": {
+      "base": "1.1.0",
+      "branch": "dev",
+      "containerTags": ["dev"],
+      "purpose": "Active development builds"
+    },
+    "val": {
+      "base": "1.0.0",
+      "branch": "val",
+      "containerTags": ["val"],
+      "purpose": "Validation builds promoted from dev"
+    },
+    "prod": {
+      "base": "1.0.0",
+      "branch": "prod",
+      "containerTags": ["prod", "latest", "<major>", "<major>.<minor>"],
+      "purpose": "Production builds promoted from val"
+    }
+  },
+  "promotionPolicy": {
+    "dev": "dev.base may be ahead of val.base and prod.base",
+    "val": "val builds require val.base to equal dev.base",
+    "prod": "prod builds require prod.base, val.base, and dev.base to match",
+    "tag": "version tags must match prod.base exactly"
+  }
+}

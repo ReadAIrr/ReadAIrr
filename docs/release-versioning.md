@@ -1,6 +1,7 @@
 # ReadAIrr Release Versioning
 
-ReadAIrr starts its fork-owned stable release line at `1.0.0`.
+ReadAIrr starts its fork-owned stable release line at `1.0.0`. The enforced
+source of truth is [release-versioning.json](release-versioning.json).
 
 Container builds stamp the application assembly as:
 
@@ -32,6 +33,30 @@ provider metadata validation, manual confirmation, and narrator evidence carried
 into manual import review.
 
 See [dev release notes](dev-release-notes.md) for the user-facing change list.
+
+## Promotion Rules
+
+The container workflow validates release metadata before every image build.
+
+- `dev` may move ahead of validation and production.
+- `val` must use the same base version as `dev` before a validation image can
+  publish.
+- `prod` must use the same base version as `dev` and `val` before a production
+  image can publish.
+- Release tags such as `v1.1.0` must match the current `prod` base.
+
+When promoting, update [release-versioning.json](release-versioning.json) and
+[release-notes.json](release-notes.json) in the same change as the branch merge.
+The workflow fails if the release note entry does not match the target track's
+version base.
+
+## Release Notes Automation
+
+[release-notes.json](release-notes.json) is the machine-readable source for
+automation. It includes separate `app`, `container`, `website`, and
+`automation` sections so the public website can render friendly release notes
+while update-service automation can consume stable IDs, tracks, version bases,
+and promotion flags.
 
 ## Docker and Unraid Updates
 

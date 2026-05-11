@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "project": "ReadAIrr",
+  "generatedFrom": "ReadAIrr/App",
+  "automation": {
+    "notesSource": "docs/release-notes.json",
+    "versionSource": "docs/release-versioning.json",
+    "publicSiteManifest": "ReadAIrr/Site/updates/releases.json",
+    "publicSiteChangelog": "ReadAIrr/Site/changelog.html",
+    "updateApi": "https://readairr.com/v1/update/{track}"
+  },
+  "releases": [
+    {
+      "id": "dev-1.1.0-stt-narrator-review",
+      "track": "dev",
+      "versionBase": "1.1.0",
+      "versionPattern": "1.1.0.<github-run-number>",
+      "date": "2026-05-10",
+      "commit": "8720f9ccc242a3624e1487c23706c4e7bed3e5b6",
+      "title": "Guided STT narrator review for unmapped audio",
+      "summary": "Adds a user-confirmed Scan STT review flow that transcribes a short audio intro, asks the configured LLM for narrator evidence, validates the narrator against provider metadata when available, and carries accepted evidence into manual import.",
+      "public": true,
+      "channels": ["app", "container", "website", "automation"],
+      "app": {
+        "new": [
+          "Scan STT opens a full review modal with live/polled job progress.",
+          "Deep audio identify uses the first 60 seconds of audio instead of scanning whole files.",
+          "The review modal shows transcript text, intro audio playback, narrator suggestion, validation status, and a confirm action.",
+          "Accepted narrator evidence and validated edition hints flow into manual import review."
+        ],
+        "fixed": [],
+        "notes": [
+          "AI/STT remains opt-in and never auto-imports files.",
+          "Normal matching and manual import still work without OpenRouter or STT configured."
+        ]
+      },
+      "container": {
+        "image": "ghcr.io/readairr/app:dev",
+        "branch": "dev",
+        "assemblyVersionPattern": "1.1.0.<github-run-number>"
+      },
+      "website": {
+        "new": [
+          "Public release notes should expose the dev STT narrator review entry.",
+          "The public update manifest can consume this entry when dev update packages are published.",
+          "Website changelog entries should distinguish app/container changes from public-site/update-service changes."
+        ],
+        "fixed": []
+      },
+      "automation": {
+        "releaseNotesId": "dev-1.1.0-stt-narrator-review",
+        "promotable": true,
+        "siteSyncRequired": true,
+        "siteManifestBranch": "dev",
+        "expectedVersionBase": "1.1.0"
+      }
+    }
+  ]
+}

@@ -37,13 +37,19 @@ repo, that means `ghcr.io/readairr/app`.
 
 - `dev` is published from the `dev` branch.
 - `val` is published from the `val` branch.
-- `prod`, `latest`, `1`, and `1.0` are published from the `prod` branch.
+- `prod`, `latest`, `<major>`, and `<major>.<minor>` are published from the
+  `prod` branch.
 - `v*` tags are published as matching image tags.
 - Pull requests build the image but do not publish it.
 
-Container builds use the `1.0.0.<github-run-number>` version family. Docker and
-Unraid installs use Docker image updates instead of the built-in updater; the
-selected branch controls both the image tag and the in-app update track.
+Container builds use the `<track-version-base>.<github-run-number>` version
+family from `docs/release-versioning.json`. Docker and Unraid installs use
+Docker image updates instead of the built-in updater; the selected branch
+controls both the image tag and the in-app update track.
+
+Release notes for automation live in `docs/release-notes.json`. The same source
+is intended to feed public website changelog/update-service entries when a dev
+build is promoted.
 
 If this is shared beyond your homelab, make the GHCR package public or provide
 users with registry login instructions. For repeatable installs, prefer a
