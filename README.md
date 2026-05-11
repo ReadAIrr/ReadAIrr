@@ -31,7 +31,8 @@ ghcr.io/readairr/app:latest
 
 Use `prod` for normal installs, `val` for validation builds, and `dev` for
 active development builds. See [docs/release-versioning.md](docs/release-versioning.md)
-for the release-track policy.
+for the release-track policy and [docs/dev-release-notes.md](docs/dev-release-notes.md)
+for the current dev change list.
 
 ## Deployment
 

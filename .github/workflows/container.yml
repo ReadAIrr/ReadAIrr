@@ -21,7 +21,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  READAIRR_VERSION_BASE: 1.0.0
+  READAIRR_DEV_VERSION_BASE: 1.1.0
+  READAIRR_STABLE_VERSION_BASE: 1.0.0
 
 jobs:
   build:
@@ -70,6 +71,23 @@ jobs:
             org.opencontainers.image.licenses=GPL-3.0
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
+      - name: Select release version base
+        id: version
+        shell: bash
+        run: |
+          target_ref="${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" == v* ]]; then
+            version_base="${GITHUB_REF_NAME#v}"
+          elif [[ "$target_ref" == "dev" ]]; then
+            version_base="$READAIRR_DEV_VERSION_BASE"
+          else
+            version_base="$READAIRR_STABLE_VERSION_BASE"
+          fi
+
+          echo "base=$version_base" >> "$GITHUB_OUTPUT"
+          echo "ReadAIrr version base: $version_base"
+
       - name: Build and publish image
         uses: docker/build-push-action@v7
         with:
@@ -81,6 +99,6 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             BUILD_SOURCEBRANCHNAME=${{ github.ref_name }}
-            READARR_VERSION=${{ env.READAIRR_VERSION_BASE }}.${{ github.run_number }}
+            READARR_VERSION=${{ steps.version.outputs.base }}.${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
