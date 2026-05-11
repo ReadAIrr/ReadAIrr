@@ -89,7 +89,7 @@ function getSuggestionStatusLabel(status) {
   }
 }
 
-function getSuggestionSummary(suggestion) {
+export function getSuggestionSummary(suggestion) {
   const statusLabel = getSuggestionStatusLabel(suggestion.status);
   const source = getSuggestionSource(suggestion);
 
@@ -109,7 +109,7 @@ function getSuggestionSummary(suggestion) {
   return `${source}${suggestion.isStale ? ' stale' : ''}: ${statusLabel}`;
 }
 
-function isSuggestionReadyForConfirmation(suggestion) {
+export function isSuggestionReadyForConfirmation(suggestion) {
   return suggestion &&
     (suggestion.status === 'transcriptCaptured' || suggestion.status === 'suggested') &&
     (suggestion.validatedNarrator || suggestion.narrator);
@@ -129,7 +129,7 @@ function getDeepIdentifyStatus(review, isReprocessing) {
   return null;
 }
 
-function getSuggestionDetails(suggestion) {
+export function getSuggestionDetails(suggestion) {
   const details = [];
 
   if (suggestion.explanation) {
@@ -261,7 +261,7 @@ function getManualNarratorValue(contributorEvidence) {
     '';
 }
 
-function getAudioPreviewUrl(audioPreviewUrl) {
+export function getAudioPreviewUrl(audioPreviewUrl) {
   if (!audioPreviewUrl) {
     return null;
   }
@@ -271,11 +271,11 @@ function getAudioPreviewUrl(audioPreviewUrl) {
   return `${window.Readarr.apiRoot}${audioPreviewUrl}${separator}apikey=${encodeURIComponent(window.Readarr.apiKey)}`;
 }
 
-function getReviewSuggestion(review) {
+export function getReviewSuggestion(review) {
   return getDeepIdentifySuggestion(review) || review?.suggestions?.find((item) => item.status !== 'disabled');
 }
 
-function getRunningSttSuggestion(review, isReprocessing) {
+export function getRunningSttSuggestion(review, isReprocessing) {
   const existingSuggestion = getReviewSuggestion(review);
 
   if (existingSuggestion) {

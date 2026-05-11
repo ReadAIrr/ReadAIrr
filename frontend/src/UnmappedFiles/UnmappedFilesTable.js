@@ -2,11 +2,17 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
+import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import Menu from 'Components/Menu/Menu';
 import MenuButton from 'Components/Menu/MenuButton';
 import MenuContent from 'Components/Menu/MenuContent';
 import SelectedMenuItem from 'Components/Menu/SelectedMenuItem';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
@@ -26,7 +32,8 @@ import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import selectAll from 'Utilities/Table/selectAll';
 import toggleSelected from 'Utilities/Table/toggleSelected';
 import UnmappedFilesTableHeader from './UnmappedFilesTableHeader';
-import UnmappedFilesTableRow from './UnmappedFilesTableRow';
+import UnmappedFilesTableRow, { getAudioPreviewUrl, getRunningSttSuggestion, getSuggestionDetails, getSuggestionSummary, isSuggestionReadyForConfirmation } from './UnmappedFilesTableRow';
+import styles from './UnmappedFilesTableRow.css';
 
 const triageFilterOptions = {
   ALL: 'all',
@@ -245,7 +252,11 @@ class UnmappedFilesTable extends Component {
       searchTerm: props.term || '',
       triageFilter: props.triageFilter || triageFilterOptions.NEEDS_REVIEW,
       isManualMatchModalOpen: false,
-      manualMatchFolder: null
+      manualMatchFolder: null,
+      manualMatchAcceptedPath: null,
+      manualMatchSuggestion: null,
+      isDeepIdentifyReviewModalOpen: false,
+      deepIdentifyReviewIds: []
     };
   }
 
@@ -428,14 +439,18 @@ class UnmappedFilesTable extends Component {
   onOpenManualMatchPress = () => {
     this.setState({
       isManualMatchModalOpen: true,
-      manualMatchFolder: this.getSelectedFolder()
+      manualMatchFolder: this.getSelectedFolder(),
+      manualMatchAcceptedPath: null,
+      manualMatchSuggestion: null
     });
   };
 
   onManualMatchModalClose = () => {
     this.setState({
       isManualMatchModalOpen: false,
-      manualMatchFolder: null
+      manualMatchFolder: null,
+      manualMatchAcceptedPath: null,
+      manualMatchSuggestion: null
     });
 
     this.props.fetchUnmappedFiles();
@@ -450,11 +465,53 @@ class UnmappedFilesTable extends Component {
   };
 
   onDeepIdentifyPress = () => {
-    this.props.onDeepIdentifyPress(this.getSelectedIds());
+    const selectedIds = this.getSelectedIds();
+
+    if (!selectedIds.length) {
+      return;
+    }
+
+    this.setState({
+      isDeepIdentifyReviewModalOpen: true,
+      deepIdentifyReviewIds: selectedIds
+    });
+
+    this.props.onDeepIdentifyPress(selectedIds);
   };
 
   onClearSuggestionsPress = () => {
     this.props.onClearSuggestionsPress(this.getSelectedIds());
+  };
+
+  onDeepIdentifyReviewModalClose = () => {
+    this.setState({
+      isDeepIdentifyReviewModalOpen: false,
+      deepIdentifyReviewIds: []
+    });
+  };
+
+  onAcceptDeepIdentifySuggestionPress = (item, suggestion) => {
+    const narrator = suggestion?.validatedNarrator || suggestion?.narrator;
+
+    if (narrator) {
+      this.props.onSetContributorEvidencePress(item.id, narrator);
+    }
+
+    this.setState({
+      isDeepIdentifyReviewModalOpen: false,
+      deepIdentifyReviewIds: [],
+      isManualMatchModalOpen: true,
+      manualMatchFolder: getDirectory(item.path),
+      manualMatchAcceptedPath: item.path,
+      manualMatchSuggestion: suggestion ?
+        {
+          ...suggestion,
+          narrator,
+          likelyEdition: suggestion.validatedEditionTitle || suggestion.likelyEdition,
+          foreignEditionId: suggestion.validatedForeignEditionId
+        } :
+        null
+    });
   };
 
   onTriageFilterChange = (triageFilter) => {
@@ -574,6 +631,10 @@ class UnmappedFilesTable extends Component {
       selectedState,
       isManualMatchModalOpen,
       manualMatchFolder,
+      manualMatchAcceptedPath,
+      manualMatchSuggestion,
+      isDeepIdentifyReviewModalOpen,
+      deepIdentifyReviewIds,
       searchTerm,
       triageFilter
     } = this.state;
@@ -582,6 +643,8 @@ class UnmappedFilesTable extends Component {
     const selectedTrackFileIds = this.getSelectedIds();
     const visibleItems = this.getVisibleItems();
     const deepIdentifySummary = getDeepIdentifySummary(items, isDeepIdentifyAudioRunning);
+    const deepIdentifyReviewIdSet = new Set(deepIdentifyReviewIds);
+    const deepIdentifyReviewItems = items.filter((item) => deepIdentifyReviewIdSet.has(item.id));
     let emptyStateMessage = 'Success! My work is done, all files on disk are matched to known books.';
 
     if (items.length) {
@@ -803,8 +866,138 @@ class UnmappedFilesTable extends Component {
             showImportMode={false}
             showReplaceExistingFiles={false}
             replaceExistingFiles={false}
+            acceptedSuggestion={manualMatchSuggestion}
+            acceptedPath={manualMatchAcceptedPath}
             onModalClose={this.onManualMatchModalClose}
           />
+
+          <Modal
+            isOpen={isDeepIdentifyReviewModalOpen}
+            onModalClose={this.onDeepIdentifyReviewModalClose}
+          >
+            <ModalContent onModalClose={this.onDeepIdentifyReviewModalClose}>
+              <ModalHeader>
+                Scan STT Review
+              </ModalHeader>
+
+              <ModalBody>
+                {
+                  deepIdentifyReviewItems.length ?
+                    <div className={styles.reviewModal}>
+                      {
+                        deepIdentifyReviewItems.map((item) => {
+                          const suggestion = getRunningSttSuggestion(item.review, item.isReprocessing || isDeepIdentifyAudioRunning);
+                          const audioPreviewUrl = getAudioPreviewUrl(suggestion?.audioPreviewUrl);
+                          const details = suggestion ? getSuggestionDetails(suggestion) : [];
+
+                          return (
+                            <div
+                              key={item.id}
+                              className={styles.reviewSection}
+                            >
+                              <div className={styles.reviewSectionTitle}>
+                                {getBaseName(item.path)}
+                              </div>
+
+                              <div className={styles.reviewSummary}>
+                                <div className={styles.reviewTitle}>
+                                  {suggestion ? getSuggestionSummary(suggestion) : 'Scan STT queued'}
+                                </div>
+
+                                <div className={styles.reviewMeta}>
+                                  {item.path}
+                                </div>
+                              </div>
+
+                              {
+                                audioPreviewUrl &&
+                                  <audio
+                                    controls={true}
+                                    preload="none"
+                                    src={audioPreviewUrl}
+                                  />
+                              }
+
+                              {
+                                suggestion?.steps?.length > 0 &&
+                                  <div className={styles.stepList}>
+                                    {
+                                      suggestion.steps.map((step, index) => {
+                                        return (
+                                          <div
+                                            key={index}
+                                            className={styles.step}
+                                          >
+                                            <div className={styles.stepLabel}>
+                                              {step.label}
+                                            </div>
+
+                                            <div className={styles.stepDetail}>
+                                              {step.detail}
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    }
+                                  </div>
+                              }
+
+                              {
+                                (suggestion?.transcript || suggestion?.transcriptExcerpt) &&
+                                  <pre className={styles.transcript}>
+                                    {suggestion.transcript || suggestion.transcriptExcerpt}
+                                    {suggestion.transcriptIsTruncated ? '\n\n[Transcript truncated for review storage]' : ''}
+                                  </pre>
+                              }
+
+                              {
+                                details.length > 0 &&
+                                  <div className={styles.reasonList}>
+                                    {
+                                      details.map((detail, index) => {
+                                        return (
+                                          <div
+                                            key={index}
+                                            className={styles.reason}
+                                          >
+                                            <div className={styles.reasonLabel}>
+                                              {detail.label}
+                                            </div>
+
+                                            <div className={styles.reasonDetail}>
+                                              {detail.detail}
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    }
+                                  </div>
+                              }
+
+                              <Button
+                                isDisabled={!isSuggestionReadyForConfirmation(suggestion)}
+                                onPress={() => this.onAcceptDeepIdentifySuggestionPress(item, suggestion)}
+                              >
+                                Confirm Narrator and Manual Match
+                              </Button>
+                            </div>
+                          );
+                        })
+                      }
+                    </div> :
+                    <div>
+                      Scan STT was started. Refreshing unmapped file status while the background task persists review steps.
+                    </div>
+                }
+              </ModalBody>
+
+              <ModalFooter>
+                <Button onPress={this.onDeepIdentifyReviewModalClose}>
+                  Close
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         </PageContentBody>
       </PageContent>
     );
