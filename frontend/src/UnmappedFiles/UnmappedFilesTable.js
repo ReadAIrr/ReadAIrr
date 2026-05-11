@@ -640,7 +640,7 @@ class UnmappedFilesTable extends Component {
               onPress={this.onAiReviewPress}
             />
             <PageToolbarButton
-              label="Deep Identify Audio"
+              label="Scan STT"
               iconName={icons.TRACK_FILE}
               isDisabled={selectedTrackFileIds.length === 0}
               isSpinning={isSaving || isDeepIdentifyAudioRunning}

@@ -517,12 +517,7 @@ export const actionHandlers = handleThunks({
   },
 
   [DEEP_IDENTIFY_UNMAPPED_FILES]: function(getState, payload, dispatch) {
-    if ((payload.bookFileIds?.length ?? 0) > 1) {
-      handleBulkDeepIdentifyRequest(payload, dispatch);
-      return;
-    }
-
-    handleUnmappedSuggestionRequest('/bookFile/unmapped/deep-identify', payload, dispatch);
+    handleBulkDeepIdentifyRequest(payload, dispatch);
   },
 
   [CLEAR_UNMAPPED_SUGGESTIONS]: function(getState, payload, dispatch) {

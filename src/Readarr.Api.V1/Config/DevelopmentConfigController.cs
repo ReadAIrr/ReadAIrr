@@ -60,8 +60,8 @@ namespace Prowlarr.Api.V1.Config
                            .WithMessage("Speech-to-text base URL must be a valid URL");
 
             SharedValidator.RuleFor(c => c.SpeechToTextIntroSeconds)
-                           .InclusiveBetween(5, 120)
-                           .WithMessage("Speech-to-text intro window must be between 5 and 120 seconds");
+                           .InclusiveBetween(5, 60)
+                           .WithMessage("Speech-to-text intro window must be between 5 and 60 seconds");
         }
 
         protected override DevelopmentConfigResource GetResourceById(int id)

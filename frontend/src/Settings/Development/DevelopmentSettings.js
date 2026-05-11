@@ -526,8 +526,8 @@ class DevelopmentSettings extends Component {
                       type={inputTypes.NUMBER}
                       name="speechToTextIntroSeconds"
                       min={5}
-                      max={120}
-                      helpText="Maximum beginning segment length, in seconds. Use about 60 seconds to capture title, author, narrator, and publisher intro clues without sending the full file."
+                      max={60}
+                      helpText="Maximum beginning segment length, in seconds. ReadAIrr only sends a short intro clip, capped at 60 seconds, to capture title, author, narrator, and publisher clues."
                       onChange={onInputChange}
                       {...settings.speechToTextIntroSeconds}
                     />

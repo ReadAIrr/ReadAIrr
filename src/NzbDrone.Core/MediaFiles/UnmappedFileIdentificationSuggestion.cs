@@ -17,6 +17,11 @@ namespace NzbDrone.Core.MediaFiles
         public string LikelyEdition { get; set; }
         public string Language { get; set; }
         public string Narrator { get; set; }
+        public string NarratorValidationStatus { get; set; }
+        public string NarratorValidationDetail { get; set; }
+        public string ValidatedNarrator { get; set; }
+        public string ValidatedForeignEditionId { get; set; }
+        public string ValidatedEditionTitle { get; set; }
         public int? Confidence { get; set; }
         public string Explanation { get; set; }
         public bool RequiresManualConfirmation { get; set; }

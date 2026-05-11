@@ -216,7 +216,9 @@ namespace Readarr.Api.V1.BookFiles
                 running.Steps = new List<ManualImportReviewReasonResource>
                 {
                     Step("queued", "Queued", "Deep Identify Audio was queued for background processing."),
-                    Step("extractingIntro", "Extracting intro clip", "Preparing the bounded local intro clip before sending anything to the configured provider.")
+                    Step("extractingIntro", "Extracting intro clip", "Preparing the bounded local intro clip before sending anything to the configured provider."),
+                    Step("providerRequest", "Provider request pending", "After the intro clip is ready, ReadAIrr will send only that bounded clip to the configured speech-to-text provider."),
+                    Step("waitingForTranscription", "Waiting for transcription", "The modal will refresh with the provider response, transcript parsing, LLM narrator review, and metadata validation when each step is persisted.")
                 };
                 Store(new List<BookFileResource> { resource }, new List<ManualImportIdentificationSuggestionResource> { running }, true);
 
@@ -266,6 +268,22 @@ namespace Readarr.Api.V1.BookFiles
             }
 
             var transcription = _audioIntroTranscriptionService.Transcribe(resource);
+            var narratorReview = ReviewNarratorWithLlm(resource, transcription);
+            var narrator = narratorReview.Narrator.IsNotNullOrWhiteSpace() ? narratorReview.Narrator : transcription.Clues?.Narrator;
+            var validation = ValidateNarratorAgainstMetadata(resource, narrator);
+            var steps = (transcription.Steps ?? new List<AudioIntroTranscriptionStep>())
+                .Select(x => Step(x.Kind, x.Label, x.Detail))
+                .ToList();
+
+            if (narratorReview.Step != null)
+            {
+                steps.Add(narratorReview.Step);
+            }
+
+            if (validation.Step != null)
+            {
+                steps.Add(validation.Step);
+            }
 
             return new ManualImportIdentificationSuggestionResource
             {
@@ -275,10 +293,16 @@ namespace Readarr.Api.V1.BookFiles
                 Path = resource.Path,
                 LikelyAuthor = transcription.Clues?.Author,
                 LikelyBook = transcription.Clues?.Title,
-                Narrator = transcription.Clues?.Narrator,
-                Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
+                LikelyEdition = validation.ValidatedEditionTitle,
+                Narrator = narrator,
+                NarratorValidationStatus = validation.Status,
+                NarratorValidationDetail = validation.Detail,
+                ValidatedNarrator = validation.ValidatedNarrator,
+                ValidatedForeignEditionId = validation.ValidatedForeignEditionId,
+                ValidatedEditionTitle = validation.ValidatedEditionTitle,
+                Confidence = narratorReview.Confidence ?? (transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null),
                 RequiresManualConfirmation = true,
-                Explanation = transcription.Explanation,
+                Explanation = narratorReview.Explanation.IsNotNullOrWhiteSpace() ? $"{transcription.Explanation} {narratorReview.Explanation}" : transcription.Explanation,
                 Transcript = transcription.Transcript,
                 TranscriptIsTruncated = transcription.TranscriptIsTruncated,
                 TranscriptExcerpt = transcription.TranscriptExcerpt,
@@ -289,11 +313,165 @@ namespace Readarr.Api.V1.BookFiles
                 ProviderStatusCode = transcription.ProviderStatusCode,
                 ProviderDurationMs = transcription.ProviderDurationMs,
                 ProviderResponseExcerpt = transcription.ProviderResponseExcerpt,
-                Steps = (transcription.Steps ?? new List<AudioIntroTranscriptionStep>())
-                    .Select(x => Step(x.Kind, x.Label, x.Detail))
-                    .ToList(),
+                Steps = steps,
                 AudioPreviewUrl = $"/bookFile/unmapped/{resource.Id}/intro-preview"
             };
+        }
+
+        private NarratorLlmReview ReviewNarratorWithLlm(BookFileResource resource, AudioIntroTranscriptionResult transcription)
+        {
+            if (transcription.Status != "transcriptCaptured" || transcription.Transcript.IsNullOrWhiteSpace())
+            {
+                return NarratorLlmReview.Empty();
+            }
+
+            var config = BuildConfig();
+
+            if (!config.Enabled || config.ApiKey.IsNullOrWhiteSpace())
+            {
+                return new NarratorLlmReview
+                {
+                    Narrator = transcription.Clues?.Narrator,
+                    Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
+                    Explanation = "OpenRouter LLM narrator review was skipped because AI Review is not configured.",
+                    Step = Step("llmNarratorSkipped", "LLM narrator review skipped", "OpenRouter AI Review is not configured, so ReadAIrr used parser clues from the intro transcript only.")
+                };
+            }
+
+            var providerNarrators = GetProviderNarratorEvidence(resource)
+                .Select(x => new
+                {
+                    x.DisplayName,
+                    x.ForeignEditionId,
+                    x.RawValue
+                })
+                .Take(10)
+                .ToList();
+            var prompt = "Use this short audiobook intro transcript to identify the narrator name. Prefer exact spelling from provider metadata when it clearly matches the transcript. Return JSON only with narrator, confidence, explanation, and requiresManualConfirmation. Context:\n" +
+                         new
+                         {
+                             Transcript = transcription.Transcript,
+                             ParsedClues = transcription.Clues,
+                             Candidate = resource.Review?.Candidate,
+                             ProviderNarratorMetadata = providerNarrators
+                         }.ToJson();
+
+            try
+            {
+                var response = SendChatCompletion(config, prompt, maxTokens: 300);
+                var content = ExtractMessageContent(response.Content);
+                var json = JObject.Parse(ExtractJsonObject(content));
+                var narrator = json.Value<string>("narrator");
+
+                if (narrator.IsNullOrWhiteSpace())
+                {
+                    return new NarratorLlmReview
+                    {
+                        Narrator = transcription.Clues?.Narrator,
+                        Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
+                        Explanation = "The LLM did not return a narrator name, so ReadAIrr kept the transcript parser clue.",
+                        Step = Step("llmNarratorReview", "LLM narrator review", "The LLM did not return a narrator name; using transcript parser evidence for manual confirmation.")
+                    };
+                }
+
+                return new NarratorLlmReview
+                {
+                    Narrator = narrator.Trim(),
+                    Confidence = json.Value<int?>("confidence") ?? (transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null),
+                    Explanation = json.Value<string>("explanation"),
+                    Step = Step("llmNarratorReview", "LLM narrator review", $"Suggested narrator '{narrator.Trim()}' from the short intro transcript.")
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "LLM narrator review failed for unmapped file {0}", resource.Path);
+
+                return new NarratorLlmReview
+                {
+                    Narrator = transcription.Clues?.Narrator,
+                    Confidence = transcription.Clues?.Confidence > 0 ? transcription.Clues.Confidence : null,
+                    Explanation = "LLM narrator review failed, so ReadAIrr kept the transcript parser clue.",
+                    Step = Step("llmNarratorReviewFailed", "LLM narrator review failed", ex.Message)
+                };
+            }
+        }
+
+        private NarratorValidationResult ValidateNarratorAgainstMetadata(BookFileResource resource, string narrator)
+        {
+            if (narrator.IsNullOrWhiteSpace())
+            {
+                return new NarratorValidationResult
+                {
+                    Status = "noNarrator",
+                    Detail = "No narrator name was suggested from the intro transcript.",
+                    Step = Step("narratorValidation", "Narrator validation", "No narrator name was available to compare with provider metadata.")
+                };
+            }
+
+            var providerNarrators = GetProviderNarratorEvidence(resource);
+
+            if (!providerNarrators.Any())
+            {
+                return new NarratorValidationResult
+                {
+                    Status = "noMetadata",
+                    Detail = "No provider narrator metadata is available for the current candidate edition.",
+                    Step = Step("narratorValidation", "Narrator validation", "No provider narrator metadata was available for the current candidate edition, so the narrator remains user-confirmed evidence only.")
+                };
+            }
+
+            var normalized = ContributorEvidence.NormalizeName(narrator);
+            if (normalized.IsNullOrWhiteSpace())
+            {
+                return new NarratorValidationResult
+                {
+                    Status = "noNarrator",
+                    Detail = "The suggested narrator did not include enough letters or numbers to compare with provider metadata.",
+                    Step = Step("narratorValidation", "Narrator validation", "Suggested narrator was not comparable with provider metadata.")
+                };
+            }
+
+            var match = providerNarrators.FirstOrDefault(x => x.NormalizedName == normalized) ??
+                        providerNarrators.FirstOrDefault(x =>
+                        {
+                            var providerName = ContributorEvidence.NormalizeName(x.DisplayName);
+                            return providerName.IsNotNullOrWhiteSpace() &&
+                                   (providerName.Contains(normalized) || normalized.Contains(providerName));
+                        });
+
+            if (match == null)
+            {
+                return new NarratorValidationResult
+                {
+                    Status = "mismatch",
+                    Detail = $"Suggested narrator '{narrator}' did not match provider narrator metadata: {providerNarrators.Select(x => x.DisplayName).Distinct().ConcatToString(", ")}.",
+                    Step = Step("narratorValidation", "Narrator validation", "Suggested narrator did not match the provider narrator metadata for the current candidate edition.")
+                };
+            }
+
+            return new NarratorValidationResult
+            {
+                Status = "validated",
+                Detail = $"Suggested narrator '{narrator}' matched provider metadata as '{match.DisplayName}'. Confirming can preselect edition {resource.Review?.Candidate?.EditionTitle ?? match.ForeignEditionId}.",
+                ValidatedNarrator = match.DisplayName,
+                ValidatedForeignEditionId = match.ForeignEditionId,
+                ValidatedEditionTitle = resource.Review?.Candidate?.EditionTitle,
+                Step = Step("narratorValidation", "Narrator validation", $"Matched provider narrator metadata '{match.DisplayName}' for edition {resource.Review?.Candidate?.EditionTitle ?? match.ForeignEditionId}.")
+            };
+        }
+
+        private List<ContributorEvidence> GetProviderNarratorEvidence(BookFileResource resource)
+        {
+            var foreignEditionId = resource.Review?.Candidate?.ForeignEditionId;
+
+            if (foreignEditionId.IsNullOrWhiteSpace())
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            return _contributorEvidenceRepository.GetByForeignEditionIds(new[] { foreignEditionId })
+                .Where(x => x.Role == "narrator" && x.Source == "providerMetadata" && x.DisplayName.IsNotNullOrWhiteSpace())
+                .ToList();
         }
 
         private OpenRouterConfig BuildConfig(OpenRouterConfigTestResource resource = null)
@@ -508,6 +686,11 @@ namespace Readarr.Api.V1.BookFiles
                     LikelyEdition = suggestion.LikelyEdition,
                     Language = suggestion.Language,
                     Narrator = suggestion.Narrator,
+                    NarratorValidationStatus = suggestion.NarratorValidationStatus,
+                    NarratorValidationDetail = suggestion.NarratorValidationDetail,
+                    ValidatedNarrator = suggestion.ValidatedNarrator,
+                    ValidatedForeignEditionId = suggestion.ValidatedForeignEditionId,
+                    ValidatedEditionTitle = suggestion.ValidatedEditionTitle,
                     Confidence = suggestion.Confidence,
                     Explanation = suggestion.Explanation,
                     RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
@@ -542,12 +725,14 @@ namespace Readarr.Api.V1.BookFiles
                 return null;
             }
 
+            var displayName = suggestion.ValidatedNarrator.IsNotNullOrWhiteSpace() ? suggestion.ValidatedNarrator.Trim() : suggestion.Narrator.Trim();
+
             return new ContributorEvidence
             {
                 BookFileId = resource.Id,
                 Role = "narrator",
-                DisplayName = suggestion.Narrator.Trim(),
-                NormalizedName = ContributorEvidence.NormalizeName(suggestion.Narrator),
+                DisplayName = displayName,
+                NormalizedName = ContributorEvidence.NormalizeName(displayName),
                 Source = GetContributorEvidenceSource(suggestion),
                 Confidence = suggestion.Confidence,
                 RawValue = suggestion.Narrator,
@@ -588,6 +773,11 @@ namespace Readarr.Api.V1.BookFiles
                 LikelyEdition = suggestion.LikelyEdition,
                 Language = suggestion.Language,
                 Narrator = suggestion.Narrator,
+                NarratorValidationStatus = suggestion.NarratorValidationStatus,
+                NarratorValidationDetail = suggestion.NarratorValidationDetail,
+                ValidatedNarrator = suggestion.ValidatedNarrator,
+                ValidatedForeignEditionId = suggestion.ValidatedForeignEditionId,
+                ValidatedEditionTitle = suggestion.ValidatedEditionTitle,
                 Confidence = suggestion.Confidence,
                 Explanation = suggestion.Explanation,
                 RequiresManualConfirmation = suggestion.RequiresManualConfirmation,
@@ -705,6 +895,29 @@ namespace Readarr.Api.V1.BookFiles
             public string Model { get; set; }
             public int Timeout { get; set; }
             public int MaxFileContext { get; set; }
+        }
+
+        private sealed class NarratorLlmReview
+        {
+            public string Narrator { get; set; }
+            public int? Confidence { get; set; }
+            public string Explanation { get; set; }
+            public ManualImportReviewReasonResource Step { get; set; }
+
+            public static NarratorLlmReview Empty()
+            {
+                return new NarratorLlmReview();
+            }
+        }
+
+        private sealed class NarratorValidationResult
+        {
+            public string Status { get; set; }
+            public string Detail { get; set; }
+            public string ValidatedNarrator { get; set; }
+            public string ValidatedForeignEditionId { get; set; }
+            public string ValidatedEditionTitle { get; set; }
+            public ManualImportReviewReasonResource Step { get; set; }
         }
     }
 }

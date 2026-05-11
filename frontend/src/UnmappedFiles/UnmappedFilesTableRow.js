@@ -109,6 +109,12 @@ function getSuggestionSummary(suggestion) {
   return `${source}${suggestion.isStale ? ' stale' : ''}: ${statusLabel}`;
 }
 
+function isSuggestionReadyForConfirmation(suggestion) {
+  return suggestion &&
+    (suggestion.status === 'transcriptCaptured' || suggestion.status === 'suggested') &&
+    (suggestion.validatedNarrator || suggestion.narrator);
+}
+
 function getDeepIdentifyStatus(review, isReprocessing) {
   const suggestion = getDeepIdentifySuggestion(review);
 
@@ -170,6 +176,13 @@ function getSuggestionDetails(suggestion) {
     details.push({
       label: 'Narrator evidence',
       detail: suggestion.narrator
+    });
+  }
+
+  if (suggestion.narratorValidationDetail) {
+    details.push({
+      label: suggestion.narratorValidationStatus === 'validated' ? 'Validated narrator metadata' : 'Narrator metadata check',
+      detail: suggestion.narratorValidationDetail
     });
   }
 
@@ -262,6 +275,40 @@ function getReviewSuggestion(review) {
   return getDeepIdentifySuggestion(review) || review?.suggestions?.find((item) => item.status !== 'disabled');
 }
 
+function getRunningSttSuggestion(review, isReprocessing) {
+  const existingSuggestion = getReviewSuggestion(review);
+
+  if (existingSuggestion) {
+    return existingSuggestion;
+  }
+
+  if (!isReprocessing) {
+    return null;
+  }
+
+  return {
+    type: 'deepAudio',
+    provider: 'stt',
+    status: 'queued',
+    stage: 'queued',
+    requiresManualConfirmation: true,
+    explanation: 'Scan STT is queued or running for this unmapped file.',
+    contextSummary: 'ReadAIrr will extract only the short configured intro clip, send it to the configured speech-to-text provider, then ask the configured LLM to suggest the narrator for user confirmation.',
+    steps: [
+      {
+        kind: 'queued',
+        label: 'Queued',
+        detail: 'Scan STT was started from this row.'
+      },
+      {
+        kind: 'polling',
+        label: 'Waiting for live updates',
+        detail: 'This modal will refresh as the background STT command persists extraction, provider, transcript, LLM, and validation steps.'
+      }
+    ]
+  };
+}
+
 class UnmappedFilesTableRow extends Component {
 
   //
@@ -315,6 +362,7 @@ class UnmappedFilesTableRow extends Component {
   };
 
   onDeepIdentifyPress = () => {
+    this.setState({ isSuggestionReviewModalOpen: true });
     this.props.deepIdentifyUnmappedFile(this.getBookFileIds());
   };
 
@@ -332,15 +380,23 @@ class UnmappedFilesTableRow extends Component {
 
   onAcceptSuggestionPress = () => {
     const suggestion = getReviewSuggestion(this.props.review);
+    const narrator = suggestion?.validatedNarrator || suggestion?.narrator;
 
-    if (suggestion?.narrator) {
-      this.props.setContributorEvidence(this.props.id, suggestion.narrator);
+    if (narrator) {
+      this.props.setContributorEvidence(this.props.id, narrator);
     }
 
     this.setState({
       isSuggestionReviewModalOpen: false,
       isInteractiveImportModalOpen: true,
-      manualMatchSuggestion: suggestion
+      manualMatchSuggestion: suggestion ?
+        {
+          ...suggestion,
+          narrator,
+          likelyEdition: suggestion.validatedEditionTitle || suggestion.likelyEdition,
+          foreignEditionId: suggestion.validatedForeignEditionId
+        } :
+        null
     });
   };
 
@@ -431,7 +487,7 @@ class UnmappedFilesTableRow extends Component {
       contributorDisplayName
     } = this.state;
 
-    const reviewSuggestion = getReviewSuggestion(review);
+    const reviewSuggestion = getRunningSttSuggestion(review, isReprocessing);
     const reviewAudioPreviewUrl = getAudioPreviewUrl(reviewSuggestion?.audioPreviewUrl);
     const reviewAddLinks = buildAddSearchLinks(review, reviewSuggestion, contributorEvidence);
     const addAuthorUrl = reviewAddLinks.addAuthorUrl;
@@ -834,7 +890,7 @@ class UnmappedFilesTableRow extends Component {
 
                   <IconButton
                     name={icons.TRACK_FILE}
-                    title="Deep identify audio"
+                    title="Scan STT intro"
                     isSpinning={isReprocessing}
                     onPress={this.onDeepIdentifyPress}
                   />
@@ -946,7 +1002,7 @@ class UnmappedFilesTableRow extends Component {
         >
           <ModalContent onModalClose={this.onSuggestionReviewModalClose}>
             <ModalHeader>
-              Deep Identify Review
+              Scan STT Review
             </ModalHeader>
 
             <ModalBody>
@@ -987,7 +1043,7 @@ class UnmappedFilesTableRow extends Component {
                       reviewSuggestion.steps?.length > 0 &&
                         <div className={styles.reviewSection}>
                           <div className={styles.reviewSectionTitle}>
-                            Step log
+                            Live STT session log
                           </div>
 
                           <div className={styles.stepList}>
@@ -1095,10 +1151,10 @@ class UnmappedFilesTableRow extends Component {
               </Button>
 
               <Button
-                isDisabled={!reviewSuggestion || reviewSuggestion.status === 'disabled' || reviewSuggestion.status === 'queued' || reviewSuggestion.status === 'extractingIntro'}
+                isDisabled={!isSuggestionReadyForConfirmation(reviewSuggestion)}
                 onPress={this.onAcceptSuggestionPress}
               >
-                Accept and Manual Match
+                Confirm Narrator and Manual Match
               </Button>
 
               {

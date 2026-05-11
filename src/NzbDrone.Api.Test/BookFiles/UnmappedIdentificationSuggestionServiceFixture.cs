@@ -162,7 +162,7 @@ namespace NzbDrone.Api.Test.BookFiles
         [Test]
         public void deep_identify_should_capture_transcript_with_openrouter_stt_json_audio()
         {
-            HttpRequest postedRequest = null;
+            var postedRequests = new List<HttpRequest>();
 
             _configService.SetupGet(x => x.SpeechToTextProvider).Returns("openrouter");
             _configService.SetupGet(x => x.OpenRouterEnabled).Returns(true);
@@ -180,13 +180,43 @@ namespace NzbDrone.Api.Test.BookFiles
             _httpClient.Setup(x => x.Post(It.IsAny<HttpRequest>()))
                 .Returns<HttpRequest>(r =>
                 {
-                    postedRequest = r;
+                    postedRequests.Add(r);
+
+                    if (r.Url.FullUri.EndsWith("/chat/completions"))
+                    {
+                        return new HttpResponse(r, new HttpHeader { ContentType = "application/json" }, "{\"choices\":[{\"message\":{\"content\":\"{\\\"narrator\\\":\\\"Jane Reader\\\",\\\"confidence\\\":95,\\\"explanation\\\":\\\"Intro says narrated by Jane Reader.\\\",\\\"requiresManualConfirmation\\\":true}\"}}]}");
+                    }
+
                     return new HttpResponse(r, new HttpHeader { ContentType = "application/json" }, "{\"text\":\"You're listening to The Hidden Book, written by Alice Writer, narrated by Jane Reader.\"}");
+                });
+            _contributorEvidenceRepository.Setup(x => x.GetByForeignEditionIds(It.Is<IEnumerable<string>>(ids => ids.Contains("edition-1"))))
+                .Returns(new List<ContributorEvidence>
+                {
+                    new ContributorEvidence
+                    {
+                        Role = "narrator",
+                        Source = "providerMetadata",
+                        DisplayName = "Jane Reader",
+                        NormalizedName = "janereader",
+                        ForeignEditionId = "edition-1"
+                    }
                 });
 
             var result = _subject.DeepIdentifyAudio(new List<BookFileResource>
             {
-                new BookFileResource { Id = 1, Path = "/books/Alice Writer - Hidden.m4b" }
+                new BookFileResource
+                {
+                    Id = 1,
+                    Path = "/books/Alice Writer - Hidden.m4b",
+                    Review = new ManualImportReviewResource
+                    {
+                        Candidate = new ManualImportCandidateResource
+                        {
+                            ForeignEditionId = "edition-1",
+                            EditionTitle = "Provider Audio Edition"
+                        }
+                    }
+                }
             });
 
             result.Should().ContainSingle();
@@ -195,6 +225,10 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].LikelyBook.Should().Be("The Hidden Book");
             result[0].LikelyAuthor.Should().Be("Alice Writer");
             result[0].Narrator.Should().Be("Jane Reader");
+            result[0].NarratorValidationStatus.Should().Be("validated");
+            result[0].ValidatedNarrator.Should().Be("Jane Reader");
+            result[0].ValidatedForeignEditionId.Should().Be("edition-1");
+            result[0].ValidatedEditionTitle.Should().Be("Provider Audio Edition");
             result[0].Stage.Should().Be("transcriptCaptured");
             result[0].ProviderEndpoint.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
             result[0].ProviderModel.Should().Be("openai/whisper-1");
@@ -206,6 +240,7 @@ namespace NzbDrone.Api.Test.BookFiles
             result[0].Steps.Should().Contain(x => x.Kind == "introClipReady");
             result[0].Steps.Should().Contain(x => x.Kind == "providerResponse");
             result[0].Steps.Should().Contain(x => x.Kind == "final");
+            var postedRequest = postedRequests.FirstOrDefault(x => x.Url.FullUri.EndsWith("/audio/transcriptions"));
             postedRequest.Should().NotBeNull();
             postedRequest.Url.FullUri.Should().Be("https://openrouter.ai/api/v1/audio/transcriptions");
             postedRequest.Headers.GetSingleValue("Authorization").Should().Be("Bearer openrouter-key");
@@ -214,7 +249,8 @@ namespace NzbDrone.Api.Test.BookFiles
             body.Value<string>("model").Should().Be("openai/whisper-1");
             body["input_audio"].Value<string>("data").Should().Be("YXVkaW8gYnl0ZXM=");
             body["input_audio"].Value<string>("format").Should().Be("mp3");
-            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1" && s.Transcript.Contains("The Hidden Book") && s.StepLog.Contains("providerResponse"))), Times.Once);
+            postedRequests.Should().Contain(x => x.Url.FullUri == "https://openrouter.ai/api/v1/chat/completions");
+            _suggestionRepository.Verify(x => x.Insert(It.Is<UnmappedFileIdentificationSuggestion>(s => s.BookFileId == 1 && s.Status == "transcriptCaptured" && s.Provider == "openrouter-stt" && s.Narrator == "Jane Reader" && s.NarratorValidationStatus == "validated" && s.ValidatedForeignEditionId == "edition-1" && s.Stage == "transcriptCaptured" && s.ProviderModel == "openai/whisper-1" && s.Transcript.Contains("The Hidden Book") && s.StepLog.Contains("providerResponse") && s.StepLog.Contains("llmNarratorReview"))), Times.Once);
             _contributorEvidenceRepository.Verify(x => x.Insert(It.Is<ContributorEvidence>(e => e.BookFileId == 1 && e.Role == "narrator" && e.DisplayName == "Jane Reader" && e.NormalizedName == "janereader" && e.Source == "sttTranscript")), Times.Once);
         }
 

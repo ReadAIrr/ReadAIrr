@@ -10,6 +10,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         List<ContributorEvidence> GetByBookFileIds(IEnumerable<int> bookFileIds);
         List<ContributorEvidence> GetByEditionIds(IEnumerable<int> editionIds);
+        List<ContributorEvidence> GetByForeignEditionIds(IEnumerable<string> foreignEditionIds);
         PagingSpec<ContributorEvidence> GetNarratorEvidence(PagingSpec<ContributorEvidence> pagingSpec, string term, string source);
         List<ContributorEvidence> GetNarratorEvidenceForIdentityIndex(string term, string source);
         List<ContributorEvidence> GetNarratorEvidenceByNames(IEnumerable<string> normalizedNames, string source = null);
@@ -51,6 +52,21 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return Query(x => x.EditionId.HasValue && ids.Contains(x.EditionId.Value))
+                .OrderBy(x => x.Role)
+                .ThenBy(x => x.DisplayName)
+                .ToList();
+        }
+
+        public List<ContributorEvidence> GetByForeignEditionIds(IEnumerable<string> foreignEditionIds)
+        {
+            var ids = foreignEditionIds.Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
+
+            if (!ids.Any())
+            {
+                return new List<ContributorEvidence>();
+            }
+
+            return Query(x => x.ForeignEditionId != null && ids.Contains(x.ForeignEditionId))
                 .OrderBy(x => x.Role)
                 .ThenBy(x => x.DisplayName)
                 .ToList();

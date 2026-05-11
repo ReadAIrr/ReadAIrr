@@ -73,6 +73,11 @@ namespace Readarr.Api.V1.ManualImport
         public string LikelyEdition { get; set; }
         public string Language { get; set; }
         public string Narrator { get; set; }
+        public string NarratorValidationStatus { get; set; }
+        public string NarratorValidationDetail { get; set; }
+        public string ValidatedNarrator { get; set; }
+        public string ValidatedForeignEditionId { get; set; }
+        public string ValidatedEditionTitle { get; set; }
         public int? Confidence { get; set; }
         public string Explanation { get; set; }
         public bool RequiresManualConfirmation { get; set; }
@@ -293,6 +298,34 @@ namespace Readarr.Api.V1.ManualImport
                         Kind = "narratorEvidence",
                         Label = "Narrator evidence",
                         Detail = $"{GetSuggestionSource(suggestion)} found narrator: {suggestion.Narrator}"
+                    });
+                }
+
+                if (suggestion.NarratorValidationStatus == "validated")
+                {
+                    suggestion.Evidence.Add(new ManualImportReviewReasonResource
+                    {
+                        Kind = "narratorMetadataValidated",
+                        Label = "Narrator metadata validated",
+                        Detail = suggestion.NarratorValidationDetail
+                    });
+                }
+                else if (suggestion.NarratorValidationStatus == "mismatch")
+                {
+                    suggestion.Warnings.Add(new ManualImportReviewReasonResource
+                    {
+                        Kind = "narratorMetadataMismatch",
+                        Label = "Narrator metadata mismatch",
+                        Detail = suggestion.NarratorValidationDetail
+                    });
+                }
+                else if (suggestion.NarratorValidationDetail.IsNotNullOrWhiteSpace())
+                {
+                    suggestion.Evidence.Add(new ManualImportReviewReasonResource
+                    {
+                        Kind = "narratorMetadataReview",
+                        Label = "Narrator metadata review",
+                        Detail = suggestion.NarratorValidationDetail
                     });
                 }
             }

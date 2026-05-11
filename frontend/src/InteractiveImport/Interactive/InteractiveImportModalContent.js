@@ -238,6 +238,7 @@ class InteractiveImportModalContent extends Component {
       isConfirmImportModalOpen: false,
       inconsistentBookReleases: false,
       acceptedNarratorEvidenceKey: null,
+      acceptedEditionKey: null,
       scroller: null
     };
   }
@@ -316,40 +317,61 @@ class InteractiveImportModalContent extends Component {
       acceptedSuggestion,
       acceptedPath,
       items,
+      updateInteractiveImportItem,
       onSetContributorEvidencePress
     } = this.props;
 
-    const displayName = acceptedSuggestion?.narrator?.trim();
-
-    if (!displayName || !acceptedPath) {
+    if (!acceptedPath) {
       return;
     }
 
     const acceptedItem = items.find((item) => item.path === acceptedPath);
+
+    if (!acceptedItem) {
+      return;
+    }
+
+    const displayName = acceptedSuggestion?.narrator?.trim();
     const review = acceptedItem?.review || {};
     const bookFileId = review.bookFileId;
     const contributorEvidence = review.contributorEvidence || [];
     const key = `${acceptedPath}|${bookFileId || 0}|${displayName}`;
 
     if (
-      !acceptedItem ||
-      !bookFileId ||
-      !review.canEditContributorEvidence ||
-      this.state.acceptedNarratorEvidenceKey === key ||
-      getNarratorEvidence(contributorEvidence, 'manual') ||
-      hasNarratorEvidence(contributorEvidence, displayName)
+      displayName &&
+      bookFileId &&
+      review.canEditContributorEvidence &&
+      this.state.acceptedNarratorEvidenceKey !== key &&
+      !getNarratorEvidence(contributorEvidence, 'manual') &&
+      !hasNarratorEvidence(contributorEvidence, displayName)
     ) {
-      return;
+      this.setState({ acceptedNarratorEvidenceKey: key });
+
+      onSetContributorEvidencePress({
+        id: acceptedItem.id,
+        bookFileId,
+        role: 'narrator',
+        displayName
+      });
     }
 
-    this.setState({ acceptedNarratorEvidenceKey: key });
+    const foreignEditionId = acceptedSuggestion?.validatedForeignEditionId || acceptedSuggestion?.foreignEditionId;
 
-    onSetContributorEvidencePress({
-      id: acceptedItem.id,
-      bookFileId,
-      role: 'narrator',
-      displayName
-    });
+    if (
+      foreignEditionId &&
+      acceptedItem.book &&
+      acceptedItem.foreignEditionId !== foreignEditionId
+    ) {
+      const editionKey = `${acceptedPath}|${acceptedItem.id}|${foreignEditionId}`;
+
+      if (this.state.acceptedEditionKey !== editionKey) {
+        this.setState({ acceptedEditionKey: editionKey });
+        updateInteractiveImportItem({
+          id: acceptedItem.id,
+          foreignEditionId
+        });
+      }
+    }
   };
 
   //
@@ -693,8 +715,9 @@ class InteractiveImportModalContent extends Component {
                     [
                       acceptedSuggestion.likelyAuthor,
                       acceptedSuggestion.likelyBook,
-                      acceptedSuggestion.likelyEdition,
+                      acceptedSuggestion.validatedEditionTitle || acceptedSuggestion.likelyEdition,
                       acceptedSuggestion.narrator && `Narrator: ${acceptedSuggestion.narrator}`,
+                      acceptedSuggestion.narratorValidationStatus === 'validated' && 'Narrator validated by provider metadata',
                       acceptedPath && `Path: ${acceptedPath}`
                     ].filter(Boolean).join(' - ')
                   }

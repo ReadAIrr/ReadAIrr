@@ -78,7 +78,7 @@ namespace Readarr.Api.V1.BookFiles
 
     public class AudioIntroTranscriptionService : IAudioIntroTranscriptionService
     {
-        private const int MaxIntroSeconds = 120;
+        private const int MaxIntroSeconds = 60;
         private const int MaxTranscriptLength = 12000;
 
         private readonly IConfigService _configService;
