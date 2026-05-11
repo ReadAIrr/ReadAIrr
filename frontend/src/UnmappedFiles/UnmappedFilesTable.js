@@ -26,6 +26,7 @@ import VirtualTable from 'Components/Table/VirtualTable';
 import VirtualTableRow from 'Components/Table/VirtualTableRow';
 import { align, icons, kinds, sortDirections } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
+import getAcceptedNarratorEvidencePayload from 'Utilities/ContributorEvidence/getAcceptedNarratorEvidencePayload';
 import hasDifferentItemsOrOrder from 'Utilities/Object/hasDifferentItemsOrOrder';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -492,9 +493,10 @@ class UnmappedFilesTable extends Component {
 
   onAcceptDeepIdentifySuggestionPress = (item, suggestion) => {
     const narrator = suggestion?.validatedNarrator || suggestion?.narrator;
+    const evidencePayload = getAcceptedNarratorEvidencePayload(suggestion, narrator);
 
-    if (narrator) {
-      this.props.onSetContributorEvidencePress(item.id, narrator);
+    if (evidencePayload) {
+      this.props.onSetContributorEvidencePress(item.id, evidencePayload.displayName, evidencePayload);
     }
 
     this.setState({

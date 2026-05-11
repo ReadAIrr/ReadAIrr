@@ -318,7 +318,13 @@ namespace Readarr.Api.V1.Contributors
                     Size = orderedFiles.Sum(x => x.Size),
                     Modified = orderedFiles.Max(x => x.Modified),
                     Reviewed = orderedFiles.All(x => x.Reviewed),
+                    SuggestedAuthor = suggestion?.LikelyAuthor,
+                    SuggestedBook = suggestion?.LikelyBook,
+                    SuggestedEdition = suggestion?.LikelyEdition,
                     SuggestedNarrator = suggestion?.Narrator,
+                    ValidatedNarrator = suggestion?.ValidatedNarrator,
+                    NarratorValidationStatus = suggestion?.NarratorValidationStatus,
+                    NarratorValidationDetail = suggestion?.NarratorValidationDetail,
                     SuggestionConfidence = suggestion?.Confidence,
                     SuggestionStatus = suggestion?.Status,
                     SuggestionStage = suggestion?.Stage,
@@ -420,7 +426,7 @@ namespace Readarr.Api.V1.Contributors
             {
                 return new ProviderSupportResult
                 {
-                    ProviderSupportLabel = "No narrator proposal"
+                    ProviderSupportLabel = "No narrator proposal yet"
                 };
             }
 
@@ -432,7 +438,7 @@ namespace Readarr.Api.V1.Contributors
                 ProviderEvidenceCount = providerEvidence.Count,
                 ProviderSupportLabel = providerEvidence.Any() ?
                     $"Metadata has {providerEvidence.Count} narrator match{(providerEvidence.Count == 1 ? string.Empty : "es")} for this name." :
-                    "No provider narrator metadata match for this name yet."
+                    "STT narrator proposal ready for confirmation; provider metadata has no narrator record to compare yet."
             };
         }
 

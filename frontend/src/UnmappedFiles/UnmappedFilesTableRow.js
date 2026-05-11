@@ -22,6 +22,7 @@ import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCel
 import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
+import getAcceptedNarratorEvidencePayload from 'Utilities/ContributorEvidence/getAcceptedNarratorEvidencePayload';
 import { getContributorEvidenceLabel, getContributorEvidenceReviewReason, getContributorEvidenceSourceLabel, renderContributorEvidenceSummary } from 'Utilities/ContributorEvidence/getContributorEvidenceDisplay';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
@@ -381,9 +382,10 @@ class UnmappedFilesTableRow extends Component {
   onAcceptSuggestionPress = () => {
     const suggestion = getReviewSuggestion(this.props.review);
     const narrator = suggestion?.validatedNarrator || suggestion?.narrator;
+    const evidencePayload = getAcceptedNarratorEvidencePayload(suggestion, narrator);
 
-    if (narrator) {
-      this.props.setContributorEvidence(this.props.id, narrator);
+    if (evidencePayload) {
+      this.props.setContributorEvidence(this.props.id, evidencePayload.displayName, evidencePayload);
     }
 
     this.setState({

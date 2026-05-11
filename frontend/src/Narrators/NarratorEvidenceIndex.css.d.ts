@@ -24,11 +24,16 @@ interface CssExports {
   'narratorRow': string;
   'narratorStat': string;
   'narratorStats': string;
+  'proposedMatch': string;
+  'proposedMatchGrid': string;
+  'proposedMatchLabel': string;
+  'proposedMatchTitle': string;
   'providerBadge': string;
   'reviewBadge': string;
   'rowActions': string;
   'scanLog': string;
   'scanLogLine': string;
+  'scanReviewActions': string;
   'scanReviewList': string;
   'scanReviewRow': string;
   'sourceCount': string;

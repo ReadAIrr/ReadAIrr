@@ -104,8 +104,14 @@ function createMapDispatchToProps(dispatch, props) {
       dispatch(clearUnmappedSuggestions({ bookFileIds }));
     },
 
-    onSetContributorEvidencePress(bookFileId, displayName) {
-      dispatch(setUnmappedContributorEvidence({ bookFileId, role: 'narrator', displayName }));
+    onSetContributorEvidencePress(bookFileId, displayName, evidencePayload = null) {
+      dispatch(setUnmappedContributorEvidence({
+        bookFileId,
+        role: evidencePayload?.role || 'narrator',
+        displayName: evidencePayload?.displayName || displayName,
+        confidence: evidencePayload?.confidence,
+        rawValue: evidencePayload?.rawValue
+      }));
     },
 
     setUnmappedFilesReviewed(bookFileIds, reviewed) {

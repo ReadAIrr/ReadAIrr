@@ -29,6 +29,7 @@ import SelectIndexerFlagsModal from 'InteractiveImport/IndexerFlags/SelectIndexe
 import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectReleaseGroupModal from 'InteractiveImport/ReleaseGroup/SelectReleaseGroupModal';
 import { buildAddSearchLinks } from 'UnmappedFiles/unmappedAddSearchUtils';
+import getAcceptedNarratorEvidencePayload from 'Utilities/ContributorEvidence/getAcceptedNarratorEvidencePayload';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -131,16 +132,6 @@ function getNarratorEvidence(contributorEvidence, source) {
     return item.role === 'narrator' &&
       item.displayName &&
       (!source || item.source === source);
-  });
-}
-
-function hasNarratorEvidence(contributorEvidence, displayName) {
-  const normalized = displayName.trim().toLowerCase();
-
-  return (contributorEvidence || []).some((item) => {
-    return item.role === 'narrator' &&
-      item.displayName &&
-      item.displayName.trim().toLowerCase() === normalized;
   });
 }
 
@@ -336,22 +327,21 @@ class InteractiveImportModalContent extends Component {
     const bookFileId = review.bookFileId;
     const contributorEvidence = review.contributorEvidence || [];
     const key = `${acceptedPath}|${bookFileId || 0}|${displayName}`;
+    const evidencePayload = getAcceptedNarratorEvidencePayload(acceptedSuggestion, displayName);
 
     if (
       displayName &&
       bookFileId &&
       review.canEditContributorEvidence &&
       this.state.acceptedNarratorEvidenceKey !== key &&
-      !getNarratorEvidence(contributorEvidence, 'manual') &&
-      !hasNarratorEvidence(contributorEvidence, displayName)
+      !getNarratorEvidence(contributorEvidence, 'manual')
     ) {
       this.setState({ acceptedNarratorEvidenceKey: key });
 
       onSetContributorEvidencePress({
         id: acceptedItem.id,
         bookFileId,
-        role: 'narrator',
-        displayName
+        ...evidencePayload
       });
     }
 

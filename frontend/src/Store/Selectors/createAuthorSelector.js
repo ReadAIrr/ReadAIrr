@@ -6,8 +6,14 @@ function createAuthorSelector() {
     (state, { author }) => author,
     (state) => state.authors.itemMap,
     (state) => state.authors.items,
-    (authorId, fallbackAuthor, itemMap, allAuthors) => {
-      return allAuthors[itemMap[authorId]] || fallbackAuthor;
+    (authorId, fallbackAuthor, itemMap = {}, allAuthors = []) => {
+      const authorIndex = itemMap[authorId];
+
+      if (authorIndex == null) {
+        return fallbackAuthor;
+      }
+
+      return allAuthors[authorIndex] || fallbackAuthor;
     }
   );
 }

@@ -255,3 +255,33 @@
   border: 1px solid var(--borderColor);
   border-radius: 4px;
 }
+
+.proposedMatch {
+  margin: 12px 0;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardAlternateBackgroundColor);
+}
+
+.proposedMatchTitle {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.proposedMatchGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+}
+
+.proposedMatchLabel {
+  color: var(--textSecondaryColor);
+  font-size: 12px;
+}
+
+.scanReviewActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}

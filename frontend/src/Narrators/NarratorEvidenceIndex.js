@@ -17,6 +17,7 @@ import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarSearchInput from 'Components/Page/Toolbar/PageToolbarSearchInput';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import { align, kinds } from 'Helpers/Props';
+import getAcceptedNarratorEvidencePayload from 'Utilities/ContributorEvidence/getAcceptedNarratorEvidencePayload';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import styles from './NarratorEvidenceIndex.css';
 
@@ -48,6 +49,13 @@ function normalizeName(value) {
   return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+function normalizeComparableTitle(value) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/\baudiobook\b|\baudible\b|\bunabridged\b/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
 function getSourceLabel(source) {
   switch (source) {
     case 'manual':
@@ -73,6 +81,21 @@ function getScanModalRows(items, ids) {
   return (items || []).filter((item) => {
     return getBookFileIds(item).some((id) => idSet.has(id));
   });
+}
+
+function getProposedNarrator(item) {
+  return item.validatedNarrator || item.suggestedNarrator || '';
+}
+
+function getCurrentCandidateTitle(item) {
+  return item.groupTitle || item.path || '';
+}
+
+function hasTitleMismatch(item) {
+  const suggestedBook = normalizeComparableTitle(item.suggestedBook);
+  const currentTitle = normalizeComparableTitle(getCurrentCandidateTitle(item));
+
+  return !!suggestedBook && !!currentTitle && suggestedBook !== currentTitle;
 }
 
 function SourceCounts({ sourceCounts }) {
@@ -249,6 +272,7 @@ function UnmatchedNarratorRow({
   const bookFileIds = item.bookFileIds || [item.bookFileId];
   const suggestedNarrator = item.suggestedNarrator || '';
   const confirmName = manualNarrator || suggestedNarrator;
+  const isAccepting = item.isAcceptingNarrator;
 
   return (
     <div className={styles.narratorRow}>
@@ -312,10 +336,10 @@ function UnmatchedNarratorRow({
 
         <Button
           kind={item.canAutoAccept ? kinds.PRIMARY : kinds.DEFAULT}
-          isDisabled={!confirmName || isScanning}
+          isDisabled={!confirmName || isScanning || isAccepting}
           onPress={() => onConfirmPress(item, confirmName)}
         >
-          Accept Narrator
+          {isAccepting ? 'Accepting...' : 'Accept Narrator'}
         </Button>
       </div>
     </div>
@@ -578,6 +602,8 @@ class NarratorEvidenceIndex extends Component {
       isFetchingUnmatched: false,
       unmatchedError: null,
       scanningUnmatchedIds: [],
+      acceptingUnmatchedIds: [],
+      confirmUnmatchedError: null,
       manualNarrators: {},
       selectedNarrator: null,
       isFetchingDetail: false,
@@ -832,13 +858,36 @@ class NarratorEvidenceIndex extends Component {
     });
   };
 
+  onAcceptScanSuggestionPress = (item) => {
+    const displayName = getProposedNarrator(item);
+
+    if (!displayName) {
+      return;
+    }
+
+    this.onConfirmUnmatchedPress(item, displayName, {
+      closeScanModalOnSuccess: true
+    });
+  };
+
   onBulkScanUnmatchedPress = () => {
     const ids = this.state.unmatchedItems.flatMap((item) => item.bookFileIds || [item.bookFileId]);
     this.onScanUnmatchedPress(ids);
   };
 
-  onConfirmUnmatchedPress = (item, displayName) => {
+  onConfirmUnmatchedPress = (item, displayName, options = {}) => {
     const bookFileIds = item.bookFileIds || [item.bookFileId];
+    const cleanDisplayName = (displayName || '').trim();
+    const evidencePayload = getAcceptedNarratorEvidencePayload(item, cleanDisplayName, 'narratorMissingWorkflow');
+
+    if (!evidencePayload) {
+      return;
+    }
+
+    this.setState({
+      acceptingUnmatchedIds: Array.from(new Set(this.state.acceptingUnmatchedIds.concat(bookFileIds))),
+      confirmUnmatchedError: null
+    });
 
     const { request } = createAjaxRequest({
       url: '/narrator/unmatched/confirm',
@@ -846,15 +895,46 @@ class NarratorEvidenceIndex extends Component {
       dataType: 'json',
       data: JSON.stringify({
         bookFileIds,
-        displayName,
-        confidence: item.suggestionConfidence,
-        rawValue: `confirmedFrom=narratorMissingWorkflow;narrator=${displayName}`
+        displayName: evidencePayload.displayName,
+        confidence: evidencePayload.confidence,
+        rawValue: evidencePayload.rawValue
       })
     });
 
     request.done(() => {
-      this.fetchUnmatchedNarrators(1);
+      const acceptedIds = new Set(bookFileIds);
+
+      this.setState({
+        acceptingUnmatchedIds: this.state.acceptingUnmatchedIds.filter((id) => !acceptedIds.has(id)),
+        isScanModalOpen: options.closeScanModalOnSuccess ? false : this.state.isScanModalOpen,
+        scanModalIds: options.closeScanModalOnSuccess ? [] : this.state.scanModalIds,
+        scanModalStatus: options.closeScanModalOnSuccess ? 'idle' : this.state.scanModalStatus,
+        scanModalRows: options.closeScanModalOnSuccess ? [] : this.state.scanModalRows,
+        scanModalError: options.closeScanModalOnSuccess ? null : this.state.scanModalError,
+        unmatchedItems: this.state.unmatchedItems.filter((unmatchedItem) => {
+          return !getBookFileIds(unmatchedItem).some((id) => acceptedIds.has(id));
+        }),
+        unmatchedTotalRecords: Math.max(0, this.state.unmatchedTotalRecords - 1),
+        manualNarrators: Object.keys(this.state.manualNarrators).reduce((acc, key) => {
+          if (key !== (item.groupKey || item.bookFileId).toString()) {
+            acc[key] = this.state.manualNarrators[key];
+          }
+
+          return acc;
+        }, {})
+      }, () => {
+        this.fetchUnmatchedNarrators(1);
+      });
       this.fetchNarrators(1);
+    });
+
+    request.fail((xhr) => {
+      const failedIds = new Set(bookFileIds);
+
+      this.setState({
+        acceptingUnmatchedIds: this.state.acceptingUnmatchedIds.filter((id) => !failedIds.has(id)),
+        confirmUnmatchedError: xhr
+      });
     });
   };
 
@@ -1098,6 +1178,8 @@ class NarratorEvidenceIndex extends Component {
       isFetchingUnmatched,
       unmatchedError,
       scanningUnmatchedIds,
+      acceptingUnmatchedIds,
+      confirmUnmatchedError,
       manualNarrators,
       selectedNarrator,
       isFetchingDetail,
@@ -1316,6 +1398,13 @@ class NarratorEvidenceIndex extends Component {
           }
 
           {
+            view === 'missing' && confirmUnmatchedError &&
+              <Alert kind={kinds.DANGER}>
+                {confirmUnmatchedError.responseJSON?.message || confirmUnmatchedError.responseText || 'Unable to accept narrator.'}
+              </Alert>
+          }
+
+          {
             view === 'missing' && !isFetchingUnmatched && !unmatchedError && !unmatchedItems.length &&
               <div className={styles.emptyMessage}>
                 No missing narrator files match the current search.
@@ -1329,12 +1418,16 @@ class NarratorEvidenceIndex extends Component {
                   unmatchedItems.map((item) => {
                     const itemIds = item.bookFileIds || [item.bookFileId];
                     const isScanning = itemIds.some((id) => scanningUnmatchedIds.includes(id));
+                    const isAcceptingNarrator = itemIds.some((id) => acceptingUnmatchedIds.includes(id));
                     const key = item.groupKey || item.bookFileId;
 
                     return (
                       <UnmatchedNarratorRow
                         key={key}
-                        item={item}
+                        item={{
+                          ...item,
+                          isAcceptingNarrator
+                        }}
                         manualNarrator={manualNarrators[key] || ''}
                         isScanning={isScanning}
                         onManualNarratorChange={this.onManualNarratorChange}
@@ -1400,7 +1493,10 @@ class NarratorEvidenceIndex extends Component {
               <div className={styles.scanReviewList}>
                 {
                   scanModalDisplayRows.map((item) => {
-                    const suggestedNarrator = item.suggestedNarrator || '';
+                    const proposedNarrator = getProposedNarrator(item);
+                    const titleMismatch = hasTitleMismatch(item);
+                    const itemIds = getBookFileIds(item);
+                    const isAccepting = itemIds.some((id) => acceptingUnmatchedIds.includes(id));
 
                     return (
                       <div
@@ -1415,14 +1511,62 @@ class NarratorEvidenceIndex extends Component {
                           {item.partCount > 1 ? `${item.partCount} parts` : 'Single file'} · {item.path}
                         </div>
 
+                        <div className={styles.proposedMatch}>
+                          <div className={styles.proposedMatchTitle}>
+                            Proposed STT match
+                          </div>
+
+                          <div className={styles.proposedMatchGrid}>
+                            <div className={styles.proposedMatchLabel}>
+                              Book
+                            </div>
+                            <div>
+                              {item.suggestedBook || getCurrentCandidateTitle(item)}
+                            </div>
+
+                            <div className={styles.proposedMatchLabel}>
+                              Author
+                            </div>
+                            <div>
+                              {item.suggestedAuthor || 'Unknown author'}
+                            </div>
+
+                            <div className={styles.proposedMatchLabel}>
+                              Narrator
+                            </div>
+                            <div>
+                              {proposedNarrator || 'No narrator proposal yet'}
+                            </div>
+
+                            {
+                              item.suggestedEdition &&
+                                <>
+                                  <div className={styles.proposedMatchLabel}>
+                                    Edition
+                                  </div>
+                                  <div>
+                                    {item.suggestedEdition}
+                                  </div>
+                                </>
+                            }
+                          </div>
+                        </div>
+
+                        {
+                          titleMismatch &&
+                            <Alert kind={kinds.WARNING}>
+                              Transcript title "{item.suggestedBook}" does not exactly match the current file/candidate title "{getCurrentCandidateTitle(item)}". Review the typo before accepting.
+                            </Alert>
+                        }
+
                         <div className={styles.identityStatus}>
                           <span className={item.providerSupported ? styles.providerBadge : styles.reviewBadge}>
                             {item.providerSupportLabel || 'No provider check yet'}
                           </span>
                           {
-                            suggestedNarrator ?
+                            proposedNarrator ?
                               <span className={styles.confidenceBadge}>
-                                Proposal: {suggestedNarrator}{item.suggestionConfidence == null ? '' : ` · ${item.suggestionConfidence}%`}
+                                Narrator: {proposedNarrator}{item.suggestionConfidence == null ? '' : ` · ${item.suggestionConfidence}%`}
                               </span> :
                               <span className={styles.confidenceBadge}>
                                 No narrator proposal yet
@@ -1443,6 +1587,23 @@ class NarratorEvidenceIndex extends Component {
                               {item.suggestionExplanation}
                             </div>
                         }
+
+                        {
+                          item.narratorValidationDetail &&
+                            <div className={styles.identityNote}>
+                              {item.narratorValidationDetail}
+                            </div>
+                        }
+
+                        <div className={styles.scanReviewActions}>
+                          <Button
+                            kind={kinds.PRIMARY}
+                            isDisabled={!proposedNarrator || isScanRunning || isAccepting}
+                            onPress={() => this.onAcceptScanSuggestionPress(item)}
+                          >
+                            {isAccepting ? 'Setting Narrator...' : 'Accept STT Match and Set Narrator'}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })

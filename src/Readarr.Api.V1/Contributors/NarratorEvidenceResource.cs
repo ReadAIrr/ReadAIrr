@@ -101,7 +101,13 @@ namespace Readarr.Api.V1.Contributors
         public long Size { get; set; }
         public DateTime Modified { get; set; }
         public bool Reviewed { get; set; }
+        public string SuggestedAuthor { get; set; }
+        public string SuggestedBook { get; set; }
+        public string SuggestedEdition { get; set; }
         public string SuggestedNarrator { get; set; }
+        public string ValidatedNarrator { get; set; }
+        public string NarratorValidationStatus { get; set; }
+        public string NarratorValidationDetail { get; set; }
         public int? SuggestionConfidence { get; set; }
         public string SuggestionStatus { get; set; }
         public string SuggestionStage { get; set; }

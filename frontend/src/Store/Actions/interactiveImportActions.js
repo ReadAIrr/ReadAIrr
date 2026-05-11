@@ -281,7 +281,9 @@ export const actionHandlers = handleThunks({
       id,
       bookFileId,
       role = 'narrator',
-      displayName
+      displayName,
+      confidence,
+      rawValue
     } = payload;
 
     dispatch(updateItem({
@@ -295,7 +297,7 @@ export const actionHandlers = handleThunks({
       url: '/bookFile/unmapped/contributor-evidence',
       method: 'PUT',
       dataType: 'json',
-      data: JSON.stringify({ bookFileId, role, displayName })
+      data: JSON.stringify({ bookFileId, role, displayName, confidence, rawValue })
     }).request;
 
     promise.done((data) => {
