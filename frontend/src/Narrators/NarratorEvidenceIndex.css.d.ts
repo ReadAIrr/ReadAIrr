@@ -27,6 +27,10 @@ interface CssExports {
   'providerBadge': string;
   'reviewBadge': string;
   'rowActions': string;
+  'scanLog': string;
+  'scanLogLine': string;
+  'scanReviewList': string;
+  'scanReviewRow': string;
   'sourceCount': string;
   'sourceCounts': string;
   'transcriptBox': string;

@@ -6,6 +6,11 @@ import SelectInput from 'Components/Form/SelectInput';
 import Button from 'Components/Link/Button';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalFooter from 'Components/Modal/ModalFooter';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
@@ -56,6 +61,18 @@ function getSourceLabel(source) {
     default:
       return source || 'Unknown';
   }
+}
+
+function getBookFileIds(item) {
+  return item.bookFileIds || [item.bookFileId];
+}
+
+function getScanModalRows(items, ids) {
+  const idSet = new Set(ids || []);
+
+  return (items || []).filter((item) => {
+    return getBookFileIds(item).some((id) => idSet.has(id));
+  });
 }
 
 function SourceCounts({ sourceCounts }) {
@@ -573,7 +590,12 @@ class NarratorEvidenceIndex extends Component {
       aliasSuggestions: [],
       aliasValidationMessage: '',
       isSavingAlias: false,
-      aliasError: null
+      aliasError: null,
+      isScanModalOpen: false,
+      scanModalIds: [],
+      scanModalStatus: 'idle',
+      scanModalRows: [],
+      scanModalError: null
     };
 
     this._abortRequest = null;
@@ -762,7 +784,12 @@ class NarratorEvidenceIndex extends Component {
     }
 
     this.setState({
-      scanningUnmatchedIds: ids
+      scanningUnmatchedIds: ids,
+      isScanModalOpen: true,
+      scanModalIds: ids,
+      scanModalStatus: 'running',
+      scanModalRows: [],
+      scanModalError: null
     });
 
     const { request } = createAjaxRequest({
@@ -776,13 +803,32 @@ class NarratorEvidenceIndex extends Component {
     });
 
     request.done((rows) => {
-      this.setState({ scanningUnmatchedIds: [] });
+      this.setState({
+        scanningUnmatchedIds: [],
+        scanModalStatus: 'complete',
+        scanModalRows: rows || [],
+        scanModalError: null
+      });
       this.updateUnmatchedRows(rows);
       this.fetchNarrators(1);
     });
 
-    request.fail(() => {
-      this.setState({ scanningUnmatchedIds: [] });
+    request.fail((xhr) => {
+      this.setState({
+        scanningUnmatchedIds: [],
+        scanModalStatus: 'failed',
+        scanModalError: xhr
+      });
+    });
+  };
+
+  onScanModalClose = () => {
+    this.setState({
+      isScanModalOpen: false,
+      scanModalIds: [],
+      scanModalStatus: 'idle',
+      scanModalRows: [],
+      scanModalError: null
     });
   };
 
@@ -1064,8 +1110,16 @@ class NarratorEvidenceIndex extends Component {
       aliasSuggestions,
       aliasValidationMessage,
       isSavingAlias,
-      aliasError
+      aliasError,
+      isScanModalOpen,
+      scanModalIds,
+      scanModalStatus,
+      scanModalRows,
+      scanModalError
     } = this.state;
+    const scanModalSourceRows = getScanModalRows(unmatchedItems, scanModalIds);
+    const scanModalDisplayRows = scanModalRows.length ? scanModalRows : scanModalSourceRows;
+    const isScanRunning = scanModalStatus === 'running';
 
     return (
       <PageContent>
@@ -1300,6 +1354,109 @@ class NarratorEvidenceIndex extends Component {
               </div>
           }
         </PageContentBody>
+
+        <Modal
+          isOpen={isScanModalOpen}
+          closeOnBackgroundClick={false}
+          onModalClose={this.onScanModalClose}
+        >
+          <ModalContent onModalClose={this.onScanModalClose}>
+            <ModalHeader>
+              Scan STT Narrator Review
+            </ModalHeader>
+
+            <ModalBody>
+              {
+                isScanRunning &&
+                  <Alert kind={kinds.INFO}>
+                    Scan STT is running against the selected missing narrator file{scanModalIds.length === 1 ? '' : 's'}. ReadAIrr sends only the short configured intro clip, then checks the transcript and narrator proposal against available metadata.
+                  </Alert>
+              }
+
+              {
+                scanModalStatus === 'complete' &&
+                  <Alert kind={kinds.SUCCESS}>
+                    Scan STT completed. Review the proposal below, then accept the narrator when it looks right.
+                  </Alert>
+              }
+
+              {
+                scanModalStatus === 'failed' &&
+                  <Alert kind={kinds.DANGER}>
+                    {scanModalError?.responseJSON?.message || scanModalError?.responseText || 'Scan STT failed.'}
+                  </Alert>
+              }
+
+              <div className={styles.scanLog}>
+                <div className={styles.scanLogLine}>
+                  Queued {scanModalIds.length} file{scanModalIds.length === 1 ? '' : 's'} for STT.
+                </div>
+
+                <div className={styles.scanLogLine}>
+                  {isScanRunning ? 'Waiting for transcript, narrator suggestion, and metadata validation...' : 'Request finished.'}
+                </div>
+              </div>
+
+              <div className={styles.scanReviewList}>
+                {
+                  scanModalDisplayRows.map((item) => {
+                    const suggestedNarrator = item.suggestedNarrator || '';
+
+                    return (
+                      <div
+                        key={item.groupKey || item.bookFileId}
+                        className={styles.scanReviewRow}
+                      >
+                        <div className={styles.narratorName}>
+                          {item.groupTitle || item.path}
+                        </div>
+
+                        <div className={styles.narratorMeta}>
+                          {item.partCount > 1 ? `${item.partCount} parts` : 'Single file'} · {item.path}
+                        </div>
+
+                        <div className={styles.identityStatus}>
+                          <span className={item.providerSupported ? styles.providerBadge : styles.reviewBadge}>
+                            {item.providerSupportLabel || 'No provider check yet'}
+                          </span>
+                          {
+                            suggestedNarrator ?
+                              <span className={styles.confidenceBadge}>
+                                Proposal: {suggestedNarrator}{item.suggestionConfidence == null ? '' : ` · ${item.suggestionConfidence}%`}
+                              </span> :
+                              <span className={styles.confidenceBadge}>
+                                No narrator proposal yet
+                              </span>
+                          }
+                        </div>
+
+                        {
+                          item.transcriptExcerpt &&
+                            <div className={styles.transcriptBox}>
+                              {item.transcriptExcerpt}
+                            </div>
+                        }
+
+                        {
+                          item.suggestionExplanation &&
+                            <div className={styles.identityNote}>
+                              {item.suggestionExplanation}
+                            </div>
+                        }
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            </ModalBody>
+
+            <ModalFooter>
+              <Button onPress={this.onScanModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </PageContent>
     );
   }
