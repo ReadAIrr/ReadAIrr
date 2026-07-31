@@ -17,6 +17,16 @@ Vault secret names provide their credentials. It must not contain secret values.
 
 The signed-in Azure user has `Key Vault Secrets Officer` on this vault.
 
+## Deployment Boundary
+
+Secret routing does not imply deployment ownership. This App repository
+publishes the ReadAIrr container image and contains deployment helpers for the
+Eggman-hosted `ReadAIrrEggLab` development environment. The public
+`readairr.com` site is a separate deployment on PHX CT `207` (`readairr-web`)
+and must not be treated as an App runtime target. Use
+[deployment-boundaries.md](deployment-boundaries.md) for the current topology
+and the separate Site/Docs handoff.
+
 ## Registry Layout
 
 The starter registry expects these Key Vault secrets:
@@ -187,16 +197,20 @@ Keep these as Key Vault secret names only:
 - Certificate/key contents
 - Any `.env` value that grants access
 
-Example mapping:
+Example App-owned mapping for the Eggman development environment:
 
 ```json
 "access": {
   "method": "ssh",
-  "user": "root",
+  "hostRef": "eggman",
+  "guest": "ReadAIrrEggLab",
   "secretRefs": {
-    "SSH_PASSWORD": "proxmox-ovh-root-ssh-password",
-    "SSH_PRIVATE_KEY": "proxmox-ovh-root-ssh-private-key",
-    "SSH_CERT_FILE": "proxmox-ovh-root-ssh-cert-file"
+    "READAIRR_EGGLAB_HOST": "readairr-egglab-deploy-host",
+    "READAIRR_EGGLAB_USER": "readairr-egglab-deploy-user"
   }
 }
 ```
+
+PHX platform access and public-site deployment credentials belong to their
+separate operator toolsets; do not add them to an App deployment mapping merely
+because application code consumes `readairr.com` URLs.

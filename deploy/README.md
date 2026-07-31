@@ -3,6 +3,16 @@
 This directory contains a small Docker Compose deployment for running this forked
 ReadAIrr image on a Docker host.
 
+## Scope
+
+These files deploy the ReadAIrr application, not the public project website.
+The project development environment is the `ReadAIrrEggLab` VM hosted by
+Eggman, and the QA helper below targets that environment. The public
+`readairr.com` site is independently deployed to CT `207` (`readairr-web`) on
+`pve-phx-01` behind `pve-phx-edge`; no App workflow deploys or updates that
+guest. See [the deployment boundary runbook](../docs/deployment-boundaries.md)
+for ownership and handoff rules.
+
 ## Files
 
 - `compose.yml` runs ReadAIrr plus a same-VM Postgres database for ReadAIrr.

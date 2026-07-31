@@ -36,6 +36,12 @@ for the current dev change list.
 
 ## Deployment
 
+This repository builds and packages the ReadAIrr application. Its homelab QA
+deployment runs on the Eggman-hosted `ReadAIrrEggLab` VM; it does not deploy the
+public `readairr.com` site. The public site is a separate PHX web guest. See
+[docs/deployment-boundaries.md](docs/deployment-boundaries.md) before changing
+an operator target or handing work to the Site or Docs repository.
+
 - Docker Compose: [deploy/README.md](deploy/README.md)
 - Unraid Community Applications: [docs/unraid.md](docs/unraid.md)
 - Unraid template: [templates/readairr.xml](templates/readairr.xml)
